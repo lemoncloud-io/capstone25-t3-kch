@@ -60,7 +60,7 @@ export default function HomePage() {
                         <TrendingUp className="text-red-500 mr-2" size={24} />
                         <h2 className="text-2xl font-bold">인기 정책</h2>
                     </div>
-                    <Link to={`/post/${featuredPost.slug}`}>
+                    <Link to={`/posts/${featuredPost.slug}`}>
                         <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden">
                             <div className="md:flex">
                                 <div className="md:w-2/5">
@@ -101,7 +101,7 @@ export default function HomePage() {
                 <h2 className="text-2xl font-bold mb-6">최신 정책</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {posts?.slice(1).map((post) => (
-                        <Link key={post.id} to={`/post/${post.slug}`}>
+                        <Link key={post.id} to={`/posts/${post.slug}`}>
                             <article className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden h-full">
                                 <img
                                     src={post.thumbnail}
