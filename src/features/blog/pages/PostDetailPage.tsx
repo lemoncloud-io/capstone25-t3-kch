@@ -1,11 +1,12 @@
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Calendar, User, Eye, ArrowLeft, Share2 } from 'lucide-react'
-import { getPost } from '@/shared/api/posts'
+import { getPost, type Post } from '@/shared/api/posts'
 
 export default function PostDetailPage() {
-    const { slug } = useParams()
-    const { data: post, isLoading } = useQuery({
+    const { slug } = useParams<{ slug: string }>()
+
+    const { data: post, isLoading } = useQuery<Post | undefined>({
         queryKey: ['post', slug],
         queryFn: () => getPost(slug!),
         enabled: !!slug,

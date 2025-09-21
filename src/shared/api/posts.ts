@@ -1,4 +1,19 @@
-export const mockPosts = [
+import { env } from '@/shared/lib/env'
+
+export interface Post {
+    id: string
+    title: string
+    slug: string
+    summary: string
+    category: string
+    thumbnail: string
+    author: string
+    viewCount: number
+    createdAt: string
+    content: string
+}
+
+export const mockPosts: Post[] = [
     {
         id: '1',
         title: '2024년 청년 주거지원 정책 총정리',
@@ -37,12 +52,42 @@ export const mockPosts = [
     },
 ]
 
-export async function getPosts(params?: any) {
-    await new Promise(resolve => setTimeout(resolve, 500))
-    return mockPosts
+export const getPosts = async (params?: any): Promise<Post[]> => {
+    if (env.ENV === 'development') {
+        await new Promise(resolve => setTimeout(resolve, 500))
+        return mockPosts
+    }
+
+    try {
+        const response = await fetch(`${env.API_BASE_URL}/posts`)
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        return await response.json()
+    } catch (error) {
+        console.error('API 호출 실패:', error)
+        return mockPosts
+    }
 }
 
-export async function getPost(slug: string) {
-    await new Promise(resolve => setTimeout(resolve, 300))
-    return mockPosts.find(p => p.slug === slug)
+export const getPost = async (slug: string): Promise<Post | undefined> => {
+    if (env.ENV === 'development') {
+        await new Promise(resolve => setTimeout(resolve, 300))
+        return mockPosts.find(post => post.slug === slug)
+    }
+
+    try {
+        const response = await fetch(`${env.API_BASE_URL}/posts/${slug}`)
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        return await response.json()
+    } catch (error) {
+        console.error('API 호출 실패:', error)
+        return mockPosts.find(post => post.slug === slug)
+    }
 }

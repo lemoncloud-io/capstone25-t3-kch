@@ -12,7 +12,6 @@ export default function LoginPage() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
 
-        // 간단한 데모 인증
         if (password === 'admin') {
             login()
             navigate('/admin/dashboard')

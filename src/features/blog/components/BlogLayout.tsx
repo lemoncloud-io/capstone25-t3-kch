@@ -11,6 +11,7 @@ export default function BlogLayout() {
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault()
+
         if (searchQuery.trim()) {
             navigate(`/search?q=${encodeURIComponent(searchQuery)}`)
             setSearchQuery('')
@@ -66,7 +67,6 @@ export default function BlogLayout() {
                             </div>
                         </form>
 
-                        {/* Mobile Menu Button */}
                         <button
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                             className="md:hidden p-2"

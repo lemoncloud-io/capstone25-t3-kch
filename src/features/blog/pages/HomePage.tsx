@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Calendar, Eye, ChevronRight, TrendingUp } from 'lucide-react'
-import { getPosts } from '@/shared/api/posts'
+import { getPosts, type Post } from '@/shared/api/posts'
 
 export default function HomePage() {
-    const { data: posts, isLoading } = useQuery({
+    const { data: posts, isLoading } = useQuery<Post[]>({
         queryKey: ['posts'],
         queryFn: getPosts,
     })
@@ -22,7 +22,7 @@ export default function HomePage() {
         )
     }
 
-    const featuredPost = posts?.[0]
+    const featuredPost: Post | undefined = posts?.[0]
 
     return (
         <div>
