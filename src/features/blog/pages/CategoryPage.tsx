@@ -1,9 +1,8 @@
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Home, BookOpen, Briefcase, Users, ArrowLeft, Calendar, Eye } from 'lucide-react'
+import { Home, BookOpen, ArrowLeft, Calendar, Eye } from 'lucide-react'
 import { getPosts } from '@/shared/api/posts'
 
-// 카테고리 메타데이터
 const categoryInfo = {
     housing: {
         name: '주거지원',
@@ -17,25 +16,13 @@ const categoryInfo = {
         description: '학자금, 장학금, 교육 프로그램 지원 정보입니다.',
         color: 'bg-green-100 text-green-700',
     },
-    employment: {
-        name: '취업지원',
-        icon: Briefcase,
-        description: '구직자와 신입사원을 위한 취업 지원 프로그램입니다.',
-        color: 'bg-purple-100 text-purple-700',
-    },
-    welfare: {
-        name: '복지혜택',
-        icon: Users,
-        description: '다양한 계층을 위한 복지 혜택 정보를 제공합니다.',
-        color: 'bg-orange-100 text-orange-700',
-    },
 }
 
 export default function CategoryPage() {
     const { category } = useParams<{ category: string }>()
     const info = categoryInfo[category as keyof typeof categoryInfo]
 
-    // 카테고리별 포스트 조회
+    // NOTE: 카테고리별 포스트 조회
     const { data: posts, isLoading } = useQuery({
         queryKey: ['posts', 'category', category],
         queryFn: () => getPosts({ category }),

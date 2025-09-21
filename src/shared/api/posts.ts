@@ -20,7 +20,7 @@ export const mockPosts: Post[] = [
         slug: '2024-youth-housing-support',
         summary: '청년들을 위한 다양한 주거지원 프로그램을 한눈에 확인하세요. LH 청년전세임대부터 월세 지원까지.',
         category: '주거지원',
-        thumbnail: 'https://via.placeholder.com/400x300',
+        thumbnail: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 1234,
         createdAt: '2024-01-15T10:00:00Z',
@@ -67,7 +67,7 @@ export const mockPosts: Post[] = [
         slug: 'job-preparation-support',
         summary: '구직 활동에 필요한 비용을 지원받을 수 있는 정부 프로그램을 소개합니다.',
         category: '취업지원',
-        thumbnail: 'https://via.placeholder.com/400x300',
+        thumbnail: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 892,
         createdAt: '2024-01-14T09:00:00Z',
@@ -114,7 +114,7 @@ export const mockPosts: Post[] = [
         slug: 'student-loan-scholarship',
         summary: '등록금 부담을 줄일 수 있는 다양한 학자금 지원 제도를 알아보세요.',
         category: '교육지원',
-        thumbnail: 'https://via.placeholder.com/400x300',
+        thumbnail: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 2103,
         createdAt: '2024-01-13T14:00:00Z',
@@ -175,13 +175,12 @@ export const getPosts = async (params?: any): Promise<Post[]> => {
         return mockPosts
     }
 
+    // TODO: implement below
     try {
         const response = await fetch(`${env.API_BASE_URL}/posts`)
-
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`)
         }
-
         return await response.json()
     } catch (error) {
         console.error('API 호출 실패:', error)
@@ -195,9 +194,9 @@ export const getPost = async (slug: string): Promise<Post | undefined> => {
         return mockPosts.find(post => post.slug === slug)
     }
 
+    // TODO: implement below
     try {
         const response = await fetch(`${env.API_BASE_URL}/posts/${slug}`)
-
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`)
         }
