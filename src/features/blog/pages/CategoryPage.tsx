@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Home, BookOpen, ArrowLeft, Calendar, Eye } from 'lucide-react'
+import { Home, BookOpen, Briefcase, ArrowLeft, Calendar, Eye } from 'lucide-react'
 import { getPosts } from '@/shared/api/posts'
 
 const categoryInfo = {
@@ -25,8 +25,8 @@ export default function CategoryPage() {
     // NOTE: 카테고리별 포스트 조회
     const { data: posts, isLoading } = useQuery({
         queryKey: ['posts', 'category', category],
-        queryFn: () => getPosts({ category }),
-        enabled: !!category,
+        queryFn: () => getPosts({ category: info?.name }),
+        enabled: !!category && !!info,
     })
 
     // 잘못된 카테고리 처리

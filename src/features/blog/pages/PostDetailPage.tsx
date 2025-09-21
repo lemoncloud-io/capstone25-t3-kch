@@ -70,39 +70,35 @@ export default function PostDetailPage() {
                 <div className="p-6 sm:p-8 lg:p-12">
                     {/* Category */}
                     <div className="mb-4">
-            <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-semibold rounded-full">
-              {post.category}
-            </span>
+                        <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-semibold rounded-full">
+                            {post.category}
+                        </span>
                     </div>
-
                     {/* Title */}
                     <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-6">
                         {post.title}
                     </h1>
-
                     {/* Meta */}
                     <div className="flex flex-wrap items-center gap-4 mb-8 text-sm text-gray-600 pb-8 border-b">
-            <span className="flex items-center">
-              <User size={16} className="mr-1" />
-                {post.author}
-            </span>
                         <span className="flex items-center">
-              <Calendar size={16} className="mr-1" />
+                            <User size={16} className="mr-1" />
+                            {post.author}
+                        </span>
+                        <span className="flex items-center">
+                            <Calendar size={16} className="mr-1" />
                             {new Date(post.createdAt).toLocaleDateString()}
-            </span>
+                        </span>
                         <span className="flex items-center">
-              <Eye size={16} className="mr-1" />
-              조회 {post.viewCount.toLocaleString()}
-            </span>
+                            <Eye size={16} className="mr-1" />
+                            조회 {post.viewCount.toLocaleString()}
+                        </span>
                     </div>
-
                     {/* Summary */}
                     <div className="mb-8 p-4 bg-gray-50 rounded-lg">
                         <p className="text-lg text-gray-700">
                             {post.summary}
                         </p>
                     </div>
-
                     {/* Content */}
                     <div className="prose prose-lg prose-slate max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900">
                         <ReactMarkdown>{post.content}</ReactMarkdown>

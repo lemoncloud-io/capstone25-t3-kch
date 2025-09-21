@@ -6,7 +6,7 @@ import { getPosts, type Post } from '@/shared/api/posts'
 export default function HomePage() {
     const { data: posts, isLoading } = useQuery<Post[]>({
         queryKey: ['posts'],
-        queryFn: getPosts,
+        queryFn: () => getPosts(),
     })
 
     if (isLoading) {

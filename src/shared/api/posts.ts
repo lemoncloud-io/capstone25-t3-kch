@@ -66,7 +66,7 @@ export const mockPosts: Post[] = [
         title: '신입사원을 위한 취업 준비 지원금 안내',
         slug: 'job-preparation-support',
         summary: '구직 활동에 필요한 비용을 지원받을 수 있는 정부 프로그램을 소개합니다.',
-        category: '취업지원',
+        category: '주거지원',
         thumbnail: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 892,
@@ -169,9 +169,14 @@ export const mockPosts: Post[] = [
     },
 ]
 
-export const getPosts = async (params?: any): Promise<Post[]> => {
+export const getPosts = async (params?: { category?: string }): Promise<Post[]> => {
     if (env.ENV === 'development') {
         await new Promise(resolve => setTimeout(resolve, 500))
+        // category 필터링
+        if (params?.category) {
+            return mockPosts.filter(post => post.category === params.category)
+        }
+
         return mockPosts
     }
 

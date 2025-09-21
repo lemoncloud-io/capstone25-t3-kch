@@ -25,19 +25,16 @@ export default function AdminLayout() {
     const menuItems = [
         { path: '/admin/dashboard', icon: LayoutDashboard, label: '대시보드' },
         { path: '/admin/posts', icon: FileText, label: '포스트 관리' },
-        { path: '/admin/policy-input', icon: Upload, label: '정책 입력' },
     ]
 
     return (
         <div className="flex h-screen bg-gray-50">
-            {/* Desktop Sidebar - 항상 보임 */}
             <aside className="hidden lg:block w-64 bg-white shadow-lg">
                 <div className="h-full flex flex-col">
                     {/* Logo */}
                     <div className="h-16 flex items-center px-6 border-b">
-                        <h1 className="text-xl font-bold text-gray-800">관리자 패널</h1>
+                        <h1 className="text-xl font-bold text-gray-800">관리자페이지</h1>
                     </div>
-
                     {/* Navigation */}
                     <nav className="flex-1 px-4 py-6">
                         {menuItems.map((item) => {
@@ -60,12 +57,11 @@ export default function AdminLayout() {
                             )
                         })}
                     </nav>
-
                     {/* Logout */}
                     <div className="px-4 py-4 border-t">
                         <button
                             onClick={handleLogout}
-                            className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg w-full transition-colors"
+                            className="cursor-pointer flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg w-full transition-colors"
                         >
                             <LogOut size={20} />
                             <span>로그아웃</span>
@@ -84,7 +80,7 @@ export default function AdminLayout() {
                     <aside className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg z-50 lg:hidden">
                         <div className="h-full flex flex-col">
                             <div className="h-16 flex items-center justify-between px-6 border-b">
-                                <h1 className="text-xl font-bold text-gray-800">관리자 패널</h1>
+                                <h1 className="text-xl font-bold text-gray-800">관리자페이지</h1>
                                 <button onClick={() => setIsMobileMenuOpen(false)}>
                                     <X size={24} />
                                 </button>
@@ -139,31 +135,18 @@ export default function AdminLayout() {
                         >
                             <Menu size={24} />
                         </button>
-
-                        {/* Search */}
-                        <input
-                            type="text"
-                            placeholder="검색..."
-                            className="hidden md:block w-64 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
                     </div>
 
                     {/* User info */}
                     <div className="flex items-center gap-4">
-                        <button className="relative">
-                            <Bell size={20} className="text-gray-600" />
-                            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                        </button>
-
                         <div className="flex items-center gap-2">
-                            <span className="hidden sm:block text-sm text-gray-700">admin@policy.kr</span>
+                            <span className="hidden sm:block text-sm text-gray-700">Administrator</span>
                             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
                                 <User size={16} className="text-gray-600" />
                             </div>
                         </div>
                     </div>
                 </header>
-
                 {/* Page Content */}
                 <main className="flex-1 p-6 overflow-auto">
                     <Outlet />

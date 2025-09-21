@@ -1,50 +1,46 @@
 import { FileText, Users, TrendingUp, Activity } from 'lucide-react'
+import { mockPosts } from '@/shared/api/posts'
 
 export default function DashboardPage() {
+    // mockPosts 기반 통계 계산
+    const totalPosts = mockPosts.length
+    const totalViews = mockPosts.reduce((sum, post) => sum + post.viewCount, 0)
+    const publishedPosts = mockPosts.length // 모든 mockPosts는 게시됨 상태로 가정
+
     const stats = [
         {
             label: '전체 포스트',
-            value: '156',
+            value: totalPosts.toString(),
             icon: FileText,
             bgColor: 'bg-blue-100',
             iconColor: 'text-blue-600',
-            change: '+12%',
-            changeType: 'positive'
         },
         {
             label: '총 조회수',
-            value: '45,234',
+            value: totalViews.toLocaleString(),
             icon: Users,
             bgColor: 'bg-green-100',
             iconColor: 'text-green-600',
-            change: '+23%',
-            changeType: 'positive'
         },
         {
-            label: '변환율',
-            value: '87.5%',
+            label: '게시된 포스트',
+            value: publishedPosts.toString(),
             icon: TrendingUp,
             bgColor: 'bg-purple-100',
             iconColor: 'text-purple-600',
             change: '+5%',
-            changeType: 'positive'
         },
         {
-            label: '진행중',
-            value: '3',
+            label: '카테고리',
+            value: [...new Set(mockPosts.map(post => post.category))].length.toString(),
             icon: Activity,
             bgColor: 'bg-orange-100',
             iconColor: 'text-orange-600',
-            change: '0%',
-            changeType: 'neutral'
         },
     ]
 
-    const recentPosts = [
-        { id: 1, title: '2024 청년 주거지원 정책', status: 'published', views: 1234 },
-        { id: 2, title: '대학생 학자금 대출 안내', status: 'draft', views: 0 },
-        { id: 3, title: '신입사원 취업 지원금', status: 'published', views: 892 },
-    ]
+    const recentPosts = mockPosts
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
     return (
         <div>
@@ -59,13 +55,6 @@ export default function DashboardPage() {
                                 <div className={`p-3 rounded-lg ${stat.bgColor}`}>
                                     <Icon className={stat.iconColor} size={24} />
                                 </div>
-                                <span className={`text-sm font-medium ${
-                                    stat.changeType === 'positive' ? 'text-green-600' :
-                                        stat.changeType === 'negative' ? 'text-red-600' :
-                                            'text-gray-500'
-                                }`}>
-                  {stat.change}
-                </span>
                             </div>
                             <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
                             <p className="text-sm text-gray-500 mt-1">{stat.label}</p>
@@ -101,20 +90,17 @@ export default function DashboardPage() {
                                     <div className="text-sm font-medium text-gray-900">
                                         {post.title}
                                     </div>
+                                    <div className="text-xs text-gray-500">
+                                        {post.category}
+                                    </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    {post.status === 'published' ? (
-                                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                        게시됨
-                      </span>
-                                    ) : (
-                                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                        초안
-                      </span>
-                                    )}
+                                    <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        게시됨
+                                    </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                                    {post.views.toLocaleString()}
+                                    {post.viewCount.toLocaleString()}
                                 </td>
                             </tr>
                         ))}
