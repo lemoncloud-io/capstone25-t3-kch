@@ -1,6 +1,7 @@
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Calendar, User, Eye, ArrowLeft, Share2 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 import { getPost, type Post } from '@/shared/api/posts'
 
 export default function PostDetailPage() {
@@ -103,24 +104,8 @@ export default function PostDetailPage() {
                     </div>
 
                     {/* Content */}
-                    <div className="prose prose-lg max-w-none">
-                        <p className="text-gray-700 leading-relaxed">
-                            {post.content}
-                        </p>
-                        {/* 실제로는 더 많은 콘텐츠 */}
-                        <h2 className="text-2xl font-bold mt-8 mb-4">지원 대상</h2>
-                        <ul className="list-disc list-inside space-y-2 text-gray-700">
-                            <li>만 19세 ~ 34세 청년</li>
-                            <li>무주택자</li>
-                            <li>소득 기준 충족자</li>
-                        </ul>
-
-                        <h2 className="text-2xl font-bold mt-8 mb-4">신청 방법</h2>
-                        <ol className="list-decimal list-inside space-y-2 text-gray-700">
-                            <li>온라인 신청서 작성</li>
-                            <li>필요 서류 준비</li>
-                            <li>관할 주민센터 방문</li>
-                        </ol>
+                    <div className="prose prose-lg prose-slate max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900">
+                        <ReactMarkdown>{post.content}</ReactMarkdown>
                     </div>
                 </div>
             </div>
