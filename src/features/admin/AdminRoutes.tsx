@@ -14,7 +14,7 @@ export default function AdminRoutes() {
 
     return (
         <Routes>
-            <Route element={<AdminLayout />}>
+            <Route path="/" element={<AdminLayout />}>
                 <Route index element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="posts" element={<PostsManagePage />} />

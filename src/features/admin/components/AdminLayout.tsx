@@ -6,13 +6,14 @@ import {
     Upload,
     LogOut,
     Menu,
+    X,
+    Bell,
     User
 } from 'lucide-react'
 import { useAuthStore } from '@/shared/store/authStore'
-import { cn } from '@/shared/lib/utils'
 
 export default function AdminLayout() {
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
     const navigate = useNavigate()
     const { logout } = useAuthStore()
 
@@ -29,49 +30,42 @@ export default function AdminLayout() {
 
     return (
         <div className="flex h-screen bg-gray-50">
-            {/* Sidebar Overlay */}
-            {isSidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-                    onClick={() => setIsSidebarOpen(false)}
-                />
-            )}
-
-            {/* Sidebar */}
-            <aside className={cn(
-                "fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform lg:transform-none",
-                isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-            )}>
-                <div className="flex flex-col h-full">
-                    <div className="p-6 border-b">
+            {/* Desktop Sidebar - 항상 보임 */}
+            <aside className="hidden lg:block w-64 bg-white shadow-lg">
+                <div className="h-full flex flex-col">
+                    {/* Logo */}
+                    <div className="h-16 flex items-center px-6 border-b">
                         <h1 className="text-xl font-bold text-gray-800">관리자 패널</h1>
                     </div>
 
-                    <nav className="flex-1 p-4">
-                        {menuItems.map((item) => (
-                            <NavLink
-                                key={item.path}
-                                to={item.path}
-                                className={({ isActive }) =>
-                                    cn(
-                                        'flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-colors',
-                                        isActive
-                                            ? 'bg-blue-50 text-blue-600'
-                                            : 'text-gray-700 hover:bg-gray-50'
-                                    )
-                                }
-                                onClick={() => setIsSidebarOpen(false)}
-                            >
-                                <item.icon size={20} />
-                                <span>{item.label}</span>
-                            </NavLink>
-                        ))}
+                    {/* Navigation */}
+                    <nav className="flex-1 px-4 py-6">
+                        {menuItems.map((item) => {
+                            const Icon = item.icon
+                            return (
+                                <NavLink
+                                    key={item.path}
+                                    to={item.path}
+                                    className={({ isActive }) =>
+                                        `flex items-center gap-3 px-4 py-3 mb-2 rounded-lg transition-colors ${
+                                            isActive
+                                                ? 'bg-blue-50 text-blue-600 font-medium'
+                                                : 'text-gray-700 hover:bg-gray-50'
+                                        }`
+                                    }
+                                >
+                                    <Icon size={20} />
+                                    <span>{item.label}</span>
+                                </NavLink>
+                            )
+                        })}
                     </nav>
 
-                    <div className="p-4 border-t">
+                    {/* Logout */}
+                    <div className="px-4 py-4 border-t">
                         <button
                             onClick={handleLogout}
-                            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-50 text-red-600 w-full transition-colors"
+                            className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg w-full transition-colors"
                         >
                             <LogOut size={20} />
                             <span>로그아웃</span>
@@ -80,31 +74,98 @@ export default function AdminLayout() {
                 </div>
             </aside>
 
+            {/* Mobile Sidebar */}
+            {isMobileMenuOpen && (
+                <>
+                    <div
+                        className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                    />
+                    <aside className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg z-50 lg:hidden">
+                        <div className="h-full flex flex-col">
+                            <div className="h-16 flex items-center justify-between px-6 border-b">
+                                <h1 className="text-xl font-bold text-gray-800">관리자 패널</h1>
+                                <button onClick={() => setIsMobileMenuOpen(false)}>
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <nav className="flex-1 px-4 py-6">
+                                {menuItems.map((item) => {
+                                    const Icon = item.icon
+                                    return (
+                                        <NavLink
+                                            key={item.path}
+                                            to={item.path}
+                                            className={({ isActive }) =>
+                                                `flex items-center gap-3 px-4 py-3 mb-2 rounded-lg transition-colors ${
+                                                    isActive
+                                                        ? 'bg-blue-50 text-blue-600 font-medium'
+                                                        : 'text-gray-700 hover:bg-gray-50'
+                                                }`
+                                            }
+                                            onClick={() => setIsMobileMenuOpen(false)}
+                                        >
+                                            <Icon size={20} />
+                                            <span>{item.label}</span>
+                                        </NavLink>
+                                    )
+                                })}
+                            </nav>
+
+                            <div className="px-4 py-4 border-t">
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg w-full transition-colors"
+                                >
+                                    <LogOut size={20} />
+                                    <span>로그아웃</span>
+                                </button>
+                            </div>
+                        </div>
+                    </aside>
+                </>
+            )}
+
             {/* Main Content */}
             <div className="flex-1 flex flex-col">
-                {/* Top Bar */}
-                <header className="bg-white shadow-sm px-4 lg:px-8 py-4">
-                    <div className="flex items-center justify-between">
+                {/* Top Header */}
+                <header className="h-16 bg-white shadow-sm px-4 lg:px-6 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        {/* Mobile menu button */}
                         <button
-                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className="lg:hidden p-2"
+                            onClick={() => setIsMobileMenuOpen(true)}
+                            className="lg:hidden"
                         >
                             <Menu size={24} />
                         </button>
 
-                        <div className="flex items-center ml-auto">
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                                    <User size={16} />
-                                </div>
-                                <span className="text-sm text-gray-700 hidden sm:block">관리자</span>
+                        {/* Search */}
+                        <input
+                            type="text"
+                            placeholder="검색..."
+                            className="hidden md:block w-64 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+
+                    {/* User info */}
+                    <div className="flex items-center gap-4">
+                        <button className="relative">
+                            <Bell size={20} className="text-gray-600" />
+                            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                        </button>
+
+                        <div className="flex items-center gap-2">
+                            <span className="hidden sm:block text-sm text-gray-700">admin@policy.kr</span>
+                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                                <User size={16} className="text-gray-600" />
                             </div>
                         </div>
                     </div>
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 lg:p-8 overflow-auto">
+                <main className="flex-1 p-6 overflow-auto">
                     <Outlet />
                 </main>
             </div>
