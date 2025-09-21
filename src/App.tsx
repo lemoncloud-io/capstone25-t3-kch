@@ -1,22 +1,28 @@
-import { useState } from 'react'
-import './App.css'
+import { Routes, Route } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
+import { Loader2 } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
+const BlogRoutes = lazy(() => import('@/features/blog/BlogRoutes'))
+const AdminRoutes = lazy(() => import('@/features/admin/AdminRoutes'))
 
 function App() {
-
-  return (
-      <>
-        <div className="min-h-screen flex items-center justify-center">
-          <h1 className="text-4xl font-bold text-blue-500">
-            Hello, Tailwind CSS 4.0!
-          </h1>
-          <div className="flex min-h-svh flex-col items-center justify-center">
-            <Button onClick={() =>console.log('clicked!')}>Click me</Button>
-          </div>
-        </div>
-      </>
-  )
+    return (
+        <Suspense
+            fallback={
+                <div className="flex items-center justify-center h-screen">
+                    <div className="flex items-center space-x-2">
+                        <Loader2 className="animate-spin" size={24} />
+                        <span>Loading...</span>
+                    </div>
+                </div>
+            }
+        >
+            <Routes>
+                <Route path="/admin/*" element={<AdminRoutes />} />
+                <Route path="/*" element={<BlogRoutes />} />
+            </Routes>
+        </Suspense>
+    )
 }
 
 export default App
