@@ -100,7 +100,7 @@ export default function CategoryPage() {
             {posts && posts.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {posts.map(post => (
-                        <Link key={post.id} to={`/post/${post.slug}`}>
+                        <Link key={post.id} to={`/posts/${post.slug}`}>
                             <article className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden h-full">
                                 {/* 썸네일 */}
                                 {post.thumbnail && (

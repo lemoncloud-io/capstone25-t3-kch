@@ -284,7 +284,7 @@ App.tsx (최상위 분기)
 └── /* → BlogRoutes
     └── BlogLayout
         ├── / (HomePage)
-        ├── /post/:slug
+        ├── /posts/:slug
         └── /category/:category
 ```
 
@@ -313,7 +313,7 @@ export default function BlogRoutes() {
     <Routes>
       <Route element={<BlogLayout />}>
         <Route index element={<HomePage />} />
-        <Route path="post/:slug" element={<PostDetailPage />} />
+        <Route path="posts/:slug" element={<PostDetailPage />} />
         <Route path="category/:category" element={<CategoryPage />} />
       </Route>
     </Routes>
