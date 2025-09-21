@@ -39,18 +39,20 @@ export default function DashboardPage() {
         },
     ]
 
-    const recentPosts = mockPosts
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    const recentPosts = mockPosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
     return (
         <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-8">대시보드</h1>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                {stats.map((stat) => {
+                {stats.map(stat => {
                     const Icon = stat.icon
                     return (
-                        <div key={stat.label} className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow">
+                        <div
+                            key={stat.label}
+                            className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow"
+                        >
                             <div className="flex items-center justify-between mb-4">
                                 <div className={`p-3 rounded-lg ${stat.bgColor}`}>
                                     <Icon className={stat.iconColor} size={24} />
@@ -71,39 +73,35 @@ export default function DashboardPage() {
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                제목
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                상태
-                            </th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                조회수
-                            </th>
-                        </tr>
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    제목
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    상태
+                                </th>
+                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    조회수
+                                </th>
+                            </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                        {recentPosts.map((post) => (
-                            <tr key={post.id} className="hover:bg-gray-50 transition-colors">
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm font-medium text-gray-900">
-                                        {post.title}
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                        {post.category}
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                        게시됨
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                                    {post.viewCount.toLocaleString()}
-                                </td>
-                            </tr>
-                        ))}
+                            {recentPosts.map(post => (
+                                <tr key={post.id} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm font-medium text-gray-900">{post.title}</div>
+                                        <div className="text-xs text-gray-500">{post.category}</div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                            게시됨
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                                        {post.viewCount.toLocaleString()}
+                                    </td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 </div>

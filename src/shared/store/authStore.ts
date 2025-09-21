@@ -9,7 +9,7 @@ interface AuthStore {
 
 export const useAuthStore = create<AuthStore>()(
     persist(
-        (set) => ({
+        set => ({
             isAuthenticated: false,
             login: () => set({ isAuthenticated: true }),
             logout: () => set({ isAuthenticated: false }),

@@ -27,7 +27,7 @@ export default function BlogLayout() {
                         </Link>
                         {/* Desktop Navigation */}
                         <nav className="hidden md:flex items-center space-x-8">
-                            {categories.map((cat) => (
+                            {categories.map(cat => (
                                 <Link
                                     key={cat.path}
                                     to={cat.path}
@@ -37,10 +37,7 @@ export default function BlogLayout() {
                                 </Link>
                             ))}
                         </nav>
-                        <button
-                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                            className="md:hidden p-2"
-                        >
+                        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-2">
                             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                         </button>
                     </div>
@@ -56,7 +53,7 @@ export default function BlogLayout() {
                     <div className="px-4 py-4 space-y-4">
                         {/* Mobile Navigation */}
                         <nav className="space-y-2">
-                            {categories.map((cat) => (
+                            {categories.map(cat => (
                                 <Link
                                     key={cat.path}
                                     to={cat.path}
@@ -90,15 +87,28 @@ export default function BlogLayout() {
                         <div>
                             <h3 className="font-semibold mb-3">빠른 링크</h3>
                             <ul className="space-y-2 text-sm text-gray-600">
-                                <li><Link to="/" className="hover:text-blue-600">홈</Link></li>
-                                <li><Link to="/category/housing" className="hover:text-blue-600">주거지원</Link></li>
-                                <li><Link to="/category/education" className="hover:text-blue-600">교육지원</Link></li>
+                                <li>
+                                    <Link to="/" className="hover:text-blue-600">
+                                        홈
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link to="/category/housing" className="hover:text-blue-600">
+                                        주거지원
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link to="/category/education" className="hover:text-blue-600">
+                                        교육지원
+                                    </Link>
+                                </li>
                             </ul>
                         </div>
                         <div>
                             <h3 className="font-semibold mb-3">문의</h3>
                             <p className="text-sm text-gray-600">
-                                이메일: lemon@lemoncloud.io<br />
+                                이메일: lemon@lemoncloud.io
+                                <br />
                                 전화: 02-1234-5678
                             </p>
                         </div>

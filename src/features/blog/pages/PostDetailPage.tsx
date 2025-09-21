@@ -44,10 +44,7 @@ export default function PostDetailPage() {
         <article className="max-w-4xl mx-auto">
             {/* Navigation */}
             <div className="mb-6 flex items-center justify-between">
-                <Link
-                    to="/"
-                    className="inline-flex items-center text-gray-600 hover:text-blue-600 transition"
-                >
+                <Link to="/" className="inline-flex items-center text-gray-600 hover:text-blue-600 transition">
                     <ArrowLeft size={20} className="mr-2" />
                     목록으로
                 </Link>
@@ -60,11 +57,7 @@ export default function PostDetailPage() {
             {/* Article */}
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                 {post.thumbnail && (
-                    <img
-                        src={post.thumbnail}
-                        alt={post.title}
-                        className="w-full h-64 sm:h-96 object-cover"
-                    />
+                    <img src={post.thumbnail} alt={post.title} className="w-full h-64 sm:h-96 object-cover" />
                 )}
 
                 <div className="p-6 sm:p-8 lg:p-12">
@@ -75,9 +68,7 @@ export default function PostDetailPage() {
                         </span>
                     </div>
                     {/* Title */}
-                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-6">
-                        {post.title}
-                    </h1>
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-6">{post.title}</h1>
                     {/* Meta */}
                     <div className="flex flex-wrap items-center gap-4 mb-8 text-sm text-gray-600 pb-8 border-b">
                         <span className="flex items-center">
@@ -95,9 +86,7 @@ export default function PostDetailPage() {
                     </div>
                     {/* Summary */}
                     <div className="mb-8 p-4 bg-gray-50 rounded-lg">
-                        <p className="text-lg text-gray-700">
-                            {post.summary}
-                        </p>
+                        <p className="text-lg text-gray-700">{post.summary}</p>
                     </div>
                     {/* Content */}
                     <div className="prose prose-lg prose-slate max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900">

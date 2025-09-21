@@ -33,13 +33,11 @@ export default function LoginPage() {
 
                 <form onSubmit={handleSubmit}>
                     <div className="mb-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            비밀번호
-                        </label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">비밀번호</label>
                         <input
                             type="password"
                             value={password}
-                            onChange={(e) => {
+                            onChange={e => {
                                 setPassword(e.target.value)
                                 setError('')
                             }}
@@ -47,9 +45,7 @@ export default function LoginPage() {
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             autoFocus
                         />
-                        {error && (
-                            <p className="mt-2 text-sm text-red-600">{error}</p>
-                        )}
+                        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
                     </div>
 
                     <button
@@ -59,9 +55,7 @@ export default function LoginPage() {
                         로그인
                     </button>
 
-                    <p className="text-center text-sm text-gray-500 mt-4">
-                        데모: 비밀번호는 'admin' 입니다
-                    </p>
+                    <p className="text-center text-sm text-gray-500 mt-4">데모: 비밀번호는 'admin' 입니다</p>
                 </form>
             </div>
         </div>

@@ -1,15 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
-import {
-    LayoutDashboard,
-    FileText,
-    Upload,
-    LogOut,
-    Menu,
-    X,
-    Bell,
-    User
-} from 'lucide-react'
+import { LayoutDashboard, FileText, Upload, LogOut, Menu, X, Bell, User } from 'lucide-react'
 import { useAuthStore } from '@/shared/store/authStore'
 
 export default function AdminLayout() {
@@ -37,7 +28,7 @@ export default function AdminLayout() {
                     </div>
                     {/* Navigation */}
                     <nav className="flex-1 px-4 py-6">
-                        {menuItems.map((item) => {
+                        {menuItems.map(item => {
                             const Icon = item.icon
                             return (
                                 <NavLink
@@ -87,7 +78,7 @@ export default function AdminLayout() {
                             </div>
 
                             <nav className="flex-1 px-4 py-6">
-                                {menuItems.map((item) => {
+                                {menuItems.map(item => {
                                     const Icon = item.icon
                                     return (
                                         <NavLink
@@ -129,10 +120,7 @@ export default function AdminLayout() {
                 <header className="h-16 bg-white shadow-sm px-4 lg:px-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         {/* Mobile menu button */}
-                        <button
-                            onClick={() => setIsMobileMenuOpen(true)}
-                            className="lg:hidden"
-                        >
+                        <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden">
                             <Menu size={24} />
                         </button>
                     </div>

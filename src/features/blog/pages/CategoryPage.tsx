@@ -33,13 +33,8 @@ export default function CategoryPage() {
     if (!info) {
         return (
             <div className="min-h-[60vh] flex flex-col items-center justify-center">
-                <h1 className="text-2xl font-bold text-gray-800 mb-4">
-                    존재하지 않는 카테고리입니다
-                </h1>
-                <Link
-                    to="/"
-                    className="flex items-center text-blue-600 hover:text-blue-700"
-                >
+                <h1 className="text-2xl font-bold text-gray-800 mb-4">존재하지 않는 카테고리입니다</h1>
+                <Link to="/" className="flex items-center text-blue-600 hover:text-blue-700">
                     <ArrowLeft size={20} className="mr-2" />
                     홈으로 돌아가기
                 </Link>
@@ -63,7 +58,7 @@ export default function CategoryPage() {
 
                 {/* 포스트 스켈레톤 */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                    {[1, 2, 3, 4, 5, 6].map(i => (
                         <div key={i} className="bg-white rounded-lg shadow-sm p-6 animate-pulse">
                             <div className="h-48 bg-gray-200 rounded mb-4"></div>
                             <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
@@ -80,10 +75,7 @@ export default function CategoryPage() {
             {/* 카테고리 헤더 */}
             <div className="mb-8">
                 <div className="flex items-center gap-2 mb-2">
-                    <Link
-                        to="/"
-                        className="text-gray-500 hover:text-gray-700 transition-colors"
-                    >
+                    <Link to="/" className="text-gray-500 hover:text-gray-700 transition-colors">
                         홈
                     </Link>
                     <span className="text-gray-400">/</span>
@@ -96,15 +88,9 @@ export default function CategoryPage() {
                             <Icon size={32} />
                         </div>
                         <div className="flex-1">
-                            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-                                {info.name}
-                            </h1>
-                            <p className="text-gray-600">
-                                {info.description}
-                            </p>
-                            <div className="mt-4 text-sm text-gray-500">
-                                총 {posts?.length || 0}개의 정책
-                            </div>
+                            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{info.name}</h1>
+                            <p className="text-gray-600">{info.description}</p>
+                            <div className="mt-4 text-sm text-gray-500">총 {posts?.length || 0}개의 정책</div>
                         </div>
                     </div>
                 </div>
@@ -113,7 +99,7 @@ export default function CategoryPage() {
             {/* 포스트 목록 */}
             {posts && posts.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {posts.map((post) => (
+                    {posts.map(post => (
                         <Link key={post.id} to={`/post/${post.slug}`}>
                             <article className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden h-full">
                                 {/* 썸네일 */}
@@ -130,9 +116,11 @@ export default function CategoryPage() {
                                 <div className="p-6">
                                     {/* 카테고리 뱃지 */}
                                     <div className="mb-3">
-                    <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${info.color}`}>
-                      {info.name}
-                    </span>
+                                        <span
+                                            className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${info.color}`}
+                                        >
+                                            {info.name}
+                                        </span>
                                     </div>
 
                                     {/* 제목 */}
@@ -141,20 +129,18 @@ export default function CategoryPage() {
                                     </h2>
 
                                     {/* 요약 */}
-                                    <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                                        {post.summary}
-                                    </p>
+                                    <p className="text-gray-600 text-sm line-clamp-3 mb-4">{post.summary}</p>
 
                                     {/* 메타 정보 */}
                                     <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span className="flex items-center">
-                      <Calendar size={14} className="mr-1" />
-                        {new Date(post.createdAt).toLocaleDateString()}
-                    </span>
                                         <span className="flex items-center">
-                      <Eye size={14} className="mr-1" />
+                                            <Calendar size={14} className="mr-1" />
+                                            {new Date(post.createdAt).toLocaleDateString()}
+                                        </span>
+                                        <span className="flex items-center">
+                                            <Eye size={14} className="mr-1" />
                                             {post.viewCount.toLocaleString()}
-                    </span>
+                                        </span>
                                     </div>
                                 </div>
                             </article>
@@ -167,16 +153,11 @@ export default function CategoryPage() {
                     <div className={`inline-flex p-4 rounded-full ${info.color} mb-4`}>
                         <Icon size={48} />
                     </div>
-                    <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                        아직 등록된 정책이 없습니다
-                    </h2>
+                    <h2 className="text-xl font-semibold text-gray-900 mb-2">아직 등록된 정책이 없습니다</h2>
                     <p className="text-gray-600 mb-6">
                         {info.name} 카테고리에 새로운 정책이 등록되면 여기에 표시됩니다.
                     </p>
-                    <Link
-                        to="/"
-                        className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium"
-                    >
+                    <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium">
                         <ArrowLeft size={20} className="mr-2" />
                         다른 정책 둘러보기
                     </Link>
