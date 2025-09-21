@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Edit, Trash2, Eye, Plus } from 'lucide-react'
-import {getPosts, mockPosts, type Post} from '@/shared/api/posts'
+import {getPosts, type Post} from '@/shared/api/posts'
 import { toast} from "sonner";
 
 export default function PostsManagePage() {
@@ -25,14 +25,19 @@ export default function PostsManagePage() {
         toast(`TODO: 삭제 기능`)
     }
 
-    // 모든 카테고리 목록 가져오기
-    const categories = ['all', ...new Set(mockPosts.map(post => post.category))]
-
-    // 선택된 카테고리에 따른 포스트 조회
-    const { data: posts, isLoading } = useQuery({
-        queryKey: ['posts', selectedCategory],
-        queryFn: () => selectedCategory === 'all' ? getPosts() : getPosts({ category: selectedCategory }),
+    // 모든 포스트 가져오기
+    const { data: allPosts, isLoading } = useQuery({
+        queryKey: ['posts'],
+        queryFn: () => getPosts(),
     })
+
+    // 카테고리 목록 생성
+    const categories = ['all', ...new Set(allPosts?.map(post => post.category) || [])]
+
+    // 카테고리 필터링
+    const posts = selectedCategory === 'all'
+        ? allPosts
+        : allPosts?.filter(post => post.category === selectedCategory)
 
     return (
         <div>
