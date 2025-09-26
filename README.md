@@ -82,7 +82,36 @@ git clone <repository-url>
 cd blog-platform
 ```
 
-#### 2. 의존성 설치
+#### 2. 환경변수 설정 (필수)
+
+프로젝트 실행 전에 환경변수 파일을 생성해야 합니다:
+
+```bash
+# Frontend 환경변수 설정
+cd frontend/web-client
+cp .env.example .env
+```
+
+**📝 환경변수 파일 예시:**
+
+**Frontend (frontend/web-client/.env)**
+```bash
+VITE_APP_VERSION=1.0.0
+VITE_API_BASE_URL=http://localhost:8000
+VITE_ENV=development
+```
+
+**Backend (backend/api-server/.env)**
+```bash
+VERSION=1.0.0
+API_KEY=your-secret-api-key
+NODE_ENV=development
+WEB_ORIGIN=http://localhost:5173
+```
+
+⚠️ **중요**: `.env` 파일은 절대로 git에 커밋하지 마세요. 이미 `.gitignore`에 추가되어 있습니다.
+
+#### 3. 의존성 설치
 ```bash
 # Frontend 의존성 설치
 yarn install

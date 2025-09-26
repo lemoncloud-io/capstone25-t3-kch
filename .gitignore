@@ -30,6 +30,12 @@ build/
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
+.env.test
+**/.env
+**/.env.local
+**/.env.*.local
 
 # Logs
 logs
