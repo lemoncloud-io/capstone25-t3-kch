@@ -6,13 +6,21 @@
     "frontend/*"
   ],
   "scripts": {
-    "dev:web": "cd frontend/web-client && yarn dev",
-    "build:web": "cd frontend/web-client && yarn build",
-    "preview:web": "cd frontend/web-client && yarn preview",
-    "lint:web": "cd frontend/web-client && yarn lint",
-    "dev:api": "cd backend/api-server && uvicorn main:app --reload --host 0.0.0.0 --port 8000",
-    "format": "prettier --write \"frontend/**/*.{js,jsx,ts,tsx,json,md}\"",
-    "clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' + && find . -name 'dist' -type d -prune -exec rm -rf '{}' + && find . -name '__pycache__' -type d -prune -exec rm -rf '{}' + && find . -name '.pytest_cache' -type d -prune -exec rm -rf '{}' +"
+    "!common": "------------- common scripts -------------",
+    "format": "yarn format:js && yarn format:py",
+    "format:js": "prettier --write \"frontend/**/*.{js,jsx,ts,tsx,json,md}\"",
+    "format:py": "cd backend/api-server && uv run ruff format .",
+    "clean": "rm -rf frontend/web-client/node_modules frontend/web-client/dist backend/api-server/__pycache__ backend/api-server/.pytest_cache backend/api-server/.venv",
+    "!frontend": "------------- frontend scripts -------------",
+    "web:dev": "cd frontend/web-client && yarn dev",
+    "web:build": "cd frontend/web-client && yarn build",
+    "web:preview": "cd frontend/web-client && yarn preview",
+    "web:lint": "cd frontend/web-client && yarn lint",
+    "!backend": "------------- backend scripts -------------",
+    "api:dev": "cd backend/api-server && uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000",
+    "api:install": "cd backend/api-server && uv sync",
+    "api:lint": "cd backend/api-server && uv run ruff check .",
+    "api:format": "cd backend/api-server && uv run ruff format ."
   },
   "devDependencies": {
     "prettier": "^3.3.3"

@@ -53,6 +53,10 @@ ENV/
 *.egg-info/
 *.egg
 
+# UV
+.venv/
+uv.lock
+
 # OS
 .DS_Store
 Thumbs.db

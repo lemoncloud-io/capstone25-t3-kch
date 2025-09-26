@@ -25,6 +25,7 @@ blog-platform/
 ### Backend
 - Python 3.11+
 - FastAPI
+- UV (Python 패키지 매니저)
 
 ## 시작하기
 
@@ -44,44 +45,42 @@ yarn install
 #### Frontend
 ```bash
 # 웹 클라이언트 개발 서버 실행
-yarn dev:web
+yarn web:dev
 
 # 웹 클라이언트 빌드
-yarn build:web
+yarn web:build
 
 # 웹 클라이언트 프리뷰
-yarn preview:web
+yarn web:preview
 ```
 
 #### Backend
 ```bash
+# UV로 의존성 설치
+yarn api:install
+
 # API 서버 실행
-yarn dev:api
+yarn api:dev
 
 # 또는 직접 실행
 cd backend/api-server
-uvicorn main:app --reload
+uv run uvicorn main:app --reload
 ```
 
 ### 유용한 명령어
 
 ```bash
-# 코드 포맷팅 (JS/TS)
+# 전체 코드 포맷팅 (JS/TS + Python)
 yarn format
 
-# 린트 검사
-yarn lint:web
+# 개별 포맷팅
+yarn format:js   # Frontend
+yarn format:py   # Backend
 
-# 모든 node_modules, dist, __pycache__ 폴더 삭제
+# 린트 검사
+yarn web:lint    # Frontend
+yarn api:lint    # Backend
+
+# 모든 쳪시 정리
 yarn clean
 ```
-
-## 프로젝트 추가 계획
-
-- [x] Backend API 서버 구조 추가 (Python/FastAPI)
-- [ ] Admin 대시보드 추가
-- [ ] 모바일 앱 추가 (React Native)
-- [ ] 공유 컴포넌트 라이브러리 추가
-- [ ] E2E 테스트 환경 구축
-- [ ] Docker Compose 설정 추가
-- [ ] CI/CD 파이프라인 구축

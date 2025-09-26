@@ -1,23 +1,29 @@
 # Blog Platform API Server
 
-간단한 FastAPI 서버
+간단한 FastAPI 서버 (UV 사용)
 
 ## 설치 및 실행
 
+### UV 설치 (처음 한 번만)
 ```bash
-# 가상환경 생성
-python -m venv venv
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 가상환경 활성화
-source venv/bin/activate  # Linux/Mac
-# 또는
-venv\Scripts\activate  # Windows
+# 또는 pip로 설치
+pip install uv
+```
 
+### 프로젝트 실행
+```bash
 # 의존성 설치
-pip install -r requirements.txt
+uv sync
 
 # 서버 실행
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# 또는 루트에서
+yarn api:install  # 의존성 설치
+yarn api:dev      # 서버 실행
 ```
 
 ## API 엔드포인트
