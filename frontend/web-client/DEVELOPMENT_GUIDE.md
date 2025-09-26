@@ -9,29 +9,29 @@
 ### 기술 스택
 
 1. **TypeScript**: 정적 타입 시스템으로 개발 생산성과 코드 안정성 향상
-2. **React 19** 
+2. **React 19**
 3. **TanStack Query**: 서버 상태 관리와 데이터 페칭
 4. **Zustand**: 간단하고 강력한 클라이언트 상태 관리
 5. **React Router v7**: 라우팅 시스템
 6. **Tailwind CSS**: 유틸리티 퍼스트 CSS 프레임워크
 7. **Shadcn/ui**: 재사용 가능한 컴포넌트 시스템
 
-| 카테고리            | 기술               | 버전  | 용도                           |
-| ------------------- | ------------------ | ----- | ------------------------------ |
-| **빌드 도구**       | Vite               | 7.1.6 | 빠른 개발 서버 및 번들링       |
-| **라우팅**          | React Router       | v7    | SPA 라우팅 및 페이지 네비게이션 |
-| **서버 상태**       | TanStack Query     | v5    | API 데이터 페칭 및 캐싱        |
-| **클라이언트 상태** | Zustand            | v5    | 로컬 상태 관리                 |
-| **스타일링**        | Tailwind CSS       | v4    | 유틸리티 기반 스타일링         |
-| **UI 컴포넌트**     | Shadcn/ui + Radix | -     | 접근성 좋은 재사용 컴포넌트    |
-| **HTTP 통신**       | Axios              | v1.12 | API 통신                       |
-| **아이콘**          | Lucide React       | -     | 일관된 아이콘 시스템           |
-| **마크다운**        | React Markdown     | v10   | 블로그 콘텐츠 렌더링           |
-
+| 카테고리            | 기술              | 버전  | 용도                            |
+| ------------------- | ----------------- | ----- | ------------------------------- |
+| **빌드 도구**       | Vite              | 7.1.6 | 빠른 개발 서버 및 번들링        |
+| **라우팅**          | React Router      | v7    | SPA 라우팅 및 페이지 네비게이션 |
+| **서버 상태**       | TanStack Query    | v5    | API 데이터 페칭 및 캐싱         |
+| **클라이언트 상태** | Zustand           | v5    | 로컬 상태 관리                  |
+| **스타일링**        | Tailwind CSS      | v4    | 유틸리티 기반 스타일링          |
+| **UI 컴포넌트**     | Shadcn/ui + Radix | -     | 접근성 좋은 재사용 컴포넌트     |
+| **HTTP 통신**       | Axios             | v1.12 | API 통신                        |
+| **아이콘**          | Lucide React      | -     | 일관된 아이콘 시스템            |
+| **마크다운**        | React Markdown    | v10   | 블로그 콘텐츠 렌더링            |
 
 ### 각 기술 스택 소개
 
 #### 🚀 Vite (빌드 도구)
+
 ```bash
 # 개발 서버 실행
 yarn dev
@@ -41,6 +41,7 @@ yarn build
 ```
 
 #### 🎯 TypeScript (정적 타입)
+
 ```typescript
 // 인터페이스 정의 예시
 interface Post {
@@ -55,11 +56,12 @@ const getPosts = async (): Promise<Post[]> => {
     // 구현...
 }
 ```
+
 - **장점**: 런타임 에러를 컴파일 타임에 미리 발견
 - **IDE 지원**: 자동완성, 리팩토링, 타입 체크
 - **파일 확장자**: `.ts`, `.tsx` (React 컴포넌트)
 
-______________________________________________________________________
+---
 
 ## 프로젝트 구조
 
@@ -99,7 +101,7 @@ src/
 └── index.css                    # Tailwind 임포트
 ```
 
-______________________________________________________________________
+---
 
 ## 개발 시작하기
 
@@ -131,22 +133,24 @@ yarn lint:fix
 ### 개발 도구 설정
 
 #### VS Code 확장프로그램 (권장)
+
 ```json
 {
-  "recommendations": [
-    "bradlc.vscode-tailwindcss",
-    "ms-vscode.vscode-typescript-next",
-    "esbenp.prettier-vscode",
-    "ms-vscode.vscode-eslint"
-  ]
+    "recommendations": [
+        "bradlc.vscode-tailwindcss",
+        "ms-vscode.vscode-typescript-next",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-eslint"
+    ]
 }
 ```
 
 #### 브라우저 개발자 도구
+
 - **React Developer Tools**: React 컴포넌트 트리 확인
 - **TanStack Query DevTools**: 쿼리 상태와 캐시 확인 (자동 활성화됨)
 
-______________________________________________________________________
+---
 
 ## 주요 기술 스택 상세 가이드
 
@@ -267,7 +271,7 @@ function MyComponent() {
 }
 ```
 
-______________________________________________________________________
+---
 
 ## 라우팅 아키텍처
 
@@ -326,7 +330,7 @@ export default function BlogRoutes() {
 ```typescript
 export default function AdminRoutes() {
   const { isAuthenticated } = useAuthStore()
-  
+
   if (!isAuthenticated) {
     return <LoginPage />
   }
@@ -343,8 +347,7 @@ export default function AdminRoutes() {
 }
 ```
 
-______________________________________________________________________
-
+---
 
 ## 상태 관리
 
@@ -353,14 +356,14 @@ ______________________________________________________________________
 ```typescript
 // main.tsx
 const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,     // 5분
-      cacheTime: 1000 * 60 * 10,    // 10분
-      retry: 1,
-      refetchOnWindowFocus: false,
+    defaultOptions: {
+        queries: {
+            staleTime: 1000 * 60 * 5, // 5분
+            cacheTime: 1000 * 60 * 10, // 10분
+            retry: 1,
+            refetchOnWindowFocus: false,
+        },
     },
-  },
 })
 ```
 
@@ -370,7 +373,7 @@ const queryClient = new QueryClient({
 // authStore.ts
 export const useAuthStore = create()(
     persist(
-        (set) => ({
+        set => ({
             isAuthenticated: false,
             login: () => set({ isAuthenticated: true }),
             logout: () => set({ isAuthenticated: false }),
@@ -383,7 +386,7 @@ export const useAuthStore = create()(
 )
 ```
 
-______________________________________________________________________
+---
 
 ## API 통신
 
@@ -416,23 +419,23 @@ const { data, isLoading } = useQuery({
 })
 ```
 
-______________________________________________________________________
+---
 
 ### 자주 사용되는 패턴
 
 ```typescript
 // 반응형 그리드
-"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
 
 // 조건부 표시
-"hidden lg:block"  // 데스크톱만
-"lg:hidden"        // 모바일/태블릿만
+'hidden lg:block' // 데스크톱만
+'lg:hidden' // 모바일/태블릿만
 
 // 반응형 패딩
-"px-4 sm:px-6 lg:px-8"
+'px-4 sm:px-6 lg:px-8'
 
 // 반응형 텍스트
-"text-sm md:text-base lg:text-lg"
+'text-sm md:text-base lg:text-lg'
 ```
 
 ### cn 유틸리티 함수
@@ -454,13 +457,14 @@ className={cn(
 )}
 ```
 
-______________________________________________________________________
+---
 
 ## 개발 가이드
 
 ### 새로운 페이지 추가하기
 
 1. **페이지 컴포넌트 생성**
+
 ```tsx
 // src/features/blog/pages/NewPage.tsx
 export default function NewPage() {
@@ -474,6 +478,7 @@ export default function NewPage() {
 ```
 
 2. **라우트 등록**
+
 ```tsx
 // src/features/blog/BlogRoutes.tsx
 import NewPage from './pages/NewPage'
@@ -483,7 +488,7 @@ export default function BlogRoutes() {
         <Routes>
             <Route element={<BlogLayout />}>
                 <Route index element={<HomePage />} />
-                <Route path="new" element={<NewPage />} />  {/* 새 라우트 */}
+                <Route path="new" element={<NewPage />} /> {/* 새 라우트 */}
                 {/* 기존 라우트들... */}
             </Route>
         </Routes>
@@ -494,6 +499,7 @@ export default function BlogRoutes() {
 ### 새로운 API 추가하기
 
 1. **타입 정의**
+
 ```typescript
 // src/shared/api/categories.ts
 export interface Category {
@@ -505,6 +511,7 @@ export interface Category {
 ```
 
 2. **API 함수 작성**
+
 ```typescript
 // src/shared/api/categories.ts
 import { Category } from './types'
@@ -521,6 +528,7 @@ export const getCategories = async (): Promise<Category[]> => {
 ```
 
 3. **컴포넌트에서 사용**
+
 ```tsx
 // 컴포넌트 내부
 const { data: categories, isLoading } = useQuery({
@@ -545,13 +553,7 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function Card({ className, children, ...props }: CardProps) {
     return (
-        <div
-            className={cn(
-                "rounded-lg border bg-card text-card-foreground shadow-sm",
-                className
-            )}
-            {...props}
-        >
+        <div className={cn('rounded-lg border bg-card text-card-foreground shadow-sm', className)} {...props}>
             {children}
         </div>
     )
@@ -559,7 +561,7 @@ export function Card({ className, children, ...props }: CardProps) {
 
 export function CardHeader({ className, children, ...props }: CardProps) {
     return (
-        <div className={cn("flex flex-col space-y-1.5 p-6", className)} {...props}>
+        <div className={cn('flex flex-col space-y-1.5 p-6', className)} {...props}>
             {children}
         </div>
     )
@@ -567,7 +569,7 @@ export function CardHeader({ className, children, ...props }: CardProps) {
 
 export function CardContent({ className, children, ...props }: CardProps) {
     return (
-        <div className={cn("p-6 pt-0", className)} {...props}>
+        <div className={cn('p-6 pt-0', className)} {...props}>
             {children}
         </div>
     )
@@ -585,13 +587,14 @@ interface UiStore {
     toggleTheme: () => void
 }
 
-export const useUiStore = create<UiStore>((set) => ({
+export const useUiStore = create<UiStore>(set => ({
     sidebarOpen: false,
     theme: 'light',
-    setSidebarOpen: (open) => set({ sidebarOpen: open }),
-    toggleTheme: () => set((state) => ({
-        theme: state.theme === 'light' ? 'dark' : 'light'
-    })),
+    setSidebarOpen: open => set({ sidebarOpen: open }),
+    toggleTheme: () =>
+        set(state => ({
+            theme: state.theme === 'light' ? 'dark' : 'light',
+        })),
 }))
 ```
 
@@ -603,7 +606,7 @@ function ContactForm() {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
-        message: ''
+        message: '',
     })
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -624,10 +627,12 @@ function ContactForm() {
                 type="text"
                 placeholder="이름"
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    name: e.target.value
-                }))}
+                onChange={e =>
+                    setFormData(prev => ({
+                        ...prev,
+                        name: e.target.value,
+                    }))
+                }
                 className="w-full px-3 py-2 border rounded-lg"
             />
             {/* 다른 input들... */}
@@ -637,16 +642,16 @@ function ContactForm() {
 }
 ```
 
-______________________________________________________________________
+---
 
 ## 자주 사용하는 패턴과 컨벤션
 
 ### 파일 및 폴더 명명 규칙
+
 - **컴포넌트 파일**: PascalCase (예: `BlogLayout.tsx`)
 - **일반 파일**: camelCase (예: `authStore.ts`)
 - **폴더**: kebab-case (예: `blog-platform`)
 - **페이지 컴포넌트**: `*Page.tsx` 접미사 사용
-
 
 ### 환경변수 사용법
 
@@ -663,13 +668,14 @@ VITE_API_BASE_URL=https://api.example.com
 VITE_APP_NAME=My Blog
 ```
 
-______________________________________________________________________
+---
 
 ## 트러블슈팅
 
 ### 자주 발생하는 문제들
 
 #### 1. TypeScript 에러
+
 ```bash
 # 타입 체크 실행
 yarn build
@@ -681,6 +687,7 @@ yarn build
 ```
 
 #### 2. Tailwind CSS 클래스가 적용되지 않을 때
+
 ```bash
 # Tailwind 재빌드
 yarn dev
@@ -691,15 +698,17 @@ yarn dev
 ```
 
 #### 3. 라우팅 문제
+
 ```tsx
 // 올바른 라우트 구조
 <Routes>
     <Route path="/admin/*" element={<AdminRoutes />} />
-    <Route path="/*" element={<BlogRoutes />} />  {/* 와일드카드는 마지막에 */}
+    <Route path="/*" element={<BlogRoutes />} /> {/* 와일드카드는 마지막에 */}
 </Routes>
 ```
 
 #### 4. TanStack Query 캐시 문제
+
 ```tsx
 // 캐시 무효화
 const queryClient = useQueryClient()
@@ -717,11 +726,12 @@ refetch()
 - **Zustand 문서**: https://github.com/pmndrs/zustand
 - **TypeScript 핸드북**: https://www.typescriptlang.org/docs
 
-______________________________________________________________________
+---
 
 ## 팀 개발 가이드
 
 ### Git 워크플로우
+
 ```bash
 # 새 기능 개발
 git checkout -b feature/blog-search
