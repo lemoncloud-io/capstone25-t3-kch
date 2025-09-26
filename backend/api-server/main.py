@@ -1,7 +1,8 @@
+import os
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
-from dotenv import load_dotenv
 
 app = FastAPI(title="Blog API Server")
 
@@ -18,7 +19,7 @@ print("=====================================")
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", os.getenv('WEB_ORIGIN')],  # React 개발 서버
+    allow_origins=["http://localhost:5173", os.getenv("WEB_ORIGIN")],  # React 개발 서버
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
