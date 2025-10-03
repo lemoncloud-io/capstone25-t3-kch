@@ -1,36 +1,27 @@
 import os
-
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-app = FastAPI(title="Blog API Server")
+from routers import collect
 
 # .env 파일 로드
 load_dotenv()
-# 환경변수 로그 출력
-print("=== Backend Environment Variables ===")
-print(f"NODE_ENV: {os.getenv('NODE_ENV', 'not set')}")
-print(f"VERSION: {os.getenv('VERSION', 'not set')}")
-print(f"API_KEY: {os.getenv('API_KEY', 'not set')}")
-print(f"WEB_ORIGIN: {os.getenv('WEB_ORIGIN', 'not set')}")
-print("=====================================")
 
-# CORS 설정
+app = FastAPI(title="Youth Policy API", version="0.1")
+
+# CORS 설정 (React 프론트와 연동 위해 필요)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", os.getenv("WEB_ORIGIN")],  # React 개발 서버
+    allow_origins=["http://localhost:5173", os.getenv("WEB_ORIGIN")],  # 프론트엔드 주소
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-
+# 서버 상태 체크용 엔드포인트
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok", "message": "서버가 정상 작동 중입니다"}
+    return {"status": "ok", "message": "서버가 정상 작동 중입니다 🚀"}
+
+# 라우터 등록
+app.include_router(collect.router, prefix="/api")

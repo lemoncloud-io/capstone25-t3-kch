@@ -66,3 +66,6 @@ uv.lock
 # OS
 .DS_Store
 Thumbs.db
+
+# 환경변수 파일
+.env
