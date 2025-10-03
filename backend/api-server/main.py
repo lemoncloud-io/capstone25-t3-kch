@@ -1,36 +1,32 @@
 import os
-<<<<<<< HEAD
 from pathlib import Path
 from dotenv import load_dotenv
+
+# .env 파일 로드
 load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env")
 
 # OpenAI 클라이언트
 from openai import OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-=======
-
-from dotenv import load_dotenv
->>>>>>> origin/develop
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Blog API Server")
 
-# .env 파일 로드
-load_dotenv()
 # 환경변수 로그 출력
 print("=== Backend Environment Variables ===")
 print(f"NODE_ENV: {os.getenv('NODE_ENV', 'not set')}")
 print(f"VERSION: {os.getenv('VERSION', 'not set')}")
 print(f"API_KEY: {os.getenv('API_KEY', 'not set')}")
 print(f"WEB_ORIGIN: {os.getenv('WEB_ORIGIN', 'not set')}")
+print(f"OPENAI_API_KEY: {'set' if os.getenv('OPENAI_API_KEY') else 'not set'}")
 print("=====================================")
 
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", os.getenv("WEB_ORIGIN")],  # React 개발 서버
+    allow_origins=["http://localhost:5173", os.getenv("WEB_ORIGIN")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,7 +44,6 @@ async def health_check():
 
 @app.get("/openai/ping")
 async def openai_ping():
-    # 범용 안전: Chat Completions로 짧게 확인
     rsp = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": "Reply with the single word: PONG"}],
@@ -58,13 +53,12 @@ async def openai_ping():
     text = (rsp.choices[0].message.content or "").strip()
     return {"ok": text == "PONG", "text": text, "model": rsp.model}
 
-# opanAI 엔드포인트
 from fastapi import HTTPException
 from pydantic import BaseModel
 
 class RewriteReq(BaseModel):
     text: str
-    tone: str | None = "youthful"  # 예: youthful/formal 등
+    tone: str | None = "youthful"
 
 @app.post("/api/rewrite")
 async def rewrite_api(req: RewriteReq):
