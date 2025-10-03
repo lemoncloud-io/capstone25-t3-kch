@@ -1,38 +1,26 @@
-# Blog Platform API Server
+# Capstone25-T3-KCH
 
-간단한 FastAPI 서버 (UV 사용)
+## 진행 현황 (2025-10-03 기준)
 
-## 설치 및 실행
+### Backend (FastAPI + PostgreSQL)
+- FastAPI 서버 실행 환경 구성 (`uvicorn main:app --reload`)
+- DB 연결 세팅 완료 (`database.py`)
+- ORM 모델 정의 (`models.py`)
+  - `PolicyRaw`, `PolicyClean`, `PolicyGenerated`
+- 테이블 자동 생성 스크립트 (`create_tables.py`)
+- 라우터 추가 (`routers/collect.py`)
+  - `/api/collect` : 정책 데이터 수집 → DB 저장
+- 데이터 수집 및 DB 저장 확인 완료 (정책 원본 `PolicyRaw` 테이블에 적재)
 
-### UV 설치 (처음 한 번만)
-```bash
-# macOS/Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
+### Git Workflow
+- `develop` 브랜치에서 작업 시작
+- `feature/data-collect` 브랜치 생성 및 전환
+- 변경된 코드들 (`models.py`, `collect.py` 등) 추가
+- 곧 README 업데이트 및 코드 푸시 예정
 
-# 또는 pip로 설치
-pip install uv
-```
+---
 
-### 프로젝트 실행
-```bash
-# 의존성 설치
-uv sync
-
-# 서버 실행
-uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-# 또는 루트에서
-yarn api:install  # 의존성 설치
-yarn api:dev      # 서버 실행
-```
-
-## API 엔드포인트
-
-- `GET /` - Hello World
-- `GET /api/health` - 헬스 체크
-
-## API 문서
-
-서버 실행 후:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+## 다음 단계
+- 수집된 정책 데이터를 전처리(`PolicyClean`) 및 청년 친화적 언어 변환(OpenAI API 연동)
+- 카드뉴스/썸네일 이미지 자동 생성 기능 추가
+- AWS 배포 (Lambda + S3 + RDS/Postgres) 연동 예정
