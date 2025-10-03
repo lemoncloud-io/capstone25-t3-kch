@@ -23,4 +23,3 @@
 ## 다음 단계
 - 수집된 정책 데이터를 전처리(`PolicyClean`) 및 청년 친화적 언어 변환(OpenAI API 연동)
 - 카드뉴스/썸네일 이미지 자동 생성 기능 추가
-- AWS 배포 (Lambda + S3 + RDS/Postgres) 연동 예정
