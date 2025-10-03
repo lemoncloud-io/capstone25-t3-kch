@@ -13,11 +13,22 @@
 ## 프로젝트 구조
 
 ```
-blog-platform/
-├── frontend/
-│   └── web-client/     # React 웹 클라이언트 (TypeScript)
-└── backend/          
-    └── api-server/     # FastAPI 서버 (Python)
+## 프로젝트 구조
+
+capstone25-t3-kch/
+├── frontend/               
+│   └── web-client/          # React 웹 클라이언트 (TypeScript)
+│
+└── backend/
+    └── api-server/          # FastAPI 서버 (Python)
+        ├── main.py          # FastAPI 진입점
+        ├── database.py      # DB 연결 (SQLAlchemy + PostgreSQL)
+        ├── models.py        # DB 테이블 정의 (PolicyRaw 등)
+        ├── schemas.py       # Pydantic 스키마 정의
+        ├── routers/         # API 엔드포인트 모음
+        │   └── collect.py   # 정책 데이터 수집 API (/api/collect)
+        ├── create_tables.py # 초기 테이블 생성 스크립트
+        └── requirements.txt # 백엔드 Python 패키지 목록
 ```
 
 ## 기술 스택
