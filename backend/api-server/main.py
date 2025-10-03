@@ -2,6 +2,18 @@ import os, sys
 from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# .env 파일 로드
+load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env")
+
+# OpenAI 클라이언트
+from openai import OpenAI
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
@@ -32,6 +44,7 @@ sys.path.append(os.path.dirname(__file__))
 app = FastAPI(title="Blog API Server")
 
 # 4) 환경 로그 (API 키 값은 직접 출력하지 않음)
+# 환경변수 로그 출력
 print("=== Backend Environment Variables ===")
 print(f"NODE_ENV: {os.getenv('NODE_ENV', 'not set')}")
 print(f"VERSION: {os.getenv('VERSION', 'not set')}")
@@ -45,6 +58,7 @@ web_origin = os.getenv("WEB_ORIGIN") or "http://localhost:5173"
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list({web_origin, "http://localhost:5173"}),
+    allow_origins=["http://localhost:5173", os.getenv("WEB_ORIGIN")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -84,6 +98,13 @@ async def openai_ping():
     return {"ok": text == "PONG", "text": text, "model": rsp.model}
 
 # 8) Rewrite API
+from fastapi import HTTPException
+from pydantic import BaseModel
+
+class RewriteReq(BaseModel):
+    text: str
+    tone: str | None = "youthful"
+
 @app.post("/api/rewrite")
 async def rewrite_api(req: RewriteReq):
     client = get_openai_client_for_llm() # 변경된 함수명 사용
