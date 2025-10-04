@@ -1,9 +1,10 @@
-import os
+import os, sys
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+sys.path.append(os.path.dirname(__file__))
 app = FastAPI(title="Blog API Server")
 
 # .env 파일 로드
@@ -24,6 +25,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 정책 라우터 연결
+from routes.policies import router as policies_router
+app.include_router(policies_router, prefix="/api")
 
 
 @app.get("/")
