@@ -11,8 +11,11 @@ from pydantic import BaseModel
 from openai import OpenAI
 
 from schemas import RewriteReq
+<<<<<<< HEAD
 # 새로 추가된 유틸리티 함수 임포트
 from utils.llm_utils import get_openai_client as get_openai_client_for_llm
+=======
+>>>>>>> ff976bd (refactor(api): separate RewriteReq model into schemas.py and verify server works)
 
 # 1) .env 로드: backend/api-server/.env 우선, 없으면 루트 .env 폴백
 BACKEND_ENV = Path(__file__).resolve().parent / ".env"           # backend/api-server/.env
@@ -96,6 +99,7 @@ async def openai_ping():
     return {"ok": text == "PONG", "text": text, "model": rsp.model}
 
 # 8) Rewrite API
+<<<<<<< HEAD
 from fastapi import HTTPException
 from pydantic import BaseModel
 
@@ -103,6 +107,8 @@ class RewriteReq(BaseModel):
     text: str
     tone: str | None = "youthful"
 
+=======
+>>>>>>> ff976bd (refactor(api): separate RewriteReq model into schemas.py and verify server works)
 @app.post("/api/rewrite")
 async def rewrite_api(req: RewriteReq):
     client = get_openai_client_for_llm() # 변경된 함수명 사용
