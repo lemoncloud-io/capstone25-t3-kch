@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
 
+from schemas import RewriteReq
+
 # 1) .env 로드: backend/api-server/.env 우선, 없으면 루트 .env 폴백
 BACKEND_ENV = Path(__file__).resolve().parent / ".env"           # backend/api-server/.env
 ROOT_ENV    = Path(__file__).resolve().parents[2] / ".env"       # blog-platform/.env
@@ -67,10 +69,6 @@ async def openai_ping():
     return {"ok": text == "PONG", "text": text, "model": rsp.model}
 
 # 8) Rewrite API
-class RewriteReq(BaseModel):
-    text: str
-    tone: str | None = "youthful"
-
 @app.post("/api/rewrite")
 async def rewrite_api(req: RewriteReq):
     client = get_openai_client()
