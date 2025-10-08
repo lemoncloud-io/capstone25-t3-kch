@@ -5,6 +5,8 @@ description = "Simple Blog API Server"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi==0.115.0",
+    "openai>=2.1.0",
+    "python-dotenv>=1.1.1",
     "uvicorn[standard]==0.32.0",
 ]
 
