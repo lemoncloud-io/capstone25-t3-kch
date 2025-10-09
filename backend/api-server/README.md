@@ -1,6 +1,35 @@
 ## 2025년 2학기 기업연계 AI 캡스톤 디자인 프로젝트 - 한성대
 
-2025.10.04 개발 내용
+---
+
+## 변경 이력 (Changelog)
+
+### 2025.10.09 - 데이터 정제
+
+#### 주요 변경사항
+
+**feat(preproc): 하이브리드 카테고리 분류 시스템 도입**
+- 정부 원본 분류(mclsfNm, lclsfNm)와 키워드 기반 분류 결합
+- 10개 청년 친화적 카테고리로 확장 (취업 지원, 교육·자격증, 창업, 주거, 대출·금융, 생활비 지원, 문화·여가, 건강·상담, 해외 기회, 청년 참여)
+- "기타" 카테고리 최소화
+- 포괄적 정부 분류("복지문화", "참여권리") 제외 처리
+
+**feat(storage): blog_json 구조 개선 - Flat & 프론트 친화적**
+- Nested 구조 → Flat 구조로 변경 (프론트에서 접근 용이)
+- 금액 표시: 텍스트("최대 10만원") + 숫자(정렬용) 병행 제공
+- 혜택 표현: 금액/서비스 모두 지원 ("100만원" 또는 "혜택 제공")
+- 기간 상태 추가: "진행 중", "🔥 마감 임박", "마감", "상시 모집"
+- 검색용 키워드 자동 추출 (최대 5개)
+
+**refactor(preproc): 키워드 규칙 개선**
+- 주거: "자립" 키워드 추가
+- 생활비 지원: "정착금" 추가
+- 건강·상담: "고독사", "고립", "은둔" 추가
+- 해외 기회: "IFWY" 추가
+
+---
+
+### 2025.10.04 - 초기 개발 내용
 
 ```text
 capstone25-t3-kch/
@@ -66,43 +95,46 @@ capstone25-t3-kch/
     -전처리 결과 policy_clean 적재 및 필드 점검
     -샘플 레코드 상세 조회 성공: /api/policies/20250924005400211793
     
-    ------------------------------------------------------
-    ------------------------------------------------------
-    로컬 환경에서 테스트 하는 방법
-    ------------------------------------------------------
-    
+---
 
-###1. 환경변수 (.env) 생성,
-    - 온통청년 api 키 입력할 것
+## 로컬 테스트 방법
 
-###2. requirements.txt 내 패키지 설치
-    uv pip install -r requirements.txt
+### 1. 환경변수 설정
+.env.example 복사해서 .env 생성 후 API 키 입력
+```bash
+DB_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/youth_policy
+YOUTHCENTER_API_KEY=your_api_key_here
+```
 
-###3. postgreSQL에서 DB 생성
-    
-    psql -U postgres -h localhost -p 5432
-    CREATE DATABASE youth_policy;
-    
-###4. backend/api-server 에서 실행 후 DB에서 데이터 적재 확인
+### 2. 패키지 설치
+```bash
+uv pip install -r requirements.txt
+```
 
-    cd backend\api-server
-    $env:PYTHONPATH = "$PWD"
-    python -m jobs.ontong.fetch_and_clean
-    
-###5. API 서버 실행
-    
-    yarn api:dev
-    
-###6. 브라우저 테스트
-    
-    => Swagger UI: http://127.0.0.1:8000/docs
-    
-    ####6-1. 목록: GET /api/policies
-    => 파라미터 없이 실행 시 최근 데이터 나옴
-    => 또는 검색 예시:
-    region=부산광역시, 
-    limit=5
+### 3. DB 생성
+```bash
+psql -U postgres -h localhost -p 5432
+CREATE DATABASE youth_policy;
+```
 
-    ####6-2. 상세: GET /api/policies/{plcy_no}
-    => 검색 예시:
-    plcy_no=20250924005400211793
+### 4. 데이터 수집
+```bash
+cd backend/api-server
+python -m jobs.ontong.fetch_and_clean
+```
+
+### 5. 서버 실행
+```bash
+yarn api:dev
+```
+
+### 6. API 테스트
+- Swagger UI: http://127.0.0.1:8000/docs
+- 목록: GET /api/policies
+- 상세: GET /api/policies/{plcy_no}
+
+```bash
+# 예시
+curl "http://127.0.0.1:8000/api/policies?category_auto=취업%20지원&limit=5"
+curl "http://127.0.0.1:8000/api/policies/20250924005400211793"
+```

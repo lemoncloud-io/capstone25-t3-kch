@@ -99,20 +99,117 @@ def clean_text(s: Optional[str]) -> str:
     return s
 
 # -------------------------
-# FR-20: 카테고리 분류(키워드 기반)
+# FR-20: 카테고리 분류(하이브리드 방식)
+# 1차: 정부 원본 분류 매핑
+# 2차: 키워드 기반 보정
+# 3차: 제목/내용 분석
 # -------------------------
-CATEGORY_RULES = {
-    "주거 지원": ["전세", "월세", "보증금", "주거", "임대", "청년주택", "LH"],
-    "대출": ["대출", "융자", "이자", "이차보전", "학자금대출"],
-    "해외 취업": ["해외취업", "K-Move", "워킹홀리데이", "해외 인턴", "글로벌 인턴"],
-    "건강": ["건강검진", "의료", "정신건강", "상담", "치료", "건강"],
-    "문화활동": ["공연", "전시", "문화패스", "문화활동", "도서", "관람비", "문화"],
-    "취업/교육": ["자격증", "면접", "취업", "채용", "교육", "훈련", "강좌"],
-    "창업": ["창업", "사업화", "액셀러레이터", "보육", "시제품"],
-    "생활/복지": ["바우처", "생활", "교통", "통신비", "복지", "지원금"],
+
+# 정부 원본 분류 → 우리 카테고리 매핑
+GOVT_CATEGORY_MAPPING = {
+    # 대분류(mclsfNm) 매핑
+    "취업": "취업 지원",
+    "재직자": "취업 지원",
+    "일자리": "취업 지원",
+    "창업": "창업",
+    "교육비지원": "교육·자격증",
+    "미래역량강화": "교육·자격증",
+    "주택 및 거주지": "주거",
+    "전월세 및 주거급여 지원": "주거",
+    "기숙사": "주거",
+    "취약계층 및 금융지원": "대출·금융",
+    "문화활동": "문화·여가",
+    "청년국제교류": "해외 기회",
+    "청년참여": "청년 참여",
+    "정책인프라구축": "청년 참여",
+    
+    # 소분류(lclsfNm) 매핑
+    "일자리": "취업 지원",
+    "교육": "교육·자격증",
+    "주거": "주거",
+    "복지문화": "문화·여가",
+    "참여권리": "청년 참여",
 }
 
-def classify_category(texts: list[str]) -> str:
+# 키워드 규칙
+CATEGORY_RULES = {
+    "취업 지원": [
+        "취업", "채용", "구직", "일자리", "면접", "구인", "고용",
+        "취업수당", "면접수당", "구직활동", "채용연계", "직장",
+        "정규직", "비정규직", "인턴", "인턴십", "현장실습"
+    ],
+    "교육·자격증": [
+        "교육", "훈련", "강좌", "학습", "수강", "자격증", "면허",
+        "학원", "과정", "프로그램", "아카데미", "학자금", "등록금",
+        "장학금", "교육비", "수강료", "응시료", "학비"
+    ],
+    "창업": [
+        "창업", "사업화", "스타트업", "액셀러레이터", "보육",
+        "시제품", "사업자", "창업가", "기업", "벤처",
+        "소상공인", "점포", "매장", "트라이얼", "창업교육"
+    ],
+    "주거": [
+        "주거", "전세", "월세", "보증금", "임대", "임차",
+        "청년주택", "LH", "주택", "거주", "주거비",
+        "임대료", "주거환경", "주거지", "보금자리", "학사", "자립"
+    ],
+    "대출·금융": [
+        "대출", "융자", "이자", "이차보전", "학자금대출",
+        "금융", "신용", "상환", "채무", "저축", "적금",
+        "통장", "금리", "대출금", "신용회복"
+    ],
+    "생활비 지원": [
+        "생활비", "지원금", "수당", "바우처", "교통비",
+        "통신비", "교통", "버스", "지하철", "패스",
+        "생활지원", "현금", "장려금", "생활안정", "정착금"
+    ],
+    "문화·여가": [
+        "문화", "공연", "전시", "문화패스", "문화활동",
+        "도서", "독서", "책", "영화", "음악", "관람",
+        "축제", "여행", "관광", "체육", "스포츠",
+        "운동", "레저", "힐링", "핫플레이스"
+    ],
+    "건강·상담": [
+        "건강", "건강검진", "의료", "병원", "진료", "치료",
+        "정신건강", "상담", "심리", "멘탈", "스트레스",
+        "우울", "마음", "돌봄", "건강보험", "검진", "고독사", "고립", "은둔"
+    ],
+    "해외 기회": [
+        "해외", "해외취업", "K-Move", "워킹홀리데이",
+        "해외인턴", "글로벌인턴", "연수", "해외연수",
+        "유학", "어학", "국제", "글로벌", "외국", "IFWY"
+    ],
+    "청년 참여": [
+        "위원회", "참여", "정책참여", "청년위원", "조정위원회",
+        "청년정책", "실무위원", "콘텐츠제작", "영상",
+        "소셜미디어", "플랫폼", "홍보", "미디어", "네트워킹",
+        "커뮤니티", "모임", "청년의날"
+    ],
+}
+
+def classify_category_hybrid(govt_mclsf: Optional[str], govt_lclsf: Optional[str], texts: list[str]) -> str:
+    """
+    하이브리드 카테고리 분류
+    1차: 정부 원본 분류 매핑 (구체적인 분류만)
+    2차: 키워드 기반 분류 (주력)
+    """
+    # 너무 포괄적인 정부 분류는 제외 (키워드로 재분류)
+    SKIP_GOVT_CATEGORIES = ["취약계층 및 금융지원", "복지문화", "참여권리"]
+    
+    # 1차: 정부 원본 분류 - 소분류(lclsf)를 먼저 확인
+    if govt_lclsf and govt_lclsf in GOVT_CATEGORY_MAPPING:
+        if govt_lclsf not in SKIP_GOVT_CATEGORIES and "," not in govt_lclsf:
+            return GOVT_CATEGORY_MAPPING[govt_lclsf]
+    
+    # 대분류(mclsf)는 보조적으로 사용
+    if govt_mclsf and govt_mclsf in GOVT_CATEGORY_MAPPING:
+        if govt_mclsf not in SKIP_GOVT_CATEGORIES and "," not in govt_mclsf:
+            return GOVT_CATEGORY_MAPPING[govt_mclsf]
+    
+    # 2차: 키워드 기반 분류 (메인)
+    return classify_category_by_keywords(texts)
+
+def classify_category_by_keywords(texts: list[str]) -> str:
     blob = " ".join([t for t in texts if t]).lower()
     score = {k:0 for k in CATEGORY_RULES.keys()}
     for cat, kws in CATEGORY_RULES.items():
@@ -173,8 +270,8 @@ def extract_clean_fields(item: dict) -> Dict[str, Any]:
     # 금액 범위
     a_min, a_max, notes = normalize_amount_span(f"{sprt}\n{expln}")
 
-    # 카테고리 분류(키워드 기반)  ← FR-20
-    category_auto = classify_category([title, lclsf, mclsf, expln, sprt])
+    # 카테고리 분류(하이브리드: 정부 원본 + 키워드)  ← FR-20
+    category_auto = classify_category_hybrid(mclsf, lclsf, [title, expln, sprt])
 
     # 클린 구조  ← FR-21
     clean = {
@@ -215,28 +312,95 @@ def extract_clean_fields(item: dict) -> Dict[str, Any]:
     return clean
 
 # 블로그용 핵심 JSON(요구 형식)  ← FR-21
+# 청년 블로그 최적화: 단순하고 사용하기 쉬운 flat 구조
 def build_blog_json(clean: Dict[str, Any]) -> Dict[str, Any]:
+    # 금액을 읽기 쉽게
+    benefit_text = format_benefit_simple(clean.get("amount_min"), clean.get("amount_max"))
+    
+    # 기간 상태
+    status = get_simple_status(clean.get("period_start"), clean.get("period_end"))
+    
+    # 키워드
+    keywords = []
+    if clean["extra"].get("plcyKywdNm"):
+        keywords = [k.strip() for k in clean["extra"]["plcyKywdNm"].split(",") if k.strip()]
+    
     return {
-        "no": clean["extra"]["plcyNo"],
-        "name": clean["title"],
+        "id": clean["extra"]["plcyNo"],
+        "title": clean["title"],
         "category": clean.get("category_auto") or clean.get("category") or "기타",
-        "conditions": {
-            "target": clean.get("target_group"),
-            "provider": clean.get("provider"),
-        },
-        "amount": {
-            "min": clean.get("amount_min"),
-            "max": clean.get("amount_max"),
-            "notes": clean["extra"]["amount_notes"],
-        },
-        "period": {
-            "start": clean.get("period_start"),
-            "end": clean.get("period_end"),
-            "raw": clean["extra"]["raw_period_text"],
-        },
-        "apply": {
-            "method": clean.get("apply_method"),
-            "url": clean.get("apply_url"),
-        },
         "summary": clean.get("summary"),
+        "keywords": keywords[:5] if keywords else [],
+        
+        # 혜택 (금액이든 서비스든 텍스트로)
+        "benefit": benefit_text,
+        "amount": clean.get("amount_max") or clean.get("amount_min"),  # 정렬/필터용
+        
+        # 대상
+        "who": clean.get("target_group"),
+        "where": clean.get("region"),
+        "provider": clean.get("provider"),
+        
+        # 기간
+        "deadline": clean.get("period_end"),
+        "period_start": clean.get("period_start"),
+        "status": status,
+        
+        # 신청
+        "apply_url": clean.get("apply_url"),
+        "apply_method": clean.get("apply_method"),
+        "documents": clean["extra"].get("sbmsnDcmntCn"),
+        
+        # 참고
+        "ref_url1": clean["extra"].get("refUrlAddr1"),
+        "ref_url2": clean["extra"].get("refUrlAddr2"),
     }
+
+def format_benefit_simple(amount_min: Optional[int], amount_max: Optional[int]) -> str:
+    """
+    혜택을 간단하게 표시
+    """
+    if not amount_min and not amount_max:
+        return "혜택 제공"
+    
+    def to_korean(n: int) -> str:
+        if n >= 100_000_000:  # 1억
+            ok = n // 100_000_000
+            man = (n % 100_000_000) // 10_000
+            return f"{ok}억 {man}만원" if man else f"{ok}억원"
+        elif n >= 10_000:  # 1만
+            return f"{n // 10_000}만원"
+        else:
+            return f"{n:,}원"
+    
+    if amount_min == amount_max and amount_min:
+        return to_korean(amount_min)
+    elif amount_min and amount_max:
+        return f"{to_korean(amount_min)} ~ {to_korean(amount_max)}"
+    elif amount_max:
+        return f"최대 {to_korean(amount_max)}"
+    else:
+        return f"최소 {to_korean(amount_min)}"
+
+def get_simple_status(start_date: Optional[str], end_date: Optional[str]) -> str:
+    """
+    신청 기간 상태
+    """
+    from datetime import datetime
+    
+    if not end_date:
+        return "상시 모집"
+    
+    try:
+        end = datetime.strptime(end_date, "%Y-%m-%d")
+        now = datetime.now()
+        days_left = (end - now).days
+        
+        if days_left < 0:
+            return "마감"
+        elif days_left <= 7:
+            return "🔥 마감 임박"
+        else:
+            return "진행 중"
+    except:
+        return "기간 미정"
