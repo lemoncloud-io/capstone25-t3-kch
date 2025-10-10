@@ -1,4 +1,4 @@
-import os
+import os, sys
 from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -23,6 +23,8 @@ def get_openai_client() -> OpenAI:
     if not api_key:
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY not set")
     return OpenAI(api_key=api_key)
+
+sys.path.append(os.path.dirname(__file__))
 
 # 3) FastAPI 앱 초기화
 app = FastAPI(title="Blog API Server")
@@ -54,6 +56,11 @@ async def root():
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok", "message": "서버가 정상 작동 중입니다"}
+  
+# 6-1) 정책 라우터 연결
+from routes.policies import router as policies_router
+app.include_router(policies_router, prefix="/api")
+
 
 # 7) OpenAI Ping API
 @app.get("/openai/ping")
