@@ -2,25 +2,11 @@ import os, sys
 from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
-import os
-from pathlib import Path
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
 
 from schemas import RewriteReq
-<<<<<<< HEAD
-<<<<<<< HEAD
-# 새로 추가된 유틸리티 함수 임포트
-from utils.llm_utils import get_openai_client as get_openai_client_for_llm
-=======
->>>>>>> ff976bd (refactor(api): separate RewriteReq model into schemas.py and verify server works)
-=======
-# 새로 추가된 유틸리티 함수 임포트
-from utils.llm_utils import get_openai_client as get_openai_client_for_llm
->>>>>>> 9c10104 (WIP: Main.py와 requirements.txt에 작업 중인 변경 사항 저장)
 
 # 1) .env 로드: backend/api-server/.env 우선, 없으면 루트 .env 폴백
 BACKEND_ENV = Path(__file__).resolve().parent / ".env"           # backend/api-server/.env
@@ -31,13 +17,8 @@ if BACKEND_ENV.exists():
 elif ROOT_ENV.exists():
     load_dotenv(dotenv_path=ROOT_ENV)
 
-# 2) OpenAI 클라이언트 헬퍼 (기존 함수명 변경, 중복 방지)
-def get_openai_client_for_ping() -> OpenAI:
-<<<<<<< HEAD
 # 2) OpenAI 클라이언트 헬퍼 (요청 시점 생성)
 def get_openai_client() -> OpenAI:
-=======
->>>>>>> 9c10104 (WIP: Main.py와 requirements.txt에 작업 중인 변경 사항 저장)
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY not set")
@@ -63,7 +44,6 @@ web_origin = os.getenv("WEB_ORIGIN") or "http://localhost:5173"
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list({web_origin, "http://localhost:5173"}),
-    allow_origins=["http://localhost:5173", os.getenv("WEB_ORIGIN")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -92,14 +72,7 @@ print("Prompts router included successfully.") # 추가
 # 7) OpenAI Ping API
 @app.get("/openai/ping")
 async def openai_ping():
-    client = get_openai_client_for_ping() # 변경된 함수명 사용
-<<<<<<< HEAD
-# 7) OpenAI Ping API
-@app.get("/openai/ping")
-async def openai_ping():
-    client = get_openai_client()
-=======
->>>>>>> 9c10104 (WIP: Main.py와 requirements.txt에 작업 중인 변경 사항 저장)
+    client = get_openai_client() # 변경된 함수명 사용
     rsp = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": "Reply with the single word: PONG"}],
@@ -110,23 +83,13 @@ async def openai_ping():
     return {"ok": text == "PONG", "text": text, "model": rsp.model}
 
 # 8) Rewrite API
-<<<<<<< HEAD
-from fastapi import HTTPException
-from pydantic import BaseModel
-
 class RewriteReq(BaseModel):
     text: str
     tone: str | None = "youthful"
 
-=======
->>>>>>> ff976bd (refactor(api): separate RewriteReq model into schemas.py and verify server works)
 @app.post("/api/rewrite")
 async def rewrite_api(req: RewriteReq):
-    client = get_openai_client_for_llm() # 변경된 함수명 사용
-<<<<<<< HEAD
     client = get_openai_client()
-=======
->>>>>>> 9c10104 (WIP: Main.py와 requirements.txt에 작업 중인 변경 사항 저장)
     system_prompt = (
         "당신은 정부/공공 정책 문서를 한국어로 청년 친화적으로 쉽게 풀어쓰는 전문가입니다. "
         "사실은 정확히 유지하고, 문장은 짧고 명료하게. 과한 이모지는 피하고 필요한 경우에만 사용하세요."
