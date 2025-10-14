@@ -5,8 +5,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
-
 from schemas import RewriteReq
+from utils.llm_utils import get_openai_client
 
 # 1) .env 로드: backend/api-server/.env 우선, 없으면 루트 .env 폴백
 BACKEND_ENV = Path(__file__).resolve().parent / ".env"           # backend/api-server/.env
@@ -17,14 +17,17 @@ if BACKEND_ENV.exists():
 elif ROOT_ENV.exists():
     load_dotenv(dotenv_path=ROOT_ENV)
 
-# 2) OpenAI 클라이언트 헬퍼 (요청 시점 생성)
-def get_openai_client() -> OpenAI:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not set")
-    return OpenAI(api_key=api_key)
+# main.py 내부에 별도로 get_openai_client_for_ping을 정의할 필요가 없어짐.
+# 2) OpenAI 클라이언트 헬퍼 (이제 utils에서 가져온 것을 사용)
+#
+#def get_openai_client() -> OpenAI:
+#    api_key = os.getenv("OPENAI_API_KEY")
+#    if not api_key:
+#        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not set")
+#    return OpenAI(api_key=api_key)
 
-sys.path.append(os.path.dirname(__file__))
+#sys.path.append(os.path.dirname(__file__)) # 라우터 임포트 전에 추가
+
 
 # 3) FastAPI 앱 초기화
 app = FastAPI(title="Blog API Server")
@@ -59,6 +62,7 @@ async def health_check():
     return {"status": "ok", "message": "서버가 정상 작동 중입니다"}
   
 # 6-1) 정책 라우터 연결
+sys.path.append(os.path.dirname(__file__)) # 라우터 임포트 전에 추가
 from routes.policies import router as policies_router
 app.include_router(policies_router, prefix="/api")
 
@@ -83,10 +87,6 @@ async def openai_ping():
     return {"ok": text == "PONG", "text": text, "model": rsp.model}
 
 # 8) Rewrite API
-class RewriteReq(BaseModel):
-    text: str
-    tone: str | None = "youthful"
-
 @app.post("/api/rewrite")
 async def rewrite_api(req: RewriteReq):
     client = get_openai_client()
