@@ -3,6 +3,11 @@ from openai import OpenAI
 from fastapi import HTTPException
 from typing import Dict, Any
 import json
+from pathlib import Path # Path 임포트 추가
+
+# PROMPT_CONFIG_DIR를 프로젝트 루트 기준으로 설정하거나, llm_utils.py 파일 기준으로 상대 경로 설정
+# 여기서는 llm_utils.py 파일 기준으로 상위 디렉토리 (api-server)로 이동 후 prompts_config를 찾도록 설정
+PROMPT_CONFIG_DIR = Path(__file__).parent.parent / "prompts_config"
 
 def get_openai_client() -> OpenAI:
     """OpenAI 클라이언트를 초기화하고 반환합니다."""
@@ -14,12 +19,32 @@ def get_openai_client() -> OpenAI:
 class PromptGenerator:
     def __init__(self, client: OpenAI):
         self.client = client
-        self.model = "gpt-4o-mini" # 또는 다른 적절한 모델
-
-    def _generate_text_with_llm(self, system_prompt: str, user_prompt: str, max_tokens: int = 600, temperature: float = 0.7) -> str:
+        self.model = "gpt-4o-mini"
+        self._load_system_prompts()
+        
+    def _load_system_prompts(self):
+        """JSON 파일에서 시스템 프롬프트를 로드합니다."""
+        self.system_prompts = {}
+        for prompt_file in PROMPT_CONFIG_DIR.glob("*.json"):
+            try:
+                with open(prompt_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    key = prompt_file.stem.replace("_system_prompt", "")
+                    self.system_prompts[key] = data.get("system_prompt")
+            except Exception as e:
+                print(f"Error loading prompt from {prompt_file}: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to load prompt configuration: {e}")
+        
+        if not all(key in self.system_prompts for key in ["title", "summary", "blog_content"]):
+            raise HTTPException(status_code=500, detail="Missing one or more system prompts in configuration files.")    
+   
+    def _generate_text_with_llm(self, system_prompt_key: str, user_prompt: str, max_tokens: int = 600, temperature: float = 0.7) -> str:
         """
-        주어진 프롬프트를 사용하여 LLM으로부터 텍스트를 생성합니다.
+        주어진 프롬프트 키를 사용하여 LLM으로부터 텍스트를 생성합니다.
         """
+        system_prompt = self.system_prompts.get(system_prompt_key) 
+        if not system_prompt:
+            raise HTTPException(status_code=500, detail=f"System prompt for key '{system_prompt_key}' not found.")
         try:
             rsp = self.client.chat.completions.create(
                 model=self.model,
@@ -44,13 +69,6 @@ class PromptGenerator:
         blog_summary = policy_info.get("blog_json", {}).get("summary", summary_main)
         category = policy_info.get("category", "정책")
 
-        system_prompt = (
-            "너는 지금부터 청년 정책을 소개하는 블로그의 에디터야. "
-            "아래의 정책 정보를 바탕으로, 20대 대학생과 취업준비생이 흥미를 느끼고 클릭하고 싶게 "
-            "만드는 블로그 제목을 1개만 생성해줘. 제목에는 반드시 정책의 핵심 혜택이 "
-            "드러나야 하고, 재치있는 이모지를 1개만 앞에 붙여줘. 30자 이내로 간결하게 "
-            "만들어줘."
-        )
         user_prompt = (
             "[정책 정보]\n"
             f"- 지역: {region}\n"
@@ -58,7 +76,7 @@ class PromptGenerator:
             f"- 정책 요약: {blog_summary}\n"
             f"- 카테고리: {category}"
         )
-        return self._generate_text_with_llm(system_prompt, user_prompt, max_tokens=50, temperature=0.9)
+        return self._generate_text_with_llm("title", user_prompt, max_tokens=50, temperature=0.9)
 
     def generate_summary(self, policy_info: Dict[str, Any]) -> str:
         """
@@ -68,13 +86,7 @@ class PromptGenerator:
         summary_main = policy_info.get("summary", "")
         blog_summary = policy_info.get("blog_json", {}).get("summary", summary_main)
         target = policy_info.get("blog_json", {}).get("conditions", {}).get("target", "청년")
-
-        system_prompt = (
-            "너는 지금부터 청년 정책을 소개하는 블로그의 에디터야. "
-            "아래의 정책 정보를 보고, 이 정책이 누구에게 어떤 도움을 주는지 핵심만 요약해서 "
-            "1~2문장으로 설명해줘. 부드러운 구어체로 작성하고, 마지막에는 "
-            "\"~해보세요!\"와 같은 Call-to-Action 문구를 넣어줘."
-        )
+        
         user_prompt = (
             "[정책 정보]\n"
             f"- 정책명: {title}\n"
@@ -82,7 +94,7 @@ class PromptGenerator:
             f"- 지원 대상: {target}\n"
             f"- 핵심 혜택: {blog_summary}"
         )
-        return self._generate_text_with_llm(system_prompt, user_prompt, max_tokens=100)
+        return self._generate_text_with_llm("summary", user_prompt, max_tokens=100)
 
     def generate_blog_content(self, policy_data: Dict[str, Any]) -> str:
         """
@@ -92,12 +104,7 @@ class PromptGenerator:
         blog_json_summary = policy_data.get("blog_json", {}).get("summary", policy_summary)
         target = policy_data.get("blog_json", {}).get("conditions", {}).get("target", "청년")
         apply_method = policy_data.get("blog_json", {}).get("apply", {}).get("method", "온라인 신청")
-
-        system_prompt = (
-            "너는 지금부터 청년 정책을 소개하는 블로그의 에디터야. 아래의 정책 "
-            "정보를 바탕으로, 블로그 본문을 작성해줘. 각 정보는 아래 항목에 맞춰서 "
-            "명확하고 이해하기 쉽게 정리해줘."
-        )
+        
         user_prompt = (
             "[작성 항목]\n"
             "1. 어떤 정책인가요?: {summary} 내용을 바탕으로 정책을 소개해줘.\n"
@@ -107,4 +114,4 @@ class PromptGenerator:
             "[정책 정보]\n"
             f"{json.dumps(policy_data, ensure_ascii=False, indent=2)}"
         )
-        return self._generate_text_with_llm(system_prompt, user_prompt, max_tokens=1000, temperature=0.8)
+        return self._generate_text_with_llm("blog_content", user_prompt, max_tokens=1000, temperature=0.8)
