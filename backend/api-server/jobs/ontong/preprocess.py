@@ -311,9 +311,9 @@ def extract_clean_fields(item: dict) -> Dict[str, Any]:
     }
     return clean
 
-# 블로그용 핵심 JSON(요구 형식)  ← FR-21
-# 청년 블로그 최적화: 단순하고 사용하기 쉬운 flat 구조
-def build_blog_json(clean: Dict[str, Any]) -> Dict[str, Any]:
+# 사용자 표시용 콘텐츠 데이터 생성 (요구 형식)  ← FR-21
+# 청년 친화적 구조: 단순하고 사용하기 쉬운 flat 구조
+def build_content_data(clean: Dict[str, Any]) -> Dict[str, Any]:
     # 금액을 읽기 쉽게
     benefit_text = format_benefit_simple(clean.get("amount_min"), clean.get("amount_max"))
     

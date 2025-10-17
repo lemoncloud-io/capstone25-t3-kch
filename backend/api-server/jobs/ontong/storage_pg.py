@@ -59,7 +59,7 @@ def upsert_raw_pg(engine: Engine, item: dict, plcy_no: str, title: str, content_
             "content_hash": content_hash
         })
 
-def upsert_clean_pg(engine: Engine, clean: dict, plcy_no: str, blog_json: dict, quality_json: dict):
+def upsert_clean_pg(engine: Engine, clean: dict, plcy_no: str, content_data: dict, quality_json: dict):
     with engine.begin() as conn:
         conn.execute(text("""
         INSERT INTO policy_clean(
@@ -108,6 +108,6 @@ def upsert_clean_pg(engine: Engine, clean: dict, plcy_no: str, blog_json: dict, 
             "provider": clean.get("provider"),
             "summary": clean.get("summary"),
             "clean_json": json.dumps(clean, ensure_ascii=False),
-            "blog_json": json.dumps(blog_json, ensure_ascii=False),
+            "blog_json": json.dumps(content_data, ensure_ascii=False),
             "quality_json": json.dumps(quality_json, ensure_ascii=False),
         })
