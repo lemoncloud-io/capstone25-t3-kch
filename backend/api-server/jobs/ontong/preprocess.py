@@ -311,6 +311,52 @@ def extract_clean_fields(item: dict) -> Dict[str, Any]:
     }
     return clean
 
+# -------------------------
+# 서류 목록 간소화 (청년 친화적)
+# -------------------------
+def simplify_documents(text: Optional[str]) -> str:
+    """
+    복잡한 서류 목록을 핵심만 추출하여 간단하게 요약
+    예: "신청서, 주민등록초본, 영수증, 통장사본 등"
+    """
+    if not text or len(text) < 10:
+        return "온라인 신청 시 안내"
+    
+    # 핵심 서류 키워드
+    doc_keywords = [
+        "신청서", "동의서",
+        "주민등록초본", "주민등록등본", "가족관계증명서",
+        "건강보험자격득실확인서", "건강보험증",
+        "재학증명서", "졸업증명서", "학생증",
+        "재직증명서", "근로계약서", "경력증명서",
+        "통장사본", "계좌사본",
+        "영수증", "매출전표", "결제내역",
+        "사업자등록증", "사실증명서",
+        "응시확인서", "성적표", "합격증",
+        "소득증명", "급여명세서"
+    ]
+    
+    found_docs = []
+    text_lower = text.lower()
+    
+    for keyword in doc_keywords:
+        if keyword in text and keyword not in found_docs:
+            found_docs.append(keyword)
+            if len(found_docs) >= 4:  # 최대 4개만
+                break
+    
+    if not found_docs:
+        # 키워드로 못찾으면 앞부분 50자만
+        cleaned = re.sub(r'[①②③④⑤⑥⑦⑧⑨⑩]', '', text)
+        cleaned = re.sub(r'\([^)]{10,}\)', '', cleaned)  # 긴 괄호 설명 제거
+        return cleaned[:50].strip() + "..."
+    
+    result = ", ".join(found_docs)
+    if len(found_docs) >= 3:
+        result += " 등"
+    
+    return result
+
 # 사용자 표시용 콘텐츠 데이터 생성 (요구 형식)  ← FR-21
 # 청년 친화적 구조: 단순하고 사용하기 쉬운 flat 구조
 def build_content_data(clean: Dict[str, Any]) -> Dict[str, Any]:
@@ -349,7 +395,8 @@ def build_content_data(clean: Dict[str, Any]) -> Dict[str, Any]:
         # 신청
         "apply_url": clean.get("apply_url"),
         "apply_method": clean.get("apply_method"),
-        "documents": clean["extra"].get("sbmsnDcmntCn"),
+        "documents": simplify_documents(clean["extra"].get("sbmsnDcmntCn")),
+        "documents_full": clean["extra"].get("sbmsnDcmntCn"),  # 원본은 별도 보관
         
         # 참고
         "ref_url1": clean["extra"].get("refUrlAddr1"),
