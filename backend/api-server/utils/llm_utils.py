@@ -66,15 +66,17 @@ class PromptGenerator:
         region = policy_info.get("region", "전국")
         title = policy_info.get("title", "")
         summary_main = policy_info.get("summary", "")
-        blog_summary = policy_info.get("blog_json", {}).get("summary", summary_main)
-        category = policy_info.get("category", "정책")
+        content_data = policy_info.get("content_data", {})
+        benefit = content_data.get("benefit", "혜택 제공") if isinstance(content_data, dict) else "혜택 제공"
+        category = policy_info.get("category_auto") or policy_info.get("category", "정책")
 
         user_prompt = (
             "[정책 정보]\n"
             f"- 지역: {region}\n"
             f"- 정책명: {title}\n"
-            f"- 정책 요약: {blog_summary}\n"
-            f"- 카테고리: {category}"
+            f"- 정책 요약: {summary_main}\n"
+            f"- 카테고리: {category}\n"
+            f"- 혜택: {benefit}"
         )
         return self._generate_text_with_llm("title", user_prompt, max_tokens=50, temperature=0.9)
 
@@ -84,15 +86,16 @@ class PromptGenerator:
         """
         title = policy_info.get("title", "")
         summary_main = policy_info.get("summary", "")
-        blog_summary = policy_info.get("blog_json", {}).get("summary", summary_main)
-        target = policy_info.get("blog_json", {}).get("conditions", {}).get("target", "청년")
+        content_data = policy_info.get("content_data", {})
+        target = content_data.get("who", "청년") if isinstance(content_data, dict) else "청년"
+        benefit = content_data.get("benefit", summary_main) if isinstance(content_data, dict) else summary_main
         
         user_prompt = (
             "[정책 정보]\n"
             f"- 정책명: {title}\n"
             f"- 정책 요약: {summary_main}\n"
             f"- 지원 대상: {target}\n"
-            f"- 핵심 혜택: {blog_summary}"
+            f"- 핵심 혜택: {benefit}"
         )
         return self._generate_text_with_llm("summary", user_prompt, max_tokens=100)
 
@@ -101,16 +104,26 @@ class PromptGenerator:
         정책 정보를 바탕으로 블로그 본문을 생성합니다.
         """
         policy_summary = policy_data.get("summary", "")
-        blog_json_summary = policy_data.get("blog_json", {}).get("summary", policy_summary)
-        target = policy_data.get("blog_json", {}).get("conditions", {}).get("target", "청년")
-        apply_method = policy_data.get("blog_json", {}).get("apply", {}).get("method", "온라인 신청")
+        content_data = policy_data.get("content_data", {})
+        
+        if isinstance(content_data, dict):
+            target = content_data.get("who", "청년")
+            benefit = content_data.get("benefit", policy_summary)
+            apply_method = content_data.get("apply_method", "온라인 신청")
+            documents = content_data.get("documents", "신청 시 안내")
+        else:
+            target = "청년"
+            benefit = policy_summary
+            apply_method = "온라인 신청"
+            documents = "신청 시 안내"
         
         user_prompt = (
             "[작성 항목]\n"
-            "1. 어떤 정책인가요?: {summary} 내용을 바탕으로 정책을 소개해줘.\n"
-            "2. 누가 신청할 수 있나요?: {blog_json.conditions.target} 정보를 풀어서 설명해줘.\n"
-            "3. 어떤 혜택을 받을 수 있나요?: {blog_json.summary} 내용을 구체적으로 작성해줘.\n"
-            "4. 어떻게 신청하나요?: {blog_json.apply.method} 정보를 안내해줘.\n\n"
+            f"1. 어떤 정책인가요?: {policy_summary} 내용을 바탕으로 정책을 소개해줘.\n"
+            f"2. 누가 신청할 수 있나요?: {target} 정보를 풀어서 설명해줘.\n"
+            f"3. 어떤 혜택을 받을 수 있나요?: {benefit} 내용을 구체적으로 작성해줘.\n"
+            f"4. 어떻게 신청하나요?: {apply_method} 정보를 안내해줘.\n"
+            f"5. 필요한 서류: {documents}\n\n"
             "[정책 정보]\n"
             f"{json.dumps(policy_data, ensure_ascii=False, indent=2)}"
         )
