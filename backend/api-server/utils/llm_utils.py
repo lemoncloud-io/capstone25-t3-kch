@@ -3,10 +3,9 @@ from openai import OpenAI
 from fastapi import HTTPException
 from typing import Dict, Any
 import json
-from pathlib import Path # Path 임포트 추가
+from pathlib import Path
 
-# PROMPT_CONFIG_DIR를 프로젝트 루트 기준으로 설정하거나, llm_utils.py 파일 기준으로 상대 경로 설정
-# 여기서는 llm_utils.py 파일 기준으로 상위 디렉토리 (api-server)로 이동 후 prompts_config를 찾도록 설정
+# PROMPT_CONFIG_DIR 설정
 PROMPT_CONFIG_DIR = Path(__file__).parent.parent / "prompts_config"
 
 def get_openai_client() -> OpenAI:
@@ -21,11 +20,15 @@ class PromptGenerator:
         self.client = client
         self.model = "gpt-4o-mini"
         self._load_system_prompts()
+        self._load_category_prompts()
         
     def _load_system_prompts(self):
-        """JSON 파일에서 시스템 프롬프트를 로드합니다."""
+        """기본 시스템 프롬프트를 로드합니다."""
         self.system_prompts = {}
-        for prompt_file in PROMPT_CONFIG_DIR.glob("*.json"):
+        prompt_files = ["title_system_prompt.json", "summary_system_prompt.json", "blog_content_system_prompt.json"]
+        
+        for prompt_file_name in prompt_files:
+            prompt_file = PROMPT_CONFIG_DIR / prompt_file_name
             try:
                 with open(prompt_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
@@ -36,15 +39,43 @@ class PromptGenerator:
                 raise HTTPException(status_code=500, detail=f"Failed to load prompt configuration: {e}")
         
         if not all(key in self.system_prompts for key in ["title", "summary", "blog_content"]):
-            raise HTTPException(status_code=500, detail="Missing one or more system prompts in configuration files.")    
+            raise HTTPException(status_code=500, detail="Missing one or more system prompts in configuration files.")
+
+    def _load_category_prompts(self):
+        """카테고리별 프롬프트를 로드합니다."""
+        category_file = PROMPT_CONFIG_DIR / "category_prompts.json"
+        try:
+            with open(category_file, 'r', encoding='utf-8') as f:
+                self.category_prompts = json.load(f)
+                print(f"✅ 카테고리별 프롬프트 로드 완료: {len(self.category_prompts)}개")
+        except Exception as e:
+            print(f"⚠️ 카테고리 프롬프트 로드 실패, 기본 프롬프트 사용: {e}")
+            self.category_prompts = {}
    
-    def _generate_text_with_llm(self, system_prompt_key: str, user_prompt: str, max_tokens: int = 600, temperature: float = 0.7) -> str:
+    def _get_category_prompt(self, category: str, prompt_type: str) -> str:
         """
-        주어진 프롬프트 키를 사용하여 LLM으로부터 텍스트를 생성합니다.
+        카테고리에 맞는 프롬프트를 반환합니다.
+        카테고리가 없거나 매칭되지 않으면 기본 프롬프트를 반환합니다.
         """
-        system_prompt = self.system_prompts.get(system_prompt_key) 
+        if category and category in self.category_prompts:
+            category_config = self.category_prompts[category]
+            prompt_key = f"{prompt_type}_prompt"
+            
+            if prompt_key in category_config:
+                return category_config[prompt_key]
+        
+        # 기본 프롬프트 반환
+        return self.system_prompts.get(prompt_type, "")
+
+    def _generate_text_with_llm(self, prompt_type: str, user_prompt: str, category: str = None, max_tokens: int = 600, temperature: float = 0.7) -> str:
+        """
+        주어진 프롬프트 타입과 카테고리를 사용하여 LLM으로부터 텍스트를 생성합니다.
+        """
+        system_prompt = self._get_category_prompt(category, prompt_type)
+        
         if not system_prompt:
-            raise HTTPException(status_code=500, detail=f"System prompt for key '{system_prompt_key}' not found.")
+            raise HTTPException(status_code=500, detail=f"System prompt for key '{prompt_type}' not found.")
+        
         try:
             rsp = self.client.chat.completions.create(
                 model=self.model,
@@ -62,6 +93,7 @@ class PromptGenerator:
     def generate_title(self, policy_info: Dict[str, Any]) -> str:
         """
         정책 정보를 바탕으로 블로그 제목을 생성합니다.
+        카테고리에 맞는 이모지와 톤앤매너를 자동 적용합니다.
         """
         region = policy_info.get("region", "전국")
         title = policy_info.get("title", "")
@@ -78,17 +110,19 @@ class PromptGenerator:
             f"- 카테고리: {category}\n"
             f"- 혜택: {benefit}"
         )
-        return self._generate_text_with_llm("title", user_prompt, max_tokens=50, temperature=0.9)
+        return self._generate_text_with_llm("title", user_prompt, category, max_tokens=50, temperature=0.9)
 
     def generate_summary(self, policy_info: Dict[str, Any]) -> str:
         """
         정책 정보를 바탕으로 요약문을 생성합니다.
+        카테고리에 맞는 톤앤매너를 자동 적용합니다.
         """
         title = policy_info.get("title", "")
         summary_main = policy_info.get("summary", "")
         content_data = policy_info.get("content_data", {})
         target = content_data.get("who", "청년") if isinstance(content_data, dict) else "청년"
         benefit = content_data.get("benefit", summary_main) if isinstance(content_data, dict) else summary_main
+        category = policy_info.get("category_auto") or policy_info.get("category", "정책")
         
         user_prompt = (
             "[정책 정보]\n"
@@ -97,14 +131,16 @@ class PromptGenerator:
             f"- 지원 대상: {target}\n"
             f"- 핵심 혜택: {benefit}"
         )
-        return self._generate_text_with_llm("summary", user_prompt, max_tokens=100)
+        return self._generate_text_with_llm("summary", user_prompt, category, max_tokens=100)
 
     def generate_blog_content(self, policy_data: Dict[str, Any]) -> str:
         """
         정책 정보를 바탕으로 블로그 본문을 생성합니다.
+        카테고리에 맞는 강조 포인트를 자동 적용합니다.
         """
         policy_summary = policy_data.get("summary", "")
         content_data = policy_data.get("content_data", {})
+        category = policy_data.get("category_auto") or policy_data.get("category", "정책")
         
         if isinstance(content_data, dict):
             target = content_data.get("who", "청년")
@@ -127,4 +163,4 @@ class PromptGenerator:
             "[정책 정보]\n"
             f"{json.dumps(policy_data, ensure_ascii=False, indent=2)}"
         )
-        return self._generate_text_with_llm("blog_content", user_prompt, max_tokens=1000, temperature=0.8)
+        return self._generate_text_with_llm("blog_content", user_prompt, category, max_tokens=1000, temperature=0.8)
