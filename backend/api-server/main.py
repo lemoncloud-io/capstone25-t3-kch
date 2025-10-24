@@ -61,6 +61,10 @@ async def health_check():
 from routes.policies import router as policies_router
 app.include_router(policies_router, prefix="/api")
 
+# 6-2) 프롬프트 라우터 연결
+from routes.prompts import router as prompts_router
+app.include_router(prompts_router, prefix="/api")
+
 
 # 7) OpenAI Ping API
 @app.get("/openai/ping")
