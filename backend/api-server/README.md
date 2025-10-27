@@ -33,12 +33,12 @@
 - 다양한 문장 구조 및 논리적 흐름
 - 검색 엔진 노출 최적화
 
-**feat(api): 프롬프트 생성 엔드포인트 추가**
-- POST /api/generate-title: 블로그 제목 생성
-- POST /api/generate-summary: 블로그 요약 생성
-- POST /api/generate-blog-content: 블로그 본문 생성
-- POST /api/generate-full-blog: 제목+요약+본문 일괄 생성
-- POST /api/generate-content: 배치 생성 (선택적)
+**feat(api): 통합 콘텐츠 생성 엔드포인트**
+- POST /api/policies/{plcy_no}/content: 통합 콘텐츠 생성 API
+  - `?type=title`: 블로그 제목 생성
+  - `?type=summary`: 블로그 요약 생성  
+  - `?type=blog`: 블로그 본문 생성
+  - `?type=full`: 제목+요약+본문 일괄 생성
 
 **refactor(structure): 프로젝트 구조 개선**
 - prompts_config/ 폴더 추가 (프롬프트 템플릿 JSON 관리)
@@ -204,14 +204,14 @@ curl "http://127.0.0.1:8000/api/policies/20250924005400211793"
 #### LLM 블로그 콘텐츠 생성
 ```bash
 # 블로그 제목 생성
-curl -X POST "http://127.0.0.1:8000/api/generate-title?plcy_no=20250924005400211793"
+curl -X POST "http://127.0.0.1:8000/api/policies/20250924005400211793/content?type=title"
 
 # 블로그 요약 생성
-curl -X POST "http://127.0.0.1:8000/api/generate-summary?plcy_no=20250924005400211793"
+curl -X POST "http://127.0.0.1:8000/api/policies/20250924005400211793/content?type=summary"
 
 # 블로그 본문 생성
-curl -X POST "http://127.0.0.1:8000/api/generate-blog-content?plcy_no=20250924005400211793"
+curl -X POST "http://127.0.0.1:8000/api/policies/20250924005400211793/content?type=blog"
 
 # 제목+요약+본문 일괄 생성
-curl -X POST "http://127.0.0.1:8000/api/generate-full-blog?plcy_no=20250924005400211793"
+curl -X POST "http://127.0.0.1:8000/api/policies/20250924005400211793/content?type=full"
 ```

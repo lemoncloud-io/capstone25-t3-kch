@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Path
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Literal
 import os
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
@@ -15,12 +15,21 @@ if not DB_URL:
 
 engine = create_engine(DB_URL, pool_pre_ping=True)
 
-router = APIRouter(tags=["prompts"])
+router = APIRouter(tags=["policies"])
 
 # 응답 모델
 class GeneratedContent(BaseModel):
     title: str
     summary: str
+    blog_content: str
+
+class GeneratedTitle(BaseModel):
+    title: str
+
+class GeneratedSummary(BaseModel):
+    summary: str
+
+class GeneratedBlogContent(BaseModel):
     blog_content: str
 
 # ========== 헬퍼 함수: DB에서 정책 데이터 조회 ==========
@@ -47,68 +56,21 @@ def get_policy_from_db(plcy_no: str):
 
 # ========== API 엔드포인트 ==========
 
-@router.post("/generate-title")
-async def generate_blog_title_api(
-    plcy_no: str = Query(..., description="정책 번호"),
-    client: OpenAI = Depends(get_openai_client)
-):
-    """
-    정책 번호를 받아 DB에서 정제된 데이터를 조회하고, 
-    SEO 최적화된 블로그 제목을 생성합니다.
-    """
-    policy_data = get_policy_from_db(plcy_no)
-    generator = PromptGenerator(client)
-    
-    try:
-        generated_title = generator.generate_title(policy_data)
-        return {"title": generated_title, "plcy_no": plcy_no}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"제목 생성 중 오류 발생: {e}")
-
-@router.post("/generate-summary")
-async def generate_blog_summary_api(
-    plcy_no: str = Query(..., description="정책 번호"),
+@router.post("/policies/{plcy_no}/content")
+async def generate_policy_content(
+    plcy_no: str = Path(..., description="정책 번호"),
+    type: Literal["title", "summary", "blog", "full"] = Query(..., description="생성할 콘텐츠 타입"),
     client: OpenAI = Depends(get_openai_client)
 ):
     """
     정책 번호를 받아 DB에서 정제된 데이터를 조회하고,
-    청년 친화적 요약문을 생성합니다.
-    """
-    policy_data = get_policy_from_db(plcy_no)
-    generator = PromptGenerator(client)
+    지정된 타입의 블로그 콘텐츠를 생성합니다.
     
-    try:
-        generated_summary = generator.generate_summary(policy_data)
-        return {"summary": generated_summary, "plcy_no": plcy_no}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"요약문 생성 중 오류 발생: {e}")
-
-@router.post("/generate-blog-content")
-async def generate_full_blog_content_api(
-    plcy_no: str = Query(..., description="정책 번호"),
-    client: OpenAI = Depends(get_openai_client)
-):
-    """
-    정책 번호를 받아 DB에서 정제된 데이터를 조회하고,
-    SEO 최적화된 블로그 본문을 생성합니다.
-    """
-    policy_data = get_policy_from_db(plcy_no)
-    generator = PromptGenerator(client)
-    
-    try:
-        generated_content = generator.generate_blog_content(policy_data)
-        return {"blog_content": generated_content, "plcy_no": plcy_no}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"본문 생성 중 오류 발생: {e}")
-
-@router.post("/generate-full-blog")
-async def generate_full_blog_api(
-    plcy_no: str = Query(..., description="정책 번호"),
-    client: OpenAI = Depends(get_openai_client)
-) -> GeneratedContent:
-    """
-    정책 번호를 받아 DB에서 정제된 데이터를 조회하고,
-    제목, 요약, 본문 전체를 한 번에 생성합니다.
+    **지원하는 타입:**
+    - `title`: SEO 최적화된 블로그 제목 생성
+    - `summary`: 청년 친화적 요약문 생성  
+    - `blog`: SEO 최적화된 블로그 본문 생성
+    - `full`: 제목+요약+본문 전체 생성
     
     **데이터 정제 기능 활용:**
     - clean_text: HTML 태그 제거, 텍스트 정제
@@ -126,14 +88,27 @@ async def generate_full_blog_api(
     generator = PromptGenerator(client)
     
     try:
-        title = generator.generate_title(policy_data)
-        summary = generator.generate_summary(policy_data)
-        blog_content = generator.generate_blog_content(policy_data)
-        
-        return GeneratedContent(
-            title=title,
-            summary=summary,
-            blog_content=blog_content
-        )
+        if type == "title":
+            generated_title = generator.generate_title(policy_data)
+            return GeneratedTitle(title=generated_title)
+            
+        elif type == "summary":
+            generated_summary = generator.generate_summary(policy_data)
+            return GeneratedSummary(summary=generated_summary)
+            
+        elif type == "blog":
+            generated_content = generator.generate_blog_content(policy_data)
+            return GeneratedBlogContent(blog_content=generated_content)
+            
+        elif type == "full":
+            title = generator.generate_title(policy_data)
+            summary = generator.generate_summary(policy_data)
+            blog_content = generator.generate_blog_content(policy_data)
+            return GeneratedContent(
+                title=title,
+                summary=summary,
+                blog_content=blog_content
+            )
+            
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"블로그 전체 생성 중 오류 발생: {e}")
+        raise HTTPException(status_code=500, detail=f"{type} 생성 중 오류 발생: {e}")
