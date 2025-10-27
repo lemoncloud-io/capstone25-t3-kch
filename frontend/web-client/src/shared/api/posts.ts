@@ -193,6 +193,30 @@ export const getPosts = async (params?: { category?: string }): Promise<Post[]> 
     }
 }
 
+// LLM 콘텐츠 생성 API 함수들
+export const generatePolicyContent = async (
+    plcyNo: string, 
+    type: 'title' | 'summary' | 'blog' | 'full'
+) => {
+    try {
+        const response = await fetch(`${env.API_BASE_URL}/policies/${plcyNo}/content?type=${type}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        
+        return await response.json()
+    } catch (error) {
+        console.error('콘텐츠 생성 API 호출 실패:', error)
+        throw error
+    }
+}
+
 export const getPost = async (slug: string): Promise<Post | undefined> => {
     if (env.ENV === 'development') {
         await new Promise(resolve => setTimeout(resolve, 300))

@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS policy_clean(
   provider TEXT,
   summary TEXT,
   clean_json JSONB NOT NULL,
-  blog_json JSONB,
+  content_data JSONB,
   quality_json JSONB,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -59,18 +59,18 @@ def upsert_raw_pg(engine: Engine, item: dict, plcy_no: str, title: str, content_
             "content_hash": content_hash
         })
 
-def upsert_clean_pg(engine: Engine, clean: dict, plcy_no: str, blog_json: dict, quality_json: dict):
+def upsert_clean_pg(engine: Engine, clean: dict, plcy_no: str, content_data: dict, quality_json: dict):
     with engine.begin() as conn:
         conn.execute(text("""
         INSERT INTO policy_clean(
           plcy_no, title, category, subcategory, category_auto, region, target_group,
           amount_min, amount_max, apply_method, apply_url, period_start, period_end,
-          provider, summary, clean_json, blog_json, quality_json, updated_at
+          provider, summary, clean_json, content_data, quality_json, updated_at
         )
         VALUES (
           :plcy_no, :title, :category, :subcategory, :category_auto, :region, :target_group,
           :amount_min, :amount_max, :apply_method, :apply_url, :period_start, :period_end,
-          :provider, :summary, :clean_json, :blog_json, :quality_json, NOW()
+          :provider, :summary, :clean_json, :content_data, :quality_json, NOW()
         )
         ON CONFLICT (plcy_no) DO UPDATE SET
           title=EXCLUDED.title,
@@ -88,7 +88,7 @@ def upsert_clean_pg(engine: Engine, clean: dict, plcy_no: str, blog_json: dict, 
           provider=EXCLUDED.provider,
           summary=EXCLUDED.summary,
           clean_json=EXCLUDED.clean_json,
-          blog_json=EXCLUDED.blog_json,
+          content_data=EXCLUDED.content_data,
           quality_json=EXCLUDED.quality_json,
           updated_at=NOW()
         """), {
@@ -108,6 +108,6 @@ def upsert_clean_pg(engine: Engine, clean: dict, plcy_no: str, blog_json: dict, 
             "provider": clean.get("provider"),
             "summary": clean.get("summary"),
             "clean_json": json.dumps(clean, ensure_ascii=False),
-            "blog_json": json.dumps(blog_json, ensure_ascii=False),
+            "content_data": json.dumps(content_data, ensure_ascii=False),
             "quality_json": json.dumps(quality_json, ensure_ascii=False),
         })
