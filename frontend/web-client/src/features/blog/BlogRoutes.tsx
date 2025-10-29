@@ -1,10 +1,9 @@
 import { Routes, Route } from 'react-router-dom'
-import BlogLayout from './components/BlogLayout'
-import HomePage from './pages/HomePage'
-import PostDetailPage from './pages/PostDetailPage'
-import CategoryPage from '@/features/blog/pages/CategoryPage.tsx'
 
-export default function BlogRoutes() {
+import { BlogLayout } from './components'
+import { HomePage, PostDetailPage, CategoryPage } from './pages'
+
+export const BlogRoutes = () => {
     return (
         <Routes>
             <Route element={<BlogLayout />}>

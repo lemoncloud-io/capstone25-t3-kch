@@ -1,70 +1,17 @@
-import { Outlet } from 'react-router-dom'
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Menu, X, Search, Home, BookOpen, Users, Briefcase } from 'lucide-react'
-import { cn } from '@/shared/lib/utils'
+import { Outlet, Link } from 'react-router-dom'
 
-export default function BlogLayout() {
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-    const [searchQuery, setSearchQuery] = useState('')
-    const navigate = useNavigate()
-
-    const categories = [
-        { name: '주거지원', icon: Home, path: '/category/housing' },
-        { name: '교육지원', icon: BookOpen, path: '/category/education' },
-    ]
-
+export const BlogLayout = () => {
     return (
         <div className="min-h-screen bg-gray-50">
             <header className="sticky top-0 z-50 bg-white border-b shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-16">
+                    <div className="flex items-center h-16">
                         <Link to="/" className="flex items-center space-x-2">
                             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                                 <span className="text-white font-bold">K</span>
                             </div>
                             <span className="font-bold text-xl hidden sm:block">K-Coding Hansung</span>
                         </Link>
-                        {/* Desktop Navigation */}
-                        <nav className="hidden md:flex items-center space-x-8">
-                            {categories.map(cat => (
-                                <Link
-                                    key={cat.path}
-                                    to={cat.path}
-                                    className="text-gray-600 hover:text-blue-600 transition-colors"
-                                >
-                                    {cat.name}
-                                </Link>
-                            ))}
-                        </nav>
-                        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-2">
-                            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Mobile Menu */}
-                <div
-                    className={cn(
-                        'md:hidden bg-white border-t transition-all duration-300 overflow-hidden',
-                        isMobileMenuOpen ? 'max-h-96' : 'max-h-0'
-                    )}
-                >
-                    <div className="px-4 py-4 space-y-4">
-                        {/* Mobile Navigation */}
-                        <nav className="space-y-2">
-                            {categories.map(cat => (
-                                <Link
-                                    key={cat.path}
-                                    to={cat.path}
-                                    onClick={() => setIsMobileMenuOpen(false)}
-                                    className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-50"
-                                >
-                                    <cat.icon size={20} className="text-gray-500" />
-                                    <span>{cat.name}</span>
-                                </Link>
-                            ))}
-                        </nav>
                     </div>
                 </div>
             </header>
@@ -93,12 +40,12 @@ export default function BlogLayout() {
                                     </Link>
                                 </li>
                                 <li>
-                                    <Link to="/category/housing" className="hover:text-blue-600">
+                                    <Link to="/category/주거" className="hover:text-blue-600">
                                         주거지원
                                     </Link>
                                 </li>
                                 <li>
-                                    <Link to="/category/education" className="hover:text-blue-600">
+                                    <Link to="/category/교육" className="hover:text-blue-600">
                                         교육지원
                                     </Link>
                                 </li>

@@ -42,7 +42,7 @@ print("=====================================")
 web_origin = os.getenv("WEB_ORIGIN") or "http://localhost:5173"
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=list({web_origin, "http://localhost:5173"}),
+    allow_origins=list({web_origin, "http://localhost:5173", "http://localhost:5174"}),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,7 +56,7 @@ async def root():
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok", "message": "서버가 정상 작동 중입니다"}
-  
+
 # 6-1) 정책 라우터 연결
 from routes.policies import router as policies_router
 app.include_router(policies_router, prefix="/api")
@@ -65,6 +65,9 @@ app.include_router(policies_router, prefix="/api")
 from routes.prompts import router as prompts_router
 app.include_router(prompts_router, prefix="/api")
 
+# 6-3) 블로그 포스트 라우터 연결 (우리가 추가한 CRUD API)
+from routes.posts import router as posts_router
+app.include_router(posts_router, prefix="/api")
 
 # 7) OpenAI Ping API
 @app.get("/openai/ping")

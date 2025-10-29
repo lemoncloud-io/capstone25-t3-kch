@@ -65,4 +65,7 @@ uv.lock
 
 # OS
 .DS_Store
-Thumbs.db
+Thumbs.db.history/
+
+# 에디터 기록 폴더 무시
+.history/

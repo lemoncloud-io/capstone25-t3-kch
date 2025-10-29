@@ -1,11 +1,11 @@
-import { Routes, Route } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
+import { Routes, Route } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 
-const BlogRoutes = lazy(() => import('@/features/blog/BlogRoutes'))
-const AdminRoutes = lazy(() => import('@/features/admin/AdminRoutes'))
+const BlogRoutes = lazy(() => import('@/features/blog/BlogRoutes').then(m => ({ default: m.BlogRoutes })))
+const AdminRoutes = lazy(() => import('@/features/admin/AdminRoutes').then(m => ({ default: m.AdminRoutes })))
 
-function App() {
+export const App = () => {
     return (
         <Suspense
             fallback={
@@ -24,5 +24,3 @@ function App() {
         </Suspense>
     )
 }
-
-export default App

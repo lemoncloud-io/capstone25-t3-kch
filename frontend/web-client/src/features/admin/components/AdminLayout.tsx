@@ -1,9 +1,17 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
-import { LayoutDashboard, FileText, Upload, LogOut, Menu, X, Bell, User } from 'lucide-react'
+import {
+    LayoutDashboard,
+    FileText,
+    Database,
+    LogOut,
+    Menu,
+    X,
+    User,
+} from 'lucide-react'
 import { useAuthStore } from '@/shared/store/authStore'
 
-export default function AdminLayout() {
+export const AdminLayout = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
     const navigate = useNavigate()
     const { logout } = useAuthStore()
@@ -15,7 +23,8 @@ export default function AdminLayout() {
 
     const menuItems = [
         { path: '/admin/dashboard', icon: LayoutDashboard, label: '대시보드' },
-        { path: '/admin/posts', icon: FileText, label: '포스트 관리' },
+        { path: '/admin/posts', icon: FileText, label: '블로그 관리' },
+        { path: '/admin/policies', icon: Database, label: '정책 관리' },
     ]
 
     return (

@@ -1,19 +1,11 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, Path
 from pydantic import BaseModel
 from typing import Optional, Literal
-import os
-from sqlalchemy import create_engine, text
-from dotenv import load_dotenv
+from sqlalchemy import text
 
 from utils.llm_utils import PromptGenerator, get_openai_client
 from openai import OpenAI
-
-load_dotenv()
-DB_URL = os.getenv("DB_URL")
-if not DB_URL:
-    raise RuntimeError("DB_URL이 .env에 없습니다.")
-
-engine = create_engine(DB_URL, pool_pre_ping=True)
+from database import engine
 
 router = APIRouter(tags=["policies"])
 
