@@ -12,10 +12,12 @@ export const DashboardPage = () => {
     })
 
     // Fetch all posts
-    const { data: posts = [], isLoading: postsLoading } = useQuery({
+    const { data: postsData, isLoading: postsLoading } = useQuery({
         queryKey: ['posts'],
         queryFn: () => getPosts(),
     })
+
+    const posts = postsData?.items || []
 
     // Calculate statistics from real data
     const totalPosts = posts.length

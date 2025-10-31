@@ -1,6 +1,7 @@
-from typing import Optional, List
+from typing import Optional, List, Generic, TypeVar
 import re
 from fastapi import APIRouter, Query, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import text
 from database import engine
 from schemas import PostCreate, PostUpdate, PostOut, CategoryOut
@@ -11,6 +12,14 @@ router = APIRouter(tags=["posts"])
 # SQL field list for consistent SELECT queries
 POST_FIELDS = """id, slug, title, summary, content, category, thumbnail, author,
                  view_count, is_published, created_at, updated_at, published_at, plcy_no"""
+
+# Paginated response schema
+T = TypeVar('T')
+class PaginatedResponse(BaseModel, Generic[T]):
+    items: List[T]
+    total: int
+    limit: int
+    offset: int
 
 
 def generate_slug(title: str, post_id: int) -> str:
@@ -58,16 +67,21 @@ def create_post(post: PostCreate):
     return PostOut(**dict(row))
 
 
-@router.get("/posts", response_model=List[PostOut])
+@router.get("/posts", response_model=PaginatedResponse[PostOut])
 def list_posts(
+    q: Optional[str] = Query(None, description="제목/요약 검색어"),
     category: Optional[str] = Query(None, description="카테고리 필터"),
     is_published: Optional[bool] = Query(None, description="발행 상태 필터"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
-    """List blog posts with filters"""
+    """List blog posts with filters and pagination"""
     conds = []
     params = {}
+
+    if q:
+        conds.append("(title ILIKE :q OR summary ILIKE :q)")
+        params["q"] = f"%{q}%"
 
     if category:
         conds.append("category = :category")
@@ -78,7 +92,16 @@ def list_posts(
         params["is_published"] = is_published
 
     where = "WHERE " + " AND ".join(conds) if conds else ""
-    sql = text(f"""
+
+    # Count query
+    count_sql = text(f"""
+        SELECT COUNT(*) as total
+        FROM blog_posts
+        {where}
+    """)
+
+    # Data query
+    data_sql = text(f"""
         SELECT {POST_FIELDS}
         FROM blog_posts
         {where}
@@ -89,9 +112,20 @@ def list_posts(
     params["offset"] = offset
 
     with engine.begin() as conn:
-        rows = conn.execute(sql, params).mappings().all()
+        # Get total count
+        count_result = conn.execute(count_sql, {k: v for k, v in params.items() if k not in ['limit', 'offset']}).mappings().first()
+        total = count_result["total"] if count_result else 0
 
-    return [PostOut(**dict(r)) for r in rows]
+        # Get data
+        rows = conn.execute(data_sql, params).mappings().all()
+        items = [PostOut(**dict(r)) for r in rows]
+
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        limit=limit,
+        offset=offset
+    )
 
 
 @router.get("/posts/{slug}", response_model=PostOut)

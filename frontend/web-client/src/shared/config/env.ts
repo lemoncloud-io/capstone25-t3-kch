@@ -7,5 +7,3 @@ export const config = {
     // API base URL (used when USE_MOCK_DATA is false)
     API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
 } as const
-
-export const isMockMode = () => config.USE_MOCK_DATA

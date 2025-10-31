@@ -32,6 +32,22 @@ VITE_API_BASE_URL=http://localhost:8000
 npm run dev
 ```
 
+## Currently Mocked Features
+
+### 📝 Blog Posts - ✅ FULLY INTEGRATED (NOT MOCKED)
+
+**Status:** Posts functionality uses **real backend API only** - no mock mode available.
+
+- **Backend API**: FastAPI endpoints at `/api/posts`
+- **Database**: PostgreSQL `blog_posts` table
+- **Admin Interface**: Full CRUD operations at `/admin/posts`
+- **Public Interface**: Published posts at `/blog`
+- **Features**: Create, edit, delete, publish/unpublish, view count tracking, category filtering
+
+**Note:** Unlike policies and LLM features, posts always connect to the real backend. The `VITE_USE_MOCK_DATA` environment variable does not affect posts functionality.
+
+---
+
 ## Mock Data Features
 
 ### 📊 55+ Realistic Korean Youth Policies

@@ -1,14 +1,16 @@
 import { apiClient } from './client'
-import type { Post, PostCreate, PostUpdate, PostFilters, Category } from './types'
+import type { Post, PostCreate, PostUpdate, PostFilters, Category, PaginatedResponse } from './types'
 
-export const getPosts = async (filters?: PostFilters): Promise<Post[]> => {
+export const getPosts = async (filters?: PostFilters): Promise<PaginatedResponse<Post>> => {
+    // Convert camelCase to snake_case for backend
     const params: Record<string, unknown> = {}
+    if (filters?.q) params.q = filters.q
     if (filters?.category) params.category = filters.category
-    if (filters?.isPublished !== undefined) params.isPublished = filters.isPublished
+    if (filters?.isPublished !== undefined) params.is_published = filters.isPublished
     if (filters?.limit) params.limit = filters.limit
     if (filters?.offset) params.offset = filters.offset
 
-    const { data } = await apiClient.get<Post[]>('/api/posts', { params })
+    const { data } = await apiClient.get<PaginatedResponse<Post>>('/api/posts', { params })
     return data
 }
 

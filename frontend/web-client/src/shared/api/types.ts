@@ -1,3 +1,11 @@
+// Generic Paginated Response
+export interface PaginatedResponse<T> {
+    items: T[]
+    total: number
+    limit: number
+    offset: number
+}
+
 // Policy API Types
 export interface Policy {
     plcy_no: string
@@ -11,7 +19,7 @@ export interface Policy {
     period_end: string | null
     provider: string | null
     summary: string | null
-    blog_json: {
+    content_data: {
         conditions?: {
             target?: string
         }
@@ -31,6 +39,11 @@ export interface PolicyFilters {
     offset?: number // Pagination offset
 }
 
+export interface PolicyFilterOptions {
+    regions: string[]
+    categories: string[]
+}
+
 // LLM Generation API Types
 export interface LLMGenerationRequest {
     plcy_no?: string
@@ -38,7 +51,7 @@ export interface LLMGenerationRequest {
     category?: string
     region?: string
     summary?: string
-    blog_json?: {
+    content_data?: {
         conditions?: {
             target?: string
         }
@@ -125,6 +138,7 @@ export interface PostUpdate {
 }
 
 export interface PostFilters {
+    q?: string // Search term for title/summary
     category?: string
     isPublished?: boolean
     limit?: number

@@ -79,7 +79,7 @@ export const CategoryPage = () => {
 
     // Fetch published posts for this category
     const {
-        data: posts,
+        data: postsData,
         isLoading,
         error,
         refetch,
@@ -92,6 +92,8 @@ export const CategoryPage = () => {
             }),
         enabled: !!decodedCategory,
     })
+
+    const posts = postsData?.items || []
 
     const Icon = config.icon
 

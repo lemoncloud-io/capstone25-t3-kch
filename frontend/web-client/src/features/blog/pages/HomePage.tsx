@@ -12,17 +12,19 @@ import type { Post } from '@/shared/api/types'
 export const HomePage = () => {
     // Only show published posts on homepage
     const {
-        data: posts,
+        data: postsData,
         isLoading,
         error,
         refetch,
-    } = useQuery<Post[]>({
+    } = useQuery({
         queryKey: ['posts', 'published'],
         queryFn: () => getPosts({ isPublished: true }),
     })
 
+    const posts = postsData?.items || []
+
     // Get unique categories from posts
-    const categories = Array.from(new Set(posts?.map(p => p.category) || []))
+    const categories = Array.from(new Set(posts.map(p => p.category)))
 
     if (isLoading) {
         return (

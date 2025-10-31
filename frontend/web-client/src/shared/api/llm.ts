@@ -7,26 +7,19 @@ import type {
     FullBlogGenerationResponse,
     RewriteResponse,
 } from './types'
-import { isMockMode } from '../config/env'
-import {
-    mockGenerateTitle,
-    mockGenerateSummary,
-    mockGenerateBlogContent,
-    mockGenerateFullBlog,
-    mockRewriteText,
-} from './mock/llm'
 
 /**
  * Generate blog title from policy data
  */
 export const generateTitle = async (
-    data?: LLMGenerationRequest
+    data: LLMGenerationRequest
 ): Promise<TitleGenerationResponse> => {
-    if (isMockMode()) {
-        return mockGenerateTitle(data)
+    if (!data.plcy_no) {
+        throw new Error('plcy_no is required')
     }
-
-    const response = await apiClient.post<TitleGenerationResponse>('/api/generate-title', data)
+    const response = await apiClient.post<TitleGenerationResponse>(
+        `/api/policies/${data.plcy_no}/content?type=title`
+    )
     return response.data
 }
 
@@ -34,13 +27,14 @@ export const generateTitle = async (
  * Generate blog summary from policy data
  */
 export const generateSummary = async (
-    data?: LLMGenerationRequest
+    data: LLMGenerationRequest
 ): Promise<SummaryGenerationResponse> => {
-    if (isMockMode()) {
-        return mockGenerateSummary(data)
+    if (!data.plcy_no) {
+        throw new Error('plcy_no is required')
     }
-
-    const response = await apiClient.post<SummaryGenerationResponse>('/api/generate-summary', data)
+    const response = await apiClient.post<SummaryGenerationResponse>(
+        `/api/policies/${data.plcy_no}/content?type=summary`
+    )
     return response.data
 }
 
@@ -48,15 +42,13 @@ export const generateSummary = async (
  * Generate blog content from policy data
  */
 export const generateBlogContent = async (
-    data?: LLMGenerationRequest
+    data: LLMGenerationRequest
 ): Promise<BlogContentGenerationResponse> => {
-    if (isMockMode()) {
-        return mockGenerateBlogContent(data)
+    if (!data.plcy_no) {
+        throw new Error('plcy_no is required')
     }
-
     const response = await apiClient.post<BlogContentGenerationResponse>(
-        '/api/generate-blog-content',
-        data
+        `/api/policies/${data.plcy_no}/content?type=blog`
     )
     return response.data
 }
@@ -65,15 +57,13 @@ export const generateBlogContent = async (
  * Generate full blog (title + summary + content) at once
  */
 export const generateFullBlog = async (
-    data?: LLMGenerationRequest
+    data: LLMGenerationRequest
 ): Promise<FullBlogGenerationResponse> => {
-    if (isMockMode()) {
-        return mockGenerateFullBlog(data)
+    if (!data.plcy_no) {
+        throw new Error('plcy_no is required')
     }
-
     const response = await apiClient.post<FullBlogGenerationResponse>(
-        '/api/generate-full-blog',
-        data
+        `/api/policies/${data.plcy_no}/content?type=full`
     )
     return response.data
 }
@@ -82,10 +72,6 @@ export const generateFullBlog = async (
  * Rewrite text with specified tone
  */
 export const rewriteText = async (text: string, tone?: string): Promise<RewriteResponse> => {
-    if (isMockMode()) {
-        return mockRewriteText(text, tone)
-    }
-
     const response = await apiClient.post<RewriteResponse>('/api/rewrite', { text, tone })
     return response.data
 }

@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Edit, Trash2, Eye, Plus, CheckCircle, XCircle, X } from 'lucide-react'
+import { Edit, Trash2, Eye, Plus, CheckCircle, XCircle, X, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { getPosts, deletePost, publishPost, createPost, updatePost } from '@/shared/api'
 import type { Post, PostFilters, PostCreate } from '@/shared/api/types'
 import { toast } from 'sonner'
+
+const PAGE_SIZE = 10
 
 /**
  * Posts Management Page - Admin UI for blog CRUD
@@ -17,8 +19,11 @@ import { toast } from 'sonner'
 export const PostsManagePage = () => {
     // ==================== 1. STATE MANAGEMENT ====================
 
-    const [selectedCategory, setSelectedCategory] = useState<string>('all')
-    const [publishFilter, setPublishFilter] = useState<'all' | 'published' | 'draft'>('all')
+    const [filters, setFilters] = useState<PostFilters>({
+        limit: PAGE_SIZE,
+        offset: 0,
+    })
+    const [searchTerm, setSearchTerm] = useState('')
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingPost, setEditingPost] = useState<Post | null>(null)
     const [formData, setFormData] = useState<PostCreate>({
@@ -31,17 +36,15 @@ export const PostsManagePage = () => {
 
     // ==================== 2. API QUERIES & MUTATIONS ====================
 
-    // Build filters
-    const filters: PostFilters = {}
-    if (selectedCategory !== 'all') filters.category = selectedCategory
-    if (publishFilter === 'published') filters.isPublished = true
-    if (publishFilter === 'draft') filters.isPublished = false
-
-    // Fetch posts
-    const { data: posts, isLoading } = useQuery({
+    // Fetch posts with pagination
+    const { data, isLoading } = useQuery({
         queryKey: ['posts', filters],
         queryFn: () => getPosts(filters),
     })
+
+    const posts = data?.items
+    const total = data?.total || 0
+    const totalPages = Math.ceil(total / PAGE_SIZE)
 
     // Create/Update mutation
     const saveMutation = useMutation({
@@ -90,10 +93,83 @@ export const PostsManagePage = () => {
         },
     })
 
-    // Extract unique categories
+    // Extract unique categories from current posts
     const categories = ['all', ...new Set(posts?.map(post => post.category) || [])]
 
     // ==================== 3. EVENT HANDLERS ====================
+
+    const handleSearch = () => {
+        setFilters(prev => ({
+            ...prev,
+            q: searchTerm || undefined,
+            offset: 0,
+        }))
+    }
+
+    const handleCategoryClick = (category: string) => {
+        setFilters(prev => ({
+            ...prev,
+            category: category === 'all' ? undefined : category,
+            offset: 0,
+        }))
+    }
+
+    const handlePublishFilterClick = (filter: 'all' | 'published' | 'draft') => {
+        setFilters(prev => ({
+            ...prev,
+            isPublished: filter === 'all' ? undefined : filter === 'published',
+            offset: 0,
+        }))
+    }
+
+    const handlePageChange = (page: number) => {
+        setFilters(prev => ({
+            ...prev,
+            offset: (page - 1) * PAGE_SIZE,
+        }))
+    }
+
+    const currentOffset = filters.offset || 0
+    const currentPage = Math.floor(currentOffset / PAGE_SIZE) + 1
+
+    // Generate page numbers to display
+    const getPageNumbers = () => {
+        const pages: (number | string)[] = []
+        const maxVisiblePages = 5
+
+        if (totalPages <= maxVisiblePages + 2) {
+            // Show all pages
+            for (let i = 1; i <= totalPages; i++) {
+                pages.push(i)
+            }
+        } else {
+            // Always show first page
+            pages.push(1)
+
+            if (currentPage > 3) {
+                pages.push('...')
+            }
+
+            // Show pages around current page
+            const start = Math.max(2, currentPage - 1)
+            const end = Math.min(totalPages - 1, currentPage + 1)
+
+            for (let i = start; i <= end; i++) {
+                pages.push(i)
+            }
+
+            if (currentPage < totalPages - 2) {
+                pages.push('...')
+            }
+
+            // Always show last page
+            if (totalPages > 1) {
+                pages.push(totalPages)
+            }
+        }
+
+        return pages
+    }
 
     const openModal = () => {
         setFormData({
@@ -201,7 +277,31 @@ export const PostsManagePage = () => {
             </div>
 
             {/* ========== FILTERS SECTION ========== */}
-            <div className="bg-white rounded-xl shadow-sm p-4 mb-6 space-y-4">
+            <div className="bg-white rounded-xl shadow-sm p-6 mb-6 space-y-4">
+                {/* Search Input */}
+                <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                        <Search
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                            size={20}
+                        />
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                            placeholder="제목 또는 요약으로 검색..."
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                    <button
+                        onClick={handleSearch}
+                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                        검색
+                    </button>
+                </div>
+
                 {/* Publish Status Filter */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -215,9 +315,11 @@ export const PostsManagePage = () => {
                         ].map(({ value, label }) => (
                             <button
                                 key={value}
-                                onClick={() => setPublishFilter(value)}
+                                onClick={() => handlePublishFilterClick(value)}
                                 className={`px-4 py-2 rounded-lg transition ${
-                                    publishFilter === value
+                                    (value === 'all' && filters.isPublished === undefined) ||
+                                    (value === 'published' && filters.isPublished === true) ||
+                                    (value === 'draft' && filters.isPublished === false)
                                         ? 'bg-purple-600 text-white'
                                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
@@ -237,9 +339,9 @@ export const PostsManagePage = () => {
                         {categories.map(category => (
                             <button
                                 key={category}
-                                onClick={() => setSelectedCategory(category)}
+                                onClick={() => handleCategoryClick(category)}
                                 className={`px-4 py-2 rounded-lg transition ${
-                                    selectedCategory === category
+                                    filters.category === category || (!filters.category && category === 'all')
                                         ? 'bg-blue-600 text-white'
                                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
@@ -251,7 +353,13 @@ export const PostsManagePage = () => {
                 </div>
 
                 <div className="text-sm text-gray-500 pt-2 border-t">
-                    총 {posts?.length || 0}개의 포스트
+                    {total > 0 ? (
+                        <>
+                            총 {total}개 중 {currentOffset + 1}-{currentOffset + (posts?.length || 0)}개 표시
+                        </>
+                    ) : (
+                        '검색 결과 없음'
+                    )}
                 </div>
             </div>
 
@@ -273,32 +381,32 @@ export const PostsManagePage = () => {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-50">
+                        <table className="w-full table-auto">
+                            <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-1/4">
                                         제목
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-24">
                                         카테고리
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-24">
                                         상태
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-20">
                                         조회수
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-28">
                                         작성일
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                         작업
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200">
+                            <tbody className="divide-y divide-gray-200 bg-white">
                                 {posts?.map(post => (
-                                    <tr key={post.id} className="hover:bg-gray-50">
+                                    <tr key={post.id} className="hover:bg-blue-50/30 transition-colors duration-150">
                                         <td className="px-6 py-4">
                                             <div className="text-sm font-medium text-gray-900">
                                                 {post.title}
@@ -337,47 +445,65 @@ export const PostsManagePage = () => {
                                                 {new Date(post.createdAt).toLocaleDateString()}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-2">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                {/* 보기 버튼 */}
                                                 <button
                                                     onClick={() => handleViewPost(post)}
-                                                    className="text-blue-600 hover:text-blue-800"
-                                                    title="보기"
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition"
+                                                    title="새 탭에서 포스트 보기"
                                                 >
-                                                    <Eye size={18} />
+                                                    <Eye size={16} />
+                                                    <span>보기</span>
                                                 </button>
+
+                                                {/* 수정 버튼 */}
+                                                <button
+                                                    onClick={() => handleEditPost(post)}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 transition"
+                                                    title="포스트 수정"
+                                                >
+                                                    <Edit size={16} />
+                                                    <span>수정</span>
+                                                </button>
+
+                                                {/* 발행/발행취소 버튼 */}
                                                 <button
                                                     onClick={() => handleTogglePublish(post)}
-                                                    className={`${
+                                                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition ${
                                                         post.isPublished
-                                                            ? 'text-orange-600 hover:text-orange-800'
-                                                            : 'text-green-600 hover:text-green-800'
+                                                            ? 'text-orange-700 bg-orange-50 hover:bg-orange-100'
+                                                            : 'text-green-700 bg-green-50 hover:bg-green-100'
                                                     }`}
                                                     title={
-                                                        post.isPublished ? '발행 취소' : '발행'
+                                                        post.isPublished
+                                                            ? '포스트 발행 취소하기'
+                                                            : '포스트 발행하기'
                                                     }
                                                     disabled={publishMutation.isPending}
                                                 >
                                                     {post.isPublished ? (
-                                                        <XCircle size={18} />
+                                                        <>
+                                                            <XCircle size={16} />
+                                                            <span>발행취소</span>
+                                                        </>
                                                     ) : (
-                                                        <CheckCircle size={18} />
+                                                        <>
+                                                            <CheckCircle size={16} />
+                                                            <span>발행하기</span>
+                                                        </>
                                                     )}
                                                 </button>
-                                                <button
-                                                    onClick={() => handleEditPost(post)}
-                                                    className="text-purple-600 hover:text-purple-800"
-                                                    title="수정"
-                                                >
-                                                    <Edit size={18} />
-                                                </button>
+
+                                                {/* 삭제 버튼 */}
                                                 <button
                                                     onClick={() => handleDeletePost(post)}
-                                                    className="text-red-600 hover:text-red-800"
-                                                    title="삭제"
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    title="포스트 삭제"
                                                     disabled={deleteMutation.isPending}
                                                 >
-                                                    <Trash2 size={18} />
+                                                    <Trash2 size={16} />
+                                                    <span>삭제</span>
                                                 </button>
                                             </div>
                                         </td>
@@ -385,6 +511,46 @@ export const PostsManagePage = () => {
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                )}
+
+                {/* Pagination Controls */}
+                {!isLoading && totalPages > 0 && (
+                    <div className="flex items-center justify-center gap-2 px-6 py-4 border-t border-gray-200">
+                        <button
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        >
+                            <ChevronLeft size={16} />
+                            이전
+                        </button>
+
+                        {getPageNumbers().map((page, index) => (
+                            <button
+                                key={index}
+                                onClick={() => typeof page === 'number' && handlePageChange(page)}
+                                disabled={page === '...'}
+                                className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
+                                    page === currentPage
+                                        ? 'bg-blue-600 text-white'
+                                        : page === '...'
+                                          ? 'cursor-default text-gray-400'
+                                          : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                                }`}
+                            >
+                                {page}
+                            </button>
+                        ))}
+
+                        <button
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        >
+                            다음
+                            <ChevronRight size={16} />
+                        </button>
                     </div>
                 )}
             </div>

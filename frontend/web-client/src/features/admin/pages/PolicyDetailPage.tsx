@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Sparkles, Calendar, MapPin, Tag, DollarSign, Building } from 'lucide-react'
+import { ArrowLeft, Calendar, MapPin, Tag, DollarSign, Building } from 'lucide-react'
 import { getPolicyDetail } from '@/shared/api/policies'
 import { formatPolicyAmount } from '@/shared/utils/currency'
 
@@ -14,10 +14,6 @@ export const PolicyDetailPage = () => {
         enabled: !!plcy_no,
         retry: 1,
     })
-
-    const handleGenerateBlog = () => {
-        navigate(`/admin/llm-test?plcy_no=${plcy_no}`)
-    }
 
     if (error) {
         return (
@@ -52,20 +48,13 @@ export const PolicyDetailPage = () => {
     return (
         <div className="max-w-4xl mx-auto">
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center mb-8">
                 <button
                     onClick={() => navigate('/admin/policies')}
                     className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition"
                 >
                     <ArrowLeft size={20} />
                     <span>목록으로</span>
-                </button>
-                <button
-                    onClick={handleGenerateBlog}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
-                >
-                    <Sparkles size={20} />
-                    블로그 생성
                 </button>
             </div>
 
@@ -79,7 +68,7 @@ export const PolicyDetailPage = () => {
                         <p className="text-sm font-mono text-gray-500">정책번호: {policy.plcy_no}</p>
                     </div>
                     {(policy.category_auto || policy.category) && (
-                        <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-semibold rounded-full">
+                        <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-semibold rounded-full">
                             {policy.category_auto || policy.category}
                         </span>
                     )}
@@ -94,8 +83,8 @@ export const PolicyDetailPage = () => {
                 {/* Metadata Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
                     {policy.region && (
-                        <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                            <MapPin className="text-blue-600" size={20} />
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                            <MapPin className="text-gray-600" size={20} />
                             <div>
                                 <div className="text-xs text-gray-500">지역</div>
                                 <div className="font-medium text-gray-900">{policy.region}</div>
@@ -104,8 +93,8 @@ export const PolicyDetailPage = () => {
                     )}
 
                     {policy.provider && (
-                        <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
-                            <Building className="text-purple-600" size={20} />
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                            <Building className="text-gray-600" size={20} />
                             <div>
                                 <div className="text-xs text-gray-500">제공기관</div>
                                 <div className="font-medium text-gray-900">{policy.provider}</div>
@@ -114,8 +103,8 @@ export const PolicyDetailPage = () => {
                     )}
 
                     {(policy.amount_min || policy.amount_max) && (
-                        <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                            <DollarSign className="text-green-600" size={20} />
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                            <DollarSign className="text-gray-600" size={20} />
                             <div>
                                 <div className="text-xs text-gray-500">지원금액</div>
                                 <div className="font-medium text-gray-900">
@@ -126,8 +115,8 @@ export const PolicyDetailPage = () => {
                     )}
 
                     {(policy.period_start || policy.period_end) && (
-                        <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
-                            <Calendar className="text-yellow-600" size={20} />
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                            <Calendar className="text-gray-600" size={20} />
                             <div>
                                 <div className="text-xs text-gray-500">신청기간</div>
                                 <div className="font-medium text-gray-900">
@@ -139,8 +128,8 @@ export const PolicyDetailPage = () => {
                 </div>
             </div>
 
-            {/* Blog JSON Section */}
-            {policy.blog_json && (
+            {/* Content Data Section */}
+            {policy.content_data && (
                 <div className="bg-white rounded-xl shadow-sm p-8">
                     <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <Tag size={20} className="text-gray-600" />
@@ -148,32 +137,32 @@ export const PolicyDetailPage = () => {
                     </h2>
 
                     <div className="space-y-4">
-                        {policy.blog_json.conditions?.target && (
+                        {policy.content_data.conditions?.target && (
                             <div className="p-4 bg-gray-50 rounded-lg">
                                 <div className="text-sm font-medium text-gray-700 mb-2">
                                     지원 대상
                                 </div>
                                 <div className="text-gray-900">
-                                    {policy.blog_json.conditions.target}
+                                    {policy.content_data.conditions.target}
                                 </div>
                             </div>
                         )}
 
-                        {policy.blog_json.summary && (
+                        {policy.content_data.summary && (
                             <div className="p-4 bg-gray-50 rounded-lg">
                                 <div className="text-sm font-medium text-gray-700 mb-2">
                                     핵심 혜택
                                 </div>
-                                <div className="text-gray-900">{policy.blog_json.summary}</div>
+                                <div className="text-gray-900">{policy.content_data.summary}</div>
                             </div>
                         )}
 
-                        {policy.blog_json.apply?.method && (
+                        {policy.content_data.apply?.method && (
                             <div className="p-4 bg-gray-50 rounded-lg">
                                 <div className="text-sm font-medium text-gray-700 mb-2">
                                     신청 방법
                                 </div>
-                                <div className="text-gray-900">{policy.blog_json.apply.method}</div>
+                                <div className="text-gray-900">{policy.content_data.apply.method}</div>
                             </div>
                         )}
                     </div>
@@ -184,7 +173,7 @@ export const PolicyDetailPage = () => {
                             JSON 원본 보기
                         </summary>
                         <pre className="mt-2 p-4 bg-gray-900 text-gray-100 rounded-lg overflow-x-auto text-xs">
-                            {JSON.stringify(policy.blog_json, null, 2)}
+                            {JSON.stringify(policy.content_data, null, 2)}
                         </pre>
                     </details>
                 </div>

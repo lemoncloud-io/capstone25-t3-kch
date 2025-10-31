@@ -1,45 +1,100 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
-import { Eye, Search, Sparkles } from 'lucide-react'
-import { getPolicies, type PolicyFilters } from '@/shared/api'
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { getPolicies, getPolicyFilterOptions, type PolicyFilters } from '@/shared/api'
 import { formatPolicyAmount } from '@/shared/utils/currency'
-import { toast } from 'sonner'
 
 const MAX_VISIBLE_REGIONS = 10
+const PAGE_SIZE = 10
+
+// Category color mapping for visual distinction
+const getCategoryColor = (category: string): string => {
+    const categoryMap: Record<string, string> = {
+        '취업': 'bg-blue-100 text-blue-700 border-blue-200',
+        '일자리': 'bg-blue-100 text-blue-700 border-blue-200',
+        '주거': 'bg-green-100 text-green-700 border-green-200',
+        '복지': 'bg-purple-100 text-purple-700 border-purple-200',
+        '생활': 'bg-purple-100 text-purple-700 border-purple-200',
+        '교육': 'bg-orange-100 text-orange-700 border-orange-200',
+        '금융': 'bg-teal-100 text-teal-700 border-teal-200',
+        '창업': 'bg-pink-100 text-pink-700 border-pink-200',
+        '문화': 'bg-indigo-100 text-indigo-700 border-indigo-200',
+        '참여': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    }
+
+    // Find matching category
+    for (const [key, value] of Object.entries(categoryMap)) {
+        if (category.includes(key)) {
+            return value
+        }
+    }
+
+    return 'bg-gray-100 text-gray-700 border-gray-200' // default
+}
+
+// Region button color mapping for visual variety
+const getRegionButtonColor = (region: string, isActive: boolean): string => {
+    if (isActive) {
+        const activeColors: Record<string, string> = {
+            '전국': 'bg-blue-600 text-white',
+            '서울': 'bg-purple-600 text-white',
+            '부산': 'bg-cyan-600 text-white',
+            '대구': 'bg-pink-600 text-white',
+            '인천': 'bg-indigo-600 text-white',
+            '광주': 'bg-orange-600 text-white',
+            '대전': 'bg-teal-600 text-white',
+            '울산': 'bg-emerald-600 text-white',
+            '세종': 'bg-violet-600 text-white',
+            '경기': 'bg-rose-600 text-white',
+        }
+        return activeColors[region] || 'bg-blue-600 text-white'
+    }
+
+    const inactiveColors: Record<string, string> = {
+        '전국': 'bg-blue-50 text-blue-700 hover:bg-blue-100',
+        '서울': 'bg-purple-50 text-purple-700 hover:bg-purple-100',
+        '부산': 'bg-cyan-50 text-cyan-700 hover:bg-cyan-100',
+        '대구': 'bg-pink-50 text-pink-700 hover:bg-pink-100',
+        '인천': 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100',
+        '광주': 'bg-orange-50 text-orange-700 hover:bg-orange-100',
+        '대전': 'bg-teal-50 text-teal-700 hover:bg-teal-100',
+        '울산': 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+        '세종': 'bg-violet-50 text-violet-700 hover:bg-violet-100',
+        '경기': 'bg-rose-50 text-rose-700 hover:bg-rose-100',
+    }
+    return inactiveColors[region] || 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+}
 
 export const PoliciesManagePage = () => {
     const navigate = useNavigate()
     const [filters, setFilters] = useState<PolicyFilters>({
-        limit: 20,
+        limit: PAGE_SIZE,
         offset: 0,
     })
     const [searchTerm, setSearchTerm] = useState('')
 
-    const { data: policies, isLoading, error } = useQuery({
+    // Fetch filter options (static, cached)
+    const { data: filterOptions } = useQuery({
+        queryKey: ['policyFilterOptions'],
+        queryFn: getPolicyFilterOptions,
+        staleTime: Infinity, // Never refetch - these are static options
+    })
+
+    // Fetch policies data
+    const { data, isLoading, error } = useQuery({
         queryKey: ['policies', filters],
         queryFn: () => getPolicies(filters),
         retry: 1,
     })
 
-    // Extract unique regions and categories with proper type guards
-    const regions = [
-        'all',
-        ...new Set(
-            policies
-                ?.map(p => p.region)
-                .filter((region): region is string => region !== null && region !== undefined) ?? []
-        ),
-    ]
+    const policies = data?.items
+    const total = data?.total || 0
+    const totalPages = Math.ceil(total / PAGE_SIZE)
 
-    const categories = [
-        'all',
-        ...new Set(
-            policies
-                ?.map(p => p.category_auto || p.category)
-                .filter((cat): cat is string => cat !== null && cat !== undefined) ?? []
-        ),
-    ]
+    // Use static filter options from API
+    const regions = ['all', ...(filterOptions?.regions || [])]
+    const categories = ['all', ...(filterOptions?.categories || [])]
 
     const handleSearch = () => {
         setFilters(prev => ({
@@ -65,12 +120,62 @@ export const PoliciesManagePage = () => {
         }))
     }
 
-    const handleViewDetail = (plcy_no: string) => {
+    const handlePageChange = (page: number) => {
+        setFilters(prev => ({
+            ...prev,
+            offset: (page - 1) * PAGE_SIZE,
+        }))
+    }
+
+    const handleRowClick = (plcy_no: string) => {
         navigate(`/admin/policies/${plcy_no}`)
     }
 
-    const handleGenerateBlog = (plcy_no: string) => {
+    const handleGenerateBlog = (e: React.MouseEvent, plcy_no: string) => {
+        e.stopPropagation() // Prevent row click event
         navigate(`/admin/policies/llm-test?plcy_no=${plcy_no}`)
+    }
+
+    const currentOffset = filters.offset || 0
+    const currentPage = Math.floor(currentOffset / PAGE_SIZE) + 1
+
+    // Generate page numbers to display
+    const getPageNumbers = () => {
+        const pages: (number | string)[] = []
+        const maxVisiblePages = 5
+
+        if (totalPages <= maxVisiblePages + 2) {
+            // Show all pages
+            for (let i = 1; i <= totalPages; i++) {
+                pages.push(i)
+            }
+        } else {
+            // Always show first page
+            pages.push(1)
+
+            if (currentPage > 3) {
+                pages.push('...')
+            }
+
+            // Show pages around current page
+            const start = Math.max(2, currentPage - 1)
+            const end = Math.min(totalPages - 1, currentPage + 1)
+
+            for (let i = start; i <= end; i++) {
+                pages.push(i)
+            }
+
+            if (currentPage < totalPages - 2) {
+                pages.push('...')
+            }
+
+            // Always show last page
+            if (totalPages > 1) {
+                pages.push(totalPages)
+            }
+        }
+
+        return pages
     }
 
     if (error) {
@@ -119,19 +224,19 @@ export const PoliciesManagePage = () => {
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">지역</label>
                     <div className="flex flex-wrap gap-2">
-                        {regions.slice(0, MAX_VISIBLE_REGIONS).map(region => (
-                            <button
-                                key={region}
-                                onClick={() => handleRegionClick(region)}
-                                className={`px-3 py-1.5 rounded-lg text-sm transition ${
-                                    filters.region === region || (!filters.region && region === 'all')
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
-                            >
-                                {region === 'all' ? '전체' : region}
-                            </button>
-                        ))}
+                        {regions.slice(0, MAX_VISIBLE_REGIONS).map(region => {
+                            const isActive = filters.region === region || (!filters.region && region === 'all')
+                            const displayName = region === 'all' ? '전체' : region
+                            return (
+                                <button
+                                    key={region}
+                                    onClick={() => handleRegionClick(region)}
+                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${getRegionButtonColor(displayName, isActive)}`}
+                                >
+                                    {displayName}
+                                </button>
+                            )
+                        })}
                     </div>
                 </div>
 
@@ -139,24 +244,55 @@ export const PoliciesManagePage = () => {
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">카테고리</label>
                     <div className="flex flex-wrap gap-2">
-                        {categories.map(category => (
-                            <button
-                                key={category}
-                                onClick={() => handleCategoryClick(category)}
-                                className={`px-3 py-1.5 rounded-lg text-sm transition ${
-                                    filters.category_auto === category || (!filters.category_auto && category === 'all')
-                                        ? 'bg-green-600 text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
-                            >
-                                {category === 'all' ? '전체' : category}
-                            </button>
-                        ))}
+                        {categories.map(category => {
+                            const isActive = filters.category_auto === category || (!filters.category_auto && category === 'all')
+                            const displayName = category === 'all' ? '전체' : category
+
+                            // Get color for active state
+                            let buttonClass = ''
+                            if (isActive) {
+                                if (displayName === '전체') {
+                                    buttonClass = 'bg-gray-700 text-white'
+                                } else {
+                                    // Extract base color from getCategoryColor
+                                    const colorClass = getCategoryColor(displayName)
+                                    if (colorClass.includes('blue')) buttonClass = 'bg-blue-600 text-white'
+                                    else if (colorClass.includes('green')) buttonClass = 'bg-green-600 text-white'
+                                    else if (colorClass.includes('purple')) buttonClass = 'bg-purple-600 text-white'
+                                    else if (colorClass.includes('orange')) buttonClass = 'bg-orange-600 text-white'
+                                    else if (colorClass.includes('teal')) buttonClass = 'bg-teal-600 text-white'
+                                    else if (colorClass.includes('pink')) buttonClass = 'bg-pink-600 text-white'
+                                    else if (colorClass.includes('indigo')) buttonClass = 'bg-indigo-600 text-white'
+                                    else if (colorClass.includes('yellow')) buttonClass = 'bg-yellow-600 text-white'
+                                    else buttonClass = 'bg-gray-600 text-white'
+                                }
+                            } else {
+                                // Inactive colors
+                                const colorClass = getCategoryColor(displayName)
+                                buttonClass = colorClass.replace('border-', '').replace(/border-\w+-\d+/, '').replace('100', '50').replace('700', '700') + ' hover:' + colorClass.replace('border-', '').replace(/border-\w+-\d+/, '').replace('50', '100')
+                            }
+
+                            return (
+                                <button
+                                    key={category}
+                                    onClick={() => handleCategoryClick(category)}
+                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${buttonClass}`}
+                                >
+                                    {displayName}
+                                </button>
+                            )
+                        })}
                     </div>
                 </div>
 
                 <div className="text-sm text-gray-500 pt-2 border-t">
-                    총 {policies?.length || 0}개의 정책
+                    {total > 0 ? (
+                        <>
+                            총 {total}개 중 {currentOffset + 1}-{currentOffset + (policies?.length || 0)}개 표시
+                        </>
+                    ) : (
+                        '검색 결과 없음'
+                    )}
                 </div>
             </div>
 
@@ -178,32 +314,36 @@ export const PoliciesManagePage = () => {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-50">
+                        <table className="w-full table-auto">
+                            <thead className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-32">
                                         정책번호
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                         제목
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-28">
                                         지역
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-32">
                                         카테고리
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-36">
                                         지원금액
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        작업
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-32">
+                                        LLM 생성
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200">
+                            <tbody className="divide-y divide-gray-200 bg-white">
                                 {policies?.map(policy => (
-                                    <tr key={policy.plcy_no} className="hover:bg-gray-50">
+                                    <tr
+                                        key={policy.plcy_no}
+                                        onClick={() => handleRowClick(policy.plcy_no)}
+                                        className="hover:bg-gradient-to-r hover:from-blue-50 hover:via-indigo-50/30 hover:to-transparent cursor-pointer transition-all duration-200"
+                                    >
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className="text-xs font-mono text-gray-600">
                                                 {policy.plcy_no}
@@ -221,31 +361,24 @@ export const PoliciesManagePage = () => {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {(policy.category_auto || policy.category) && (
-                                                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                                                <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${getCategoryColor(policy.category_auto || policy.category || '')}`}>
                                                     {policy.category_auto || policy.category}
                                                 </span>
                                             )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="text-sm text-gray-600">
+                                            <span className="text-sm font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
                                                 {formatPolicyAmount(policy.amount_min, policy.amount_max)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center justify-center">
                                                 <button
-                                                    onClick={() => handleViewDetail(policy.plcy_no)}
-                                                    className="text-blue-600 hover:text-blue-800"
-                                                    title="상세보기"
+                                                    onClick={(e) => handleGenerateBlog(e, policy.plcy_no)}
+                                                    className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg hover:from-violet-700 hover:to-indigo-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                                                    title="LLM 콘텐츠 생성기"
                                                 >
-                                                    <Eye size={18} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleGenerateBlog(policy.plcy_no)}
-                                                    className="text-purple-600 hover:text-purple-800"
-                                                    title="블로그 생성"
-                                                >
-                                                    <Sparkles size={18} />
+                                                    ✨ 생성
                                                 </button>
                                             </div>
                                         </td>
@@ -253,6 +386,46 @@ export const PoliciesManagePage = () => {
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                )}
+
+                {/* Pagination Controls */}
+                {!isLoading && totalPages > 0 && (
+                    <div className="flex items-center justify-center gap-2 px-6 py-4 border-t border-gray-200">
+                        <button
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        >
+                            <ChevronLeft size={16} />
+                            이전
+                        </button>
+
+                        {getPageNumbers().map((page, index) => (
+                            <button
+                                key={index}
+                                onClick={() => typeof page === 'number' && handlePageChange(page)}
+                                disabled={page === '...'}
+                                className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
+                                    page === currentPage
+                                        ? 'bg-blue-600 text-white'
+                                        : page === '...'
+                                          ? 'cursor-default text-gray-400'
+                                          : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                                }`}
+                            >
+                                {page}
+                            </button>
+                        ))}
+
+                        <button
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        >
+                            다음
+                            <ChevronRight size={16} />
+                        </button>
                     </div>
                 )}
             </div>

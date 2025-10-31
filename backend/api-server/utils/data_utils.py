@@ -18,7 +18,7 @@ def get_dummy_policy_data() -> Dict[str, Any]:
         "period_end": "2023-12-31",
         "provider": "서울시청",
         "summary": "미래 디지털 인재 양성을 위한 교육 프로그램입니다. 수료 시 인턴십 기회와 취업 연계 혜택을 제공합니다.",
-        "blog_json": {
+        "content_data": {
             "conditions": {
                 "target": "만 18세 이상 34세 이하 서울시 거주 청년 중 미취업자"
             },
@@ -31,7 +31,7 @@ def get_dummy_policy_data() -> Dict[str, Any]:
 
 def get_dummy_policy_data_full() -> Dict[str, Any]:
     """
-    블로그 본문 생성을 위한 더미 정책 데이터 (blog_json 포함)
+    블로그 본문 생성을 위한 더미 정책 데이터 (content_data 포함)
     """
     return {
         "plcy_no": "20230002",
@@ -45,7 +45,7 @@ def get_dummy_policy_data_full() -> Dict[str, Any]:
         "period_end": "2023-12-31",
         "provider": "경기도청",
         "summary": "분기별 25만원씩 연 100만원을 지역화폐로 지급하여 청년의 사회활동을 지원합니다.",
-        "blog_json": {
+        "content_data": {
             "conditions": {
                 "target": "만 24세 경기도 거주 청년 (3년 이상 계속 거주 또는 합산 10년 이상 거주)"
             },
