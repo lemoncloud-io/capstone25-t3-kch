@@ -1,129 +1,182 @@
+import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import { Calendar, Eye, ChevronRight, TrendingUp } from 'lucide-react'
-import { getPosts, type Post } from '@/shared/api/posts'
+import { Home, BookOpen, Briefcase, ArrowLeft, Calendar, Eye, Heart, Users } from 'lucide-react'
+import { getPosts } from '@/shared/api/posts'
+// ⭐️ 전체 카테고리 정보 정의 (띄어쓰기 제거된 원래의 name 값으로 복원)
+const categoryInfo = {
+employment: {
+name: '일자리지원', // 띄어쓰기 없음
+icon: Briefcase,
+description: '취업 알선, 직업 훈련 등 일자리 관련 정책을 확인하세요.',
+color: 'bg-red-100 text-red-700',
+},
+housing: {
+name: '주거지원', // 띄어쓰기 없음
+icon: Home,
+description: '청년들을 위한 주거 지원 정책을 확인하세요.',
+color: 'bg-blue-100 text-blue-700',
+},
+education: {
+name: '교육지원', // 띄어쓰기 없음
+icon: BookOpen,
+description: '학자금, 장학금, 교육 프로그램 지원 정보를 찾아보세요.',
+color: 'bg-green-100 text-green-700',
+},
+'welfare-culture': {
+name: '복지문화지원', // 띄어쓰기 없음
+icon: Heart,
+description: '문화생활, 여가 활동, 복지 혜택 등 다양한 지원 정보를 확인하세요.',
+color: 'bg-purple-100 text-purple-700',
+},
+'participation-rights': {
+name: '참여권리지원', // 띄어쓰기 없음
+icon: Users,
+description: '청년 정책 제안, 봉사 활동 등 사회 참여 기회와 권리 정보를 확인하세요.',
+color: 'bg-orange-100 text-orange-700',
+},
+}
+export default function CategoryPage() {
+const { category } = useParams<{ category: string }>()
+const info = categoryInfo[category as keyof typeof categoryInfo]
 
-export default function HomePage() {
-    const { data: posts, isLoading } = useQuery<Post[]>({
-        queryKey: ['posts'],
-        queryFn: () => getPosts(),
-    })
+const { data: posts, isLoading } = useQuery({
+    queryKey: ['posts', 'category', category],
+    // ⭐️ getPosts 함수에 띄어쓰기 없는 카테고리 '이름'으로 조회하도록 전달
+    queryFn: () => getPosts({ category: info?.name }), 
+    enabled: !!category && !!info,
+})
 
-    if (isLoading) {
-        return (
-            <div className="space-y-6">
-                {[1, 2, 3].map(i => (
-                    <div key={i} className="bg-white rounded-lg p-6 animate-pulse">
-                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+if (!info) {
+    return (
+        <div className="min-h-[60vh] flex flex-col items-center justify-center">
+            <h1 className="text-2xl font-bold text-gray-800 mb-4">존재하지 않는 카테고리입니다</h1>
+            <Link to="/" className="flex items-center text-blue-600 hover:text-blue-700">
+                <ArrowLeft size={20} className="mr-2" />
+                홈으로 돌아가기
+            </Link>
+        </div>
+    )
+}
+
+const Icon = info.icon
+
+if (isLoading) {
+    return (
+        <div>
+            {/* 카테고리 헤더 */}
+            <div className="mb-8">
+                <div className="animate-pulse">
+                    <div className="h-10 bg-gray-200 rounded w-48 mb-4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-96"></div>
+                </div>
+            </div>
+
+            {/* 포스트 스켈레톤 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                    <div key={i} className="bg-white rounded-lg shadow-sm p-6 animate-pulse">
+                        <div className="w-full aspect-square bg-gray-200 rounded mb-4"></div>
+                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
                         <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                     </div>
                 ))}
             </div>
-        )
-    }
-
-    const featuredPost: Post | undefined = posts?.[0]
-
-    return (
-        <div>
-            {/* Hero Section */}
-            <section className="mb-12">
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 sm:p-12 text-white">
-                    <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">Title</h1>
-                    <p className="text-lg sm:text-xl mb-6 opacity-90">Description</p>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <Link
-                            to="/category/housing"
-                            className="inline-flex items-center justify-center px-6 py-3 bg-white text-blue-600 rounded-lg font-semibold hover:bg-gray-100 transition"
-                        >
-                            주거지원 보기
-                            <ChevronRight className="ml-2" size={20} />
-                        </Link>
-                        <Link
-                            to="/category/education"
-                            className="inline-flex items-center justify-center px-6 py-3 bg-blue-700 text-white rounded-lg font-semibold hover:bg-blue-800 transition"
-                        >
-                            교육지원 보기
-                            <ChevronRight className="ml-2" size={20} />
-                        </Link>
-                    </div>
-                </div>
-            </section>
-
-            {featuredPost && (
-                <section className="mb-12">
-                    <div className="flex items-center mb-6">
-                        <TrendingUp className="text-red-500 mr-2" size={24} />
-                        <h2 className="text-2xl font-bold">인기 포스트</h2>
-                    </div>
-                    <Link to={`/posts/${featuredPost.slug}`}>
-                        <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden">
-                            <div className="md:flex">
-                                <div className="md:w-2/5">
-                                    <img
-                                        src={featuredPost.thumbnail}
-                                        alt={featuredPost.title}
-                                        className="w-full h-48 md:h-full object-cover"
-                                    />
-                                </div>
-                                <div className="p-6 md:w-3/5">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                                            {featuredPost.category}
-                                        </span>
-                                        <span className="text-gray-500 text-sm">
-                                            조회 {featuredPost.viewCount.toLocaleString()}회
-                                        </span>
-                                    </div>
-                                    <h3 className="text-xl sm:text-2xl font-bold mb-3 hover:text-blue-600 transition">
-                                        {featuredPost.title}
-                                    </h3>
-                                    <p className="text-gray-600 mb-4 line-clamp-2">{featuredPost.summary}</p>
-                                    <div className="flex items-center text-sm text-gray-500">
-                                        <Calendar size={16} className="mr-1" />
-                                        {new Date(featuredPost.createdAt).toLocaleDateString()}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </Link>
-                </section>
-            )}
-
-            {/* Recent Posts Grid */}
-            <section>
-                <h2 className="text-2xl font-bold mb-6">최신 포스트</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {posts?.slice(1).map(post => (
-                        <Link key={post.id} to={`/posts/${post.slug}`}>
-                            <article className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden h-full">
-                                <img src={post.thumbnail} alt={post.title} className="w-full h-48 object-cover" />
-                                <div className="p-6">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                                            {post.category}
-                                        </span>
-                                    </div>
-                                    <h3 className="font-bold mb-2 line-clamp-2 hover:text-blue-600 transition">
-                                        {post.title}
-                                    </h3>
-                                    <p className="text-gray-600 text-sm line-clamp-2 mb-4">{post.summary}</p>
-                                    <div className="flex items-center justify-between text-xs text-gray-500">
-                                        <span className="flex items-center">
-                                            <Calendar size={14} className="mr-1" />
-                                            {new Date(post.createdAt).toLocaleDateString()}
-                                        </span>
-                                        <span className="flex items-center">
-                                            <Eye size={14} className="mr-1" />
-                                            {post.viewCount.toLocaleString()}
-                                        </span>
-                                    </div>
-                                </div>
-                            </article>
-                        </Link>
-                    ))}
-                </div>
-            </section>
         </div>
     )
+}
+
+return (
+    <div>
+        {/* 카테고리 헤더 */}
+        <div className="mb-8">
+            <div className="flex items-center gap-2 mb-2">
+                <Link to="/" className="text-gray-500 hover:text-gray-700 transition-colors">
+                    홈
+                </Link>
+                <span className="text-gray-400">/</span>
+                <span className="text-gray-900">{info.name}</span>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm p-6 md:p-8">
+                <div className="flex items-start gap-4">
+                    <div className={`p-3 rounded-lg ${info.color}`}>
+                        <Icon size={32} />
+                    </div>
+                    <div className="flex-1">
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{info.name}</h1>
+                        <p className="text-gray-600">{info.description}</p>
+                        <div className="mt-4 text-sm text-gray-500">총 {posts?.length || 0}개의 정책</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {/* 포스트 목록 */}
+        {posts && posts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {posts.map(post => (
+                    <Link key={post.id} to={`/posts/${post.slug}`}>
+                        <article className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden h-full">
+                            {post.thumbnail && (
+                                <div className="w-full aspect-square overflow-hidden bg-gray-100">
+                                    <img
+                                        src={post.thumbnail}
+                                        alt={post.title}
+                                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                                    />
+                                </div>
+                            )}
+
+                            <div className="p-6">
+                                {/* 카테고리 뱃지 */}
+                                <div className="mb-3">
+                                    <span
+                                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${info.color}`}
+                                    >
+                                        {info.name}
+                                    </span>
+                                </div>
+
+                                {/* 제목 */}
+                                <h2 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 hover:text-blue-600 transition-colors">
+                                    {post.title}
+                                </h2>
+
+                                {/* 요약 */}
+                                <p className="text-gray-600 text-sm line-clamp-3 mb-4">{post.summary}</p>
+
+                                {/* 메타 정보 */}
+                                <div className="flex items-center justify-between text-xs text-gray-500">
+                                    <span className="flex items-center">
+                                        <Calendar size={14} className="mr-1" />
+                                        {new Date(post.createdAt).toLocaleDateString()}
+                                    </span>
+                                    <span className="flex items-center">
+                                        <Eye size={14} className="mr-1" />
+                                        {post.viewCount.toLocaleString()}
+                                    </span>
+                                </div>
+                            </div>
+                        </article>
+                    </Link>
+                ))}
+            </div>
+        ) : (
+            <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+                <div className={`inline-flex p-4 rounded-full ${info.color} mb-4`}>
+                    <Icon size={48} />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">아직 등록된 정책이 없습니다</h2>
+                <p className="text-gray-600 mb-6">
+                    {info.name} 카테고리에 새로운 정책이 등록되면 여기에 표시됩니다.
+                </p>
+                <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium">
+                    <ArrowLeft size={20} className="mr-2" />
+                    다른 정책 둘러보기
+                </Link>
+            </div>
+        )}
+    </div>
+)
+
 }
