@@ -1,7 +1,28 @@
+# jobs/ontong/storage_pg.py
+import os
 import json
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker
 
+load_dotenv()
+
+# === DB 연결 설정 ===
+DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("DB_URL")
+
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL 또는 DB_URL 환경 변수가 설정되지 않았습니다.")
+
+# SQLAlchemy 엔진 및 세션 설정
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+def get_session():
+    """DB 세션을 반환합니다."""
+    return SessionLocal()
+
+# === 테이블 DDL 정의 ===
 DDL_RAW = """
 CREATE TABLE IF NOT EXISTS policy_raw(
   id SERIAL PRIMARY KEY,
@@ -43,7 +64,9 @@ def init_postgres(db_url: str) -> Engine:
     with engine.begin() as conn:
         conn.execute(text(DDL_RAW))
         conn.execute(text(DDL_CLEAN))
-        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_policy_raw_content_hash ON policy_raw(content_hash);"))
+        conn.execute(
+            text("CREATE UNIQUE INDEX IF NOT EXISTS uq_policy_raw_content_hash ON policy_raw(content_hash);")
+        )
     return engine
 
 def upsert_raw_pg(engine: Engine, item: dict, plcy_no: str, title: str, content_hash: str):
