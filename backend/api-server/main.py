@@ -8,7 +8,7 @@ from openai import OpenAI
 
 from schemas import RewriteReq
 
-# 1) .env 로드: backend/api-server/.env 우선, 없으면 루트 .env 폴백
+# .env 로드: backend/api-server/.env 우선, 없으면 루트 .env 폴백
 BACKEND_ENV = Path(__file__).resolve().parent / ".env"           # backend/api-server/.env
 ROOT_ENV    = Path(__file__).resolve().parents[2] / ".env"       # blog-platform/.env
 
@@ -17,7 +17,7 @@ if BACKEND_ENV.exists():
 elif ROOT_ENV.exists():
     load_dotenv(dotenv_path=ROOT_ENV)
 
-# 2) OpenAI 클라이언트 헬퍼 (요청 시점 생성)
+# OpenAI 클라이언트 헬퍼 (요청 시점 생성)
 def get_openai_client() -> OpenAI:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -26,10 +26,10 @@ def get_openai_client() -> OpenAI:
 
 sys.path.append(os.path.dirname(__file__))
 
-# 3) FastAPI 앱 초기화
+# FastAPI 앱 초기화
 app = FastAPI(title="Blog API Server")
 
-# 4) 환경 로그 (API 키 값은 직접 출력하지 않음)
+# 환경 로그 (API 키 값은 직접 출력하지 않음)
 print("=== Backend Environment Variables ===")
 print(f"NODE_ENV: {os.getenv('NODE_ENV', 'not set')}")
 print(f"VERSION: {os.getenv('VERSION', 'not set')}")
@@ -38,7 +38,7 @@ print(f"WEB_ORIGIN: {os.getenv('WEB_ORIGIN', 'not set')}")
 print(f"OPENAI_API_KEY: {'set' if os.getenv('OPENAI_API_KEY') else 'not set'}")
 print("=====================================")
 
-# 5) CORS 설정
+# CORS 설정
 web_origin = os.getenv("WEB_ORIGIN") or "http://localhost:5173"
 app.add_middleware(
     CORSMiddleware,
@@ -48,7 +48,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 6) 기본 라우트
+# 기본 라우트
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
@@ -57,12 +57,16 @@ async def root():
 async def health_check():
     return {"status": "ok", "message": "서버가 정상 작동 중입니다"}
   
-# 6-1) 정책 라우터 연결
+# 정책 라우터 연결
 from routes.policies import router as policies_router
 app.include_router(policies_router, prefix="/api")
 
+from routes import thumbnails, thumbnails_auto
+app.include_router(thumbnails.router, prefix="/api")
+app.include_router(thumbnails_auto.router, prefix="/api")
 
-# 7) OpenAI Ping API
+
+# OpenAI Ping API
 @app.get("/openai/ping")
 async def openai_ping():
     client = get_openai_client()
@@ -75,7 +79,7 @@ async def openai_ping():
     text = (rsp.choices[0].message.content or "").strip()
     return {"ok": text == "PONG", "text": text, "model": rsp.model}
 
-# 8) Rewrite API
+# Rewrite API
 @app.post("/api/rewrite")
 async def rewrite_api(req: RewriteReq):
     client = get_openai_client()
