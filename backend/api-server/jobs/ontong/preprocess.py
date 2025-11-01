@@ -1,7 +1,38 @@
 import re
 from typing import Optional, Tuple, Dict, Any
 from .zipmap_prefix import zip_list_to_region_by_prefix
+# ===== SQLAlchemy ORM for policy_clean =====
+from sqlalchemy import Column, Integer, String, JSON, TIMESTAMP, text
+from sqlalchemy.orm import declarative_base
 
+Base = declarative_base()
+
+class PolicyClean(Base):
+    __tablename__ = "policy_clean"
+
+    id = Column(Integer, primary_key=True)
+    plcy_no = Column(String, unique=True)
+    title = Column(String)
+    category = Column(String)
+    subcategory = Column(String)
+    category_auto = Column(String)
+    region = Column(String)
+    target_group = Column(String)
+    amount_min = Column(Integer)
+    amount_max = Column(Integer)
+    apply_method = Column(String)
+    apply_url = Column(String)
+    period_start = Column(String)
+    period_end = Column(String)
+    provider = Column(String)
+    summary = Column(String)
+    clean_json = Column(JSON)
+    content_data = Column(JSON)
+    quality_json = Column(JSON)
+    updated_at = Column(TIMESTAMP, server_default=text("NOW()"))
+
+    def __repr__(self):
+        return f"<PolicyClean plcy_no={self.plcy_no} title={self.title}>"
 
 
 # 날짜/금액 정규화 -------------------------
