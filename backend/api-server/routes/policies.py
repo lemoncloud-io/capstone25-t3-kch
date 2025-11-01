@@ -27,7 +27,7 @@ class PolicyCleanOut(BaseModel):
     period_end: Optional[str] = None
     provider: Optional[str] = None
     summary: Optional[str] = None
-    blog_json: Optional[Any] = None   # 프론트가 바로 쓰게 전체 전달
+    content_data: Optional[Any] = None   # 프론트가 바로 쓰게 전체 전달
 
 # 목록 API (/api/policies)
 @router.get("/policies", response_model=List[PolicyCleanOut])
@@ -61,7 +61,7 @@ def list_policies(
           amount_min, amount_max,
           period_start AS period_start,
           period_end   AS period_end,
-          provider, summary, blog_json
+          provider, summary, content_data
         FROM policy_clean
         {where}
         ORDER BY updated_at DESC NULLS LAST
@@ -83,7 +83,7 @@ def get_policy(plcy_no: str):
           amount_min, amount_max,
           period_start AS period_start,
           period_end   AS period_end,
-          provider, summary, blog_json
+          provider, summary, content_data
         FROM policy_clean
         WHERE plcy_no = :plcy_no
         LIMIT 1

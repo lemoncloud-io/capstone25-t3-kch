@@ -61,6 +61,11 @@ async def health_check():
 from routes.policies import router as policies_router
 app.include_router(policies_router, prefix="/api")
 
+# 프롬프트 라우터 연결 (develop)
+from routes.prompts import router as prompts_router
+app.include_router(prompts_router, prefix="/api")
+
+# 썸네일 라우터 연결 (feat/thumbnails)
 from routes import thumbnails, thumbnails_auto
 app.include_router(thumbnails.router, prefix="/api")
 app.include_router(thumbnails_auto.router, prefix="/api")

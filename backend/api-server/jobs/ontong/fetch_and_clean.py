@@ -1,7 +1,7 @@
 import os, time, requests, json, hashlib
 from dotenv import load_dotenv
 from .utils import log
-from .preprocess import extract_clean_fields, build_blog_json
+from .preprocess import extract_clean_fields, build_content_data
 from .quality import run_quality_checks
 from .storage_pg import init_postgres, upsert_raw_pg, upsert_clean_pg
 
@@ -66,7 +66,7 @@ def main():
 
             # 정제/분류/핵심 JSON
             clean = extract_clean_fields(it)
-            blog_json = build_blog_json(clean)
+            content_data = build_content_data(clean)
 
             # 품질 점검
             quality_json = run_quality_checks(it, clean)
@@ -75,7 +75,7 @@ def main():
 
             # CLEAN 저장
             if engine is not None:
-                upsert_clean_pg(engine, clean, plcy_no, blog_json, quality_json)
+                upsert_clean_pg(engine, clean, plcy_no, content_data, quality_json)
 
             processed += 1
             log(f"saved {plcy_no} | {clean['title']} | amt=({clean.get('amount_min')}, {clean.get('amount_max')}) | cat={clean.get('category_auto')}")
