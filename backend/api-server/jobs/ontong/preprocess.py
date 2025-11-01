@@ -226,10 +226,28 @@ def classify_category_by_keywords(texts: list[str]) -> str:
 def summarize_target(item: dict) -> str:
     min_age = (item.get("sprtTrgtMinAge") or "").strip()
     max_age = (item.get("sprtTrgtMaxAge") or "").strip()
+    
+    # "0"을 빈 값으로 처리
+    if min_age == "0":
+        min_age = ""
+    if max_age == "0":
+        max_age = ""
+    
     etc = clean_text(item.get("addAplyQlfcCndCn"))
     parts = []
+    
+    # 연령 정보 처리
     if min_age or max_age:
-        parts.append(f"연령 {min_age}~{max_age}".strip("~"))
+        # 너무 광범위한 연령(99세 이상)은 별도 확인 필요로 표시
+        try:
+            if max_age and int(max_age) >= 99:
+                parts.append("연령 제한은 공식 사이트에서 확인 필요")
+            else:
+                parts.append(f"연령 {min_age}~{max_age}".strip("~"))
+        except (ValueError, TypeError):
+            # 숫자로 변환 불가능한 경우 그냥 표시
+            parts.append(f"연령 {min_age}~{max_age}".strip("~"))
+    
     if etc:
         parts.append(etc[:160])
     return ", ".join([p for p in parts if p])
