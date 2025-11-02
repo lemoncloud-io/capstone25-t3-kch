@@ -4,6 +4,69 @@
 
 ## 변경 이력 (Changelog)
 
+### 2025.11.02 - 블로그 자동 생성 시스템 구축
+
+#### 주요 변경사항
+
+**feat(blog): LLM 블로그 자동 생성 파이프라인 구축**
+- `blog_posts` 테이블 설계 및 생성
+  - LLM 생성 컨텐츠: blog_title, blog_summary, blog_content
+  - 메타 정보: category, region, keywords (배열)
+  - 생성 추적: generated_at, updated_at, generation_status
+  - 에러 로깅: error_message
+  - 인덱스: plcy_no, category, region, generated_at
+  - 자동 updated_at 트리거 구현
+
+**feat(batch): 블로그 일괄 생성 스크립트**
+- `generate_all_blogs.py` 구현
+  - 100개 정책 데이터 자동 조회 및 LLM 호출
+  - Rate limit 방어 (0.5초 간격)
+  - 중복 생성 방지 옵션 (`--no-skip`)
+  - 에러 핸들링 및 상세 로깅
+  - 테스트 모드 지원 (`--limit N`)
+- 명령어 옵션
+  ```bash
+  # 신규 정책만 생성 (기본)
+  python -m jobs.blog.generate_all_blogs
+  
+  # 전체 재생성
+  python -m jobs.blog.generate_all_blogs --no-skip
+  
+  # 테스트 (10개만)
+  python -m jobs.blog.generate_all_blogs --limit 10
+  ```
+
+**refactor(prompts): 프롬프트 품질 개선**
+- `blog_content_system_prompt.json` 수정
+  - **마크다운 형식 금지** 명시 (#, ##, *, **, - 등 모든 문법)
+  - **필수 안내 문구 자동 추가**
+    - "이 정책의 연령, 소득 기준 등 세부 조건은 실제와 다를 수 있으니, 신청 전 반드시 공식 웹사이트에서 최신 정보를 확인하시기 바랍니다."
+  - SEO 최적화 가이드라인 유지 (하위 키워드, 롱테일 키워드)
+  - 친근한 어조와 논리적 흐름 강조
+
+**feat(data-quality): 연령 데이터 품질 개선**
+- `preprocess.py`의 `summarize_target()` 함수 개선
+  - "0" 값을 빈 값으로 처리 (무의미한 연령 정보 제거)
+  - "99세 이상" 연령은 "연령 제한은 공식 사이트에서 확인 필요"로 표시
+  - 숫자 변환 실패 시 안전한 폴백 처리
+- 기존 DB 데이터 일괄 업데이트
+  - `update_age_data.py` 스크립트로 100개 정책 target_group 자동 수정
+  - 특정 정책 수동 보정 (일상돌봄서비스사업: 19~99 → 19~64)
+
+**test(blog): 생성 결과 검증**
+- 100개 정책 블로그 생성 완료
+  - 성공: 100개
+  - 건너뛰기: 0개
+  - 실패: 0개
+- 품질 확인 항목
+  - ✅ 마크다운 없이 순수 텍스트로 생성
+  - ✅ 친근한 어조와 구조적 정리 (1., 2., 3. 형식)
+  - ✅ 정책 정보 명확하게 전달 (대상, 혜택, 신청 방법)
+  - ✅ 안내 문구 자동 추가
+  - ✅ 키워드 자동 수집 및 저장
+
+---
+
 ### 2025.10.26 - LLM 프롬프트 통합
 
 #### 주요 변경사항
