@@ -1,7 +1,7 @@
 // src/features/onboarding/Desktop2.tsx
 
 import React from 'react';
-import styled from 'styled-components';
+import styled, { type CSSProperties } from 'styled-components';
 import Header from './Header';
 
 // =========================================================================
@@ -11,7 +11,7 @@ import Header from './Header';
 // 전체 화면 컨테이너 (.desktop-container-2)
 const DesktopContainer2 = styled.div`
     width: 100vw;
-    min-height: 100vh;
+    min-height: 80vh;
     position: relative;
     background: #FFFFFF;
 
@@ -70,15 +70,15 @@ const StatusButton2 = styled.button`
     }
 `;
 
+// **StatusEmoji2 스타일 컴포넌트는 더 이상 사용되지 않으므로 주석 처리하거나 제거하는 것이 좋습니다.**
 const StatusEmoji2 = styled.span`
     font-size: 120px;
     line-height: 1;
     display: inline-block;
-    /* margin-bottom: 15px;
+    /* margin-bottom: 15px; */
 `;
 
 const StatusText2 = styled.span`
-    font-family: 'Inter', sans-serif;
     font-style: normal;
     font-weight: 600;
     font-size: 30px;
@@ -107,51 +107,61 @@ const PaginationDot = styled.div<{ $active?: boolean }>`
 // =========================================================================
 
 interface Desktop2Props {
-  onSelectStatus: (status: '대학생' | '취업준비생') => void;
+    onSelectStatus: (status: '대학생' | '취업준비생') => void;
 }
 
 const Desktop2: React.FC<Desktop2Props> = ({ onSelectStatus }) => {
+    
+    // 이미지 크기를 StatusEmoji2의 font-size(120px)에 맞추어 변수로 정의
+    const imageSize = '120px';
+    const imageStyle: CSSProperties = { width: imageSize, height: imageSize, objectFit: 'contain' };
 
-  return (
-    <DesktopContainer2>
-      <Header />
+    return (
+        <DesktopContainer2>
+            <Header />
 
-      <ContentArea2>
+            <ContentArea2>
 
-        <QuestionText2>현재 당신의 상태는 어떤가요?</QuestionText2>
+                <QuestionText2>현재 당신의 상태는 어떤가요?</QuestionText2>
 
-        <SelectionArea2>
-          <StatusButton2
-            onClick={() => onSelectStatus('대학생')}
-            type="button"
-          >
-            <StatusEmoji2 role="img" aria-label="대학생 이모지">
-              🧑‍🎓
-            </StatusEmoji2>
-            <StatusText2>대학생</StatusText2>
-          </StatusButton2>
+                <SelectionArea2>
+                    <StatusButton2
+                        onClick={() => onSelectStatus('대학생')}
+                        type="button"
+                    >
+                        {/* 대학생 이모지 -> /student_lemon.png 이미지로 변경 */}
+                        <img 
+                            src="/student_lemon.png" 
+                            alt="대학생 레몬 캐릭터" 
+                            style={imageStyle}
+                        />
+                        <StatusText2>대학생</StatusText2>
+                    </StatusButton2>
 
-          <StatusButton2
-            onClick={() => onSelectStatus('취업준비생')}
-            type="button"
-          >
-            <StatusEmoji2 role="img" aria-label="취업준비생 이모지">
-              💼
-            </StatusEmoji2>
-            <StatusText2>취업준비생</StatusText2>
-          </StatusButton2>
-        </SelectionArea2>
+                    <StatusButton2
+                        onClick={() => onSelectStatus('취업준비생')}
+                        type="button"
+                    >
+                        {/* 취업준비생 이모지 -> /job_lemon.png 이미지로 변경 */}
+                         <img 
+                            src="/job_lemon.png" 
+                            alt="취업준비생 레몬 캐릭터" 
+                            style={imageStyle}
+                        />
+                        <StatusText2>취업준비생</StatusText2>
+                    </StatusButton2>
+                </SelectionArea2>
 
-        <PaginationContainer2>
-            <PaginationDot />
-            <PaginationDot $active />
-            <PaginationDot />
-        </PaginationContainer2>
+                <PaginationContainer2>
+                    <PaginationDot />
+                    <PaginationDot $active />
+                    <PaginationDot />
+                </PaginationContainer2>
 
-      </ContentArea2>
+            </ContentArea2>
 
-    </DesktopContainer2>
-  );
+        </DesktopContainer2>
+    );
 };
 
 export default Desktop2;

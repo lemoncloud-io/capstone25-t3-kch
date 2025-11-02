@@ -80,38 +80,37 @@ const StartButtonText = styled.span`
 // =========================================================================
 
 interface Desktop1Props {
-  onStart: () => void;
+    onStart: () => void;
 }
 
 const Desktop1: React.FC<Desktop1Props> = ({ onStart }) => {
 
-  return (
-    // 전체 화면 컨테이너
-    <DesktopContainer>
-     
-      <Header />
-     
-      <ContentArea>
-       
-        <WavingEmoji role="img" aria-label="손 흔드는 이모지">
-          👋
-        </WavingEmoji>
-       
-        <RecommendText>
-          케코한 블로그는<br />당신에게 꼭 맞는 청년 정책을<br />추천해 드립니다.
-        </RecommendText>
-       
-        <StartButton
-          onClick={onStart}
-          type="button"
-        >
-          <StartButtonText>시작하기</StartButtonText>
-        </StartButton>
-       
-      </ContentArea>
-     
-    </DesktopContainer>
-  );
+    return (
+        // 전체 화면 컨테이너
+        <DesktopContainer>
+            
+            <Header />
+            
+            <ContentArea>
+                
+                {/* 기존 WavingEmoji 대신 이미지 사용 */}
+                <img src="/Lemon_hi.png" alt="손 흔드는 이모지" style={{ width: '350px', height: '350px', marginBottom: '30px' }} />
+                
+                <RecommendText>
+                    케코한 블로그는<br />당신에게 꼭 맞는 청년 정책을<br />추천해 드립니다.
+                </RecommendText>
+                
+                <StartButton
+                    onClick={onStart}
+                    type="button"
+                >
+                    <StartButtonText>시작하기</StartButtonText>
+                </StartButton>
+                
+            </ContentArea>
+            
+        </DesktopContainer>
+    );
 };
 
 export default Desktop1;

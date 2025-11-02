@@ -1,77 +1,35 @@
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Home, BookOpen, Briefcase, ArrowLeft, Calendar, Eye, DollarSign, TrendingUp, ShoppingBag, Film, Heart, Globe, Users } from 'lucide-react' 
+import { Home, BookOpen, Briefcase, ArrowLeft, Calendar, Eye, Heart } from 'lucide-react'
 import { getPosts } from '@/shared/api/posts'
 
-// 전체 카테고리 정보 정의
+// 전체 카테고리 정보 정의 (4개만 유지)
 const categoryInfo = {
-    housing: {
-        name: '주거지원',
-        icon: Home,
-        description: '청년들을 위한 주거 지원 정책을 확인하세요.',
-        color: 'bg-blue-100 text-blue-700',
-    },
-    education: {
-        name: '교육지원',
-        icon: BookOpen,
-        description: '학자금, 장학금, 교육 프로그램 지원 정보입니다.',
-        color: 'bg-green-100 text-green-700',
-    },
-    employment: {
-        name: '취업 지원',
-        icon: Briefcase,
-        description: '일자리 알선, 직업 훈련 등 취업에 필요한 정보를 확인하세요.',
-        color: 'bg-red-100 text-red-700',
-    },
-    license: {
-        name: '교육/자격증 지원',
-        icon: BookOpen,
-        description: '자격증 취득 지원금, 교육 과정 정보를 찾아보세요.',
-        color: 'bg-yellow-100 text-yellow-700',
-    },
-    startup: {
-        name: '창업지원',
-        icon: TrendingUp,
-        description: '창업 공간, 멘토링, 사업화 자금 지원 정책을 확인하세요.',
-        color: 'bg-indigo-100 text-indigo-700',
-    },
-    finance: {
-        name: '대출/금융 지원',
-        icon: DollarSign,
-        description: '저금리 대출, 신용 회복 등 금융 관련 정보를 얻으세요.',
-        color: 'bg-teal-100 text-teal-700',
-    },
-    living: {
-        name: '생활비 지원',
-        icon: ShoppingBag,
-        description: '긴급 생계비, 저소득층 지원 등 생활 안정 자금 정보입니다.',
-        color: 'bg-purple-100 text-purple-700',
-    },
-    culture: {
-        name: '문화/여가 지원',
-        icon: Film,
-        description: '여행, 문화 예술 활동, 여가 생활 지원 정보를 확인하세요.',
-        color: 'bg-pink-100 text-pink-700',
-    },
-    health: {
-        name: '건강/상담 지원',
-        icon: Heart,
-        description: '심리 상담, 건강 검진 등 청년 건강 관리 정보입니다.',
-        color: 'bg-orange-100 text-orange-700',
-    },
-    overseas: {
-        name: '해외 기회 지원',
-        icon: Globe,
-        description: '워킹홀리데이, 해외 취업 등 글로벌 기회를 모색하세요.',
-        color: 'bg-sky-100 text-sky-700',
-    },
-    participation: {
-        name: '청년 참여 기회 지원',
-        icon: Users,
-        description: '정책 제안, 청년 위원회 등 사회 참여 기회 정보입니다.',
-        color: 'bg-fuchsia-100 text-fuchsia-700',
-    },
-}
+  housing: {
+    name: '주거지원',
+    icon: Home,
+    description: '청년들을 위한 주거 지원 정책을 확인하세요.',
+    color: 'bg-blue-100 text-blue-700',
+  },
+  education: {
+    name: '교육지원',
+    icon: BookOpen,
+    description: '학자금, 장학금, 교육 프로그램 지원 정보입니다.',
+    color: 'bg-green-100 text-green-700',
+  },
+  jobs: {
+    name: '일자리지원',
+    icon: Briefcase,
+    description: '채용, 직업훈련, 고용 연계 등 일자리 정보를 확인하세요.',
+    color: 'bg-red-100 text-red-700',
+  },
+  welfare: {
+    name: '복지지원',
+    icon: Heart,
+    description: '건강·상담, 생활안정, 문화/여가 등 복지 관련 지원입니다.',
+    color: 'bg-purple-100 text-purple-700',
+  },
+} as const
 
 export default function CategoryPage() {
     const { category } = useParams<{ category: string }>()

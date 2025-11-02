@@ -5,29 +5,49 @@ import Header from './Header';
 import { Home, BookOpen, Briefcase, TrendingUp, DollarSign, ShoppingBag, Film, Heart, Globe, Users, ChevronLeft } from 'lucide-react'; 
 
 // =========================================================================
+// 1. 통합 카테고리 매핑 정의 (CategoryPage.tsx에서 사용한 4개의 대주제)
+// =========================================================================
+const INTEREST_TO_NEW_SLUG_MAP = {
+    '취업 지원': 'jobs',
+    '교육/자격증': 'education',
+    '창업': 'jobs',
+    '주거': 'housing',
+    '대출/금융': 'welfareCulture',
+    '생활비 지원': 'welfareCulture',
+    '문화/여가': 'welfareCulture',
+    '건강/상담': 'welfareCulture',
+    '해외 기회': 'jobs',
+    '청년 참여': 'jobs', // 청년 참여도 '일자리' 카테고리에 포함
+} as const;
+
+// =========================================================================
 // 타입 정의
 // =========================================================================
 type IconType = typeof Briefcase; 
 
-const INTEREST_CATEGORIES: { key: string; name: string; icon: IconType; slug: string }[] = [
-    { key: 'employment_support', name: '취업 지원', icon: Briefcase, slug: 'employment' },
-    { key: 'education_license', name: '교육/자격증', icon: BookOpen, slug: 'license' },
-    { key: 'startup', name: '창업', icon: TrendingUp, slug: 'startup' },
-    { key: 'housing', name: '주거', icon: Home, slug: 'housing' },
-    { key: 'loan_finance', name: '대출/금융', icon: DollarSign, slug: 'finance' },
-    { key: 'living_support', name: '생활비 지원', icon: ShoppingBag, slug: 'living' },
-    { key: 'culture_leisure', name: '문화/여가', icon: Film, slug: 'culture' },
-    { key: 'health_counseling', name: '건강/상담', icon: Heart, slug: 'health' },
-    { key: 'overseas_opportunity', name: '해외 기회', icon: Globe, slug: 'overseas' },
-    { key: 'youth_participation', name: '청년 참여', icon: Users, slug: 'participation' },
+// 2. 기존 INTEREST_CATEGORIES 배열 수정: 
+// name(한글명)을 기준으로 맵핑할 것이므로 slug 속성은 더 이상 사용되지 않지만,
+// 기존 코드의 데이터 구조를 유지하고 재사용성을 높이기 위해 name과 key만 남깁니다.
+const INTEREST_CATEGORIES: { key: string; name: string; icon: IconType }[] = [
+    { key: 'employment_support', name: '취업 지원', icon: Briefcase },
+    { key: 'education_license', name: '교육/자격증', icon: BookOpen },
+    { key: 'startup', name: '창업', icon: TrendingUp },
+    { key: 'housing', name: '주거', icon: Home },
+    { key: 'loan_finance', name: '대출/금융', icon: DollarSign },
+    { key: 'living_support', name: '생활비 지원', icon: ShoppingBag },
+    { key: 'culture_leisure', name: '문화/여가', icon: Film },
+    { key: 'health_counseling', name: '건강/상담', icon: Heart },
+    { key: 'overseas_opportunity', name: '해외 기회', icon: Globe },
+    { key: 'youth_participation', name: '청년 참여', icon: Users },
 ] as const;
 
 interface Desktop4Props {
+    // onSelectInterests는 이제 통합된 4개 중 하나의 slug를 받게 됩니다.
     onSelectInterests: (interests: string[]) => void;
 }
 
 // =========================================================================
-// InterestItem 컴포넌트
+// InterestItem 컴포넌트 (변경 없음, item 타입만 소폭 수정)
 // =========================================================================
 
 interface ItemProps {
@@ -79,7 +99,7 @@ const InterestItem: React.FC<ItemProps> = ({ item, isSelected, onClick }) => {
 
 
 // =========================================================================
-// 메인 컴포넌트 (Desktop4)
+// 메인 컴포넌트 (Desktop4) - 핵심 수정 로직
 // =========================================================================
 
 const Desktop4: React.FC<Desktop4Props> = ({ onSelectInterests }) => {
@@ -91,13 +111,21 @@ const Desktop4: React.FC<Desktop4Props> = ({ onSelectInterests }) => {
 
     const isSelectionValid = selectedInterest !== null;
 
+    // 3. handleNext 로직 수정: 선택된 관심사를 통합 카테고리 slug로 변환합니다.
     const handleNext = () => {
         if (isSelectionValid && selectedInterest) {
+            // 1. 선택된 관심사의 key를 사용하여 **한글 이름**을 찾습니다.
             const selectedItem = INTEREST_CATEGORIES.find(item => item.key === selectedInterest);
-            const selectedSlug = selectedItem ? selectedItem.slug : null;
+            const interestName = selectedItem ? selectedItem.name : null;
             
-            if (selectedSlug) {
-                onSelectInterests([selectedSlug]); 
+            if (interestName) {
+                // 2. 한글 이름을 사용하여 **통합 카테고리 slug**를 맵핑 테이블에서 찾습니다.
+                const newCategorySlug = INTEREST_TO_NEW_SLUG_MAP[interestName as keyof typeof INTEREST_TO_NEW_SLUG_MAP];
+
+                // 3. 통합된 slug를 onSelectInterests로 전달합니다.
+                if (newCategorySlug) {
+                    onSelectInterests([newCategorySlug]); 
+                }
             }
         }
     };
@@ -106,6 +134,7 @@ const Desktop4: React.FC<Desktop4Props> = ({ onSelectInterests }) => {
 
     return (
         <div className="w-screen min-h-screen bg-white flex flex-col items-stretch relative font-inter">
+            {/* ... (UI 코드는 변경 없음) */}
             <Header />
 
             <div className={`flex flex-col items-center flex-grow justify-center px-5 w-full max-w-[1400px] mx-auto ${contentPaddingTopClass}`}>
@@ -144,7 +173,7 @@ const Desktop4: React.FC<Desktop4Props> = ({ onSelectInterests }) => {
                 <div className="flex justify-center gap-2 w-full mb-8">
                     <div className="w-4 h-4 rounded-full bg-[#E0E0E0]" />
                     <div className="w-4 h-4 rounded-full bg-[#E0E0E0]" />
-                    <div className="w-4 h-4 rounded-full bg-[#B0CEEA]" />  
+                    <div className="w-4 h-4 rounded-full bg-[#B0CEEA]" />  
                 </div>
             </div>
         </div>

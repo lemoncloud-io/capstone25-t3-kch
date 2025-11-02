@@ -1,182 +1,505 @@
-import { useParams, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Home, BookOpen, Briefcase, ArrowLeft, Calendar, Eye, Heart, Users } from 'lucide-react'
-import { getPosts } from '@/shared/api/posts'
-// ⭐️ 전체 카테고리 정보 정의 (띄어쓰기 제거된 원래의 name 값으로 복원)
+import { getPosts, type Post } from '@/shared/api/posts'
+import React, { useState } from 'react';
+import styled, { keyframes } from 'styled-components'
+
+// ----------------------------------------------------
+// 1) styled-components
+// ----------------------------------------------------
+const pulse = keyframes`
+  0% { background-color: #f0f0f0; }
+  50% { background-color: #e0e0e0; }
+  100% { background-color: #f0f0f0; }
+`;
+8
+const MainContainer = styled.div`
+  position: relative;
+  width: 100%;
+  min-height: 2000px;
+  background: #FFFFFF;
+  margin: 0 auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+`;
+
+const CategoryHeroGroup = styled.div`
+  position: absolute;
+  width: 100%;
+  height: 288px;
+  left: 0;
+  top: 80px;
+  background: linear-gradient(90deg, #D9ECFF 0%, #6B9CC9 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* top right bottom left — 왼쪽만 줄여 제목을 왼쪽으로 */
+  padding: 0 140px 0 140px;
+  box-sizing: border-box;
+`;
+
+const HeroTitle = styled.h1`
+  width: 280px;
+  height: 116px;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 48px;
+  line-height: 58px;
+  color: #000000;
+`;
+
+const CategoryButtonsContainer = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+`;
+
+const CategoryButton = styled(Link)`
+  width: 210px;
+  height: 65px;
+  background: #FFFFFF;                /* ✔ 항상 흰색 */
+  border-radius: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 24px;
+  color: #000000;
+  text-decoration: none;
+  transition: background 0.3s ease, box-shadow 0.2s ease;
+  border: 1px solid rgba(0,0,0,0.06); /* 경계선 살짝 */
+  &:hover { background: #EAEAEA; }
+`;
+
+const SkeletonCategoryButton = styled.div`
+  width: 210px;
+  height: 65px;
+  background: #f0f0f0;
+  border-radius: 30px;
+  animation: ${pulse} 1.5s infinite;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+`;
+
+const PopularPostsSection = styled.section`
+  position: absolute;
+  width: 932.8px;
+  height: auto;
+  left: 124px;
+  top: 450px;
+  display: flex;
+  flex-direction: column;
+  gap: 50px;
+`;
+
+const SectionTitle = styled.h2`
+  width: 308px;
+  height: 45px;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 40px;
+  line-height: 61px;
+  color: #000000;
+`;
+
+const PopularPostsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 20px;
+  width: 100%;
+  height: 444.86px;
+
+  & > a:nth-child(1) { grid-column: 1 / span 2; grid-row: 1 / span 2; width: 100%; height: 100%; }
+  & > a:nth-child(2) { grid-column: 3 / span 1; grid-row: 1 / span 1; }
+  & > a:nth-child(3) { grid-column: 4 / span 1; grid-row: 1 / span 1; }
+  & > a:nth-child(4) { grid-column: 3 / span 1; grid-row: 2 / span 1; }
+  & > a:nth-child(5) { grid-column: 4 / span 1; grid-row: 2 / span 1; }
+`;
+
+const PostThumbnailLink = styled(Link)`
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #F5F5F5;
+  overflow: hidden;
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  &:hover { transform: translateY(-5px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+  img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+  &:hover img { transform: scale(1.05); }
+`;
+
+const SkeletonPostThumbnail = styled.div`
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #E0E0E0;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  animation: ${pulse} 1.5s infinite;
+`;
+
+const LatestPostsSection = styled.section`
+  position: absolute;
+  width: 954.34px;
+  height: auto;
+  left: 124px;
+  top: 1050px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+`;
+
+const CategoryFilterContainer = styled.div`
+  display: flex;
+  gap: 40px;
+  margin-left: 220px;
+  margin-bottom: 20px;
+`;
+
+interface CategoryFilterButtonProps { isActive: boolean; }
+
+const CategoryFilterButton = styled.button<CategoryFilterButtonProps>`
+  background: none;
+  border: none;
+  padding: 0;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 25px;
+  line-height: 30px;
+  color: ${props => (props.isActive ? '#6B9CC9' : '#727272')};
+  cursor: pointer;
+  transition: color 0.3s ease;
+  &:hover { color: #6B9CC9; }
+`;
+
+const SkeletonCategoryFilterButton = styled.div`
+  animation: ${pulse} 1.5s infinite;
+  background: transparent;
+  width: 100px;
+  height: 30px;
+  color: transparent;
+  border-radius: 4px;
+`;
+
+const LatestPostsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: minmax(301.29px, auto);
+  gap: 20px;
+  width: 100%;
+`;
+
+const FeaturedRow = styled(Link)`
+  grid-column: 1 / span 3;          /* 3칸 전체 사용 */
+  display: grid;
+  grid-template-columns: 1fr 2fr;    /* 좌:이미지 / 우:내용 */
+  gap: 20px;
+  height: 301.29px;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 8px;
+  overflow: hidden;
+  background: transparent;           /* 오른쪽 패널이 자체 배경 가짐 */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  &:hover { transform: translateY(-5px); }
+`;
+
+const FeaturedImage = styled.div`
+  width: 100%;
+  height: 100%;
+  background: #F5F5F5;
+  border-radius: 8px;
+  overflow: hidden;
+
+  img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+
+  ${FeaturedRow}:hover & img { transform: scale(1.05); }
+`;
+
+const FeaturedContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 32px 35px;
+  width: 100%;
+  height: 100%;
+  background: #EAEAEA;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+`;
+
+const SkeletonFeaturedRow = styled.div`
+  grid-column: 1 / span 3;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 20px;
+  height: 301.29px;
+`;
+
+const SkeletonFeaturedImage = styled.div`
+  background: #E0E0E0;
+  border-radius: 8px;
+  animation: ${pulse} 1.5s infinite;
+`;
+
+const SkeletonFeaturedContent = styled.div`
+  background: #E0E0E0;
+  border-radius: 8px;
+  padding: 32px 35px;
+  animation: ${pulse} 1.5s infinite;
+`;
+
+const SmallPostContainer = styled(Link)`
+  width: 100%;
+  height: 301.29px;
+  background: #F5F5F5;
+  border-radius: 8px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  &:hover { transform: translateY(-5px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+  img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+  &:hover img { transform: scale(1.05); }
+`;
+
+const SkeletonSmallPostContainer = styled.div`
+  width: 100%;
+  height: 301.29px;
+  background: #E0E0E0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  animation: ${pulse} 1.5s infinite;
+`;
+
+const MainPostTitle = styled.h3`
+  font-style: normal;
+  font-weight: 600;
+  font-size: 40px;
+  line-height: 61px;
+  color: #000000;
+  margin-bottom: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+`;
+
+const MainPostSummary = styled.p`
+  font-style: normal;
+  font-weight: 600;
+  font-size: 25px;
+  line-height: 36px;
+  color: #727272;
+  flex-grow: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+`;
+
+const MainPostDate = styled.span`
+  font-style: normal;
+  font-weight: 300;
+  font-size: 25px;
+  line-height: 30px;
+  color: #000000;
+  align-self: flex-end;
+`;
+
+const SkeletonTextLine = styled.div<{ width: string; height: string; marginBottom?: string; alignSelf?: string }>`
+  background: #C0C0C0;
+  border-radius: 4px;
+  width: ${props => props.width};
+  height: ${props => props.height};
+  margin-bottom: ${props => props.marginBottom || '0'};
+  align-self: ${props => props.alignSelf || 'auto'};
+`;
+
+// ----------------------------------------------------
+// 2) 카테고리 정보(슬러그는 /category/housing|education|jobs|welfare)
+// ----------------------------------------------------
 const categoryInfo = {
-employment: {
-name: '일자리지원', // 띄어쓰기 없음
-icon: Briefcase,
-description: '취업 알선, 직업 훈련 등 일자리 관련 정책을 확인하세요.',
-color: 'bg-red-100 text-red-700',
-},
-housing: {
-name: '주거지원', // 띄어쓰기 없음
-icon: Home,
-description: '청년들을 위한 주거 지원 정책을 확인하세요.',
-color: 'bg-blue-100 text-blue-700',
-},
-education: {
-name: '교육지원', // 띄어쓰기 없음
-icon: BookOpen,
-description: '학자금, 장학금, 교육 프로그램 지원 정보를 찾아보세요.',
-color: 'bg-green-100 text-green-700',
-},
-'welfare-culture': {
-name: '복지문화지원', // 띄어쓰기 없음
-icon: Heart,
-description: '문화생활, 여가 활동, 복지 혜택 등 다양한 지원 정보를 확인하세요.',
-color: 'bg-purple-100 text-purple-700',
-},
-'participation-rights': {
-name: '참여권리지원', // 띄어쓰기 없음
-icon: Users,
-description: '청년 정책 제안, 봉사 활동 등 사회 참여 기회와 권리 정보를 확인하세요.',
-color: 'bg-orange-100 text-orange-700',
-},
-}
-export default function CategoryPage() {
-const { category } = useParams<{ category: string }>()
-const info = categoryInfo[category as keyof typeof categoryInfo]
+  housing:   { name: '주거지원' },
+  education: { name: '교육지원' },
+  jobs:      { name: '일자리지원' },
+  welfare:   { name: '복지지원' },
+} as const
 
-const { data: posts, isLoading } = useQuery({
-    queryKey: ['posts', 'category', category],
-    // ⭐️ getPosts 함수에 띄어쓰기 없는 카테고리 '이름'으로 조회하도록 전달
-    queryFn: () => getPosts({ category: info?.name }), 
-    enabled: !!category && !!info,
-})
+// ----------------------------------------------------
+// 3) HomePage
+// ----------------------------------------------------
+const HomePage: React.FC = () => {
+  const [activeCategory, setActiveCategory] = useState<string>('주거지원');
 
-if (!info) {
+  const getCategorySlugFromName = (name: string) => {
+    const entry = Object.entries(categoryInfo).find(([, v]) => v.name === name);
+    return entry ? entry[0] : '';
+  };
+
+  const { data: popularPosts, isLoading: isLoadingPopular } = useQuery<Post[]>({
+    queryKey: ['posts', 'popular'],
+    queryFn: () => getPosts(),
+  });
+
+  const { data: latestPosts, isLoading: isLoadingLatest } = useQuery<Post[]>({
+    queryKey: ['posts', 'latest', activeCategory],
+    queryFn: () => getPosts({ category: activeCategory }),
+    enabled: !!activeCategory,
+  });
+
+  // 로딩
+  if (isLoadingPopular || isLoadingLatest) {
     return (
-        <div className="min-h-[60vh] flex flex-col items-center justify-center">
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">존재하지 않는 카테고리입니다</h1>
-            <Link to="/" className="flex items-center text-blue-600 hover:text-blue-700">
-                <ArrowLeft size={20} className="mr-2" />
-                홈으로 돌아가기
-            </Link>
-        </div>
-    )
-}
+      <MainContainer>
+        <CategoryHeroGroup>
+          <HeroTitle>당신을 위한<br /> 청년정책</HeroTitle>
+          <CategoryButtonsContainer>
+            <SkeletonCategoryButton />
+            <SkeletonCategoryButton />
+            <SkeletonCategoryButton />
+            <SkeletonCategoryButton />
+          </CategoryButtonsContainer>
+        </CategoryHeroGroup>
 
-const Icon = info.icon
+        <PopularPostsSection>
+          <SectionTitle>🔥 인기 포스트</SectionTitle>
+          <PopularPostsGrid>
+            {[...Array(5)].map((_, i) => <SkeletonPostThumbnail key={i} />)}
+          </PopularPostsGrid>
+        </PopularPostsSection>
 
-if (isLoading) {
-    return (
-        <div>
-            {/* 카테고리 헤더 */}
-            <div className="mb-8">
-                <div className="animate-pulse">
-                    <div className="h-10 bg-gray-200 rounded w-48 mb-4"></div>
-                    <div className="h-4 bg-gray-200 rounded w-96"></div>
-                </div>
-            </div>
+        <LatestPostsSection>
+          <SectionTitle>✨ 최신 포스트</SectionTitle>
+          <CategoryFilterContainer>
+            {Object.values(categoryInfo).map((_, i) => <SkeletonCategoryFilterButton key={i} />)}
+          </CategoryFilterContainer>
 
-            {/* 포스트 스켈레톤 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2, 3, 4, 5, 6].map(i => (
-                    <div key={i} className="bg-white rounded-lg shadow-sm p-6 animate-pulse">
-                        <div className="w-full aspect-square bg-gray-200 rounded mb-4"></div>
-                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    )
-}
+          <LatestPostsGrid>
+            <SkeletonFeaturedRow>
+              <SkeletonFeaturedImage />
+              <SkeletonFeaturedContent>
+                <SkeletonTextLine width="80%" height="50px" marginBottom="15px" />
+                <SkeletonTextLine width="60%" height="30px" />
+                <SkeletonTextLine width="30%" height="20px" alignSelf="flex-end" />
+              </SkeletonFeaturedContent>
+            </SkeletonFeaturedRow>
+            {[...Array(3)].map((_, i) => <SkeletonSmallPostContainer key={i} />)}
+          </LatestPostsGrid>
+        </LatestPostsSection>
+      </MainContainer>
+    );
+  }
 
-return (
-    <div>
-        {/* 카테고리 헤더 */}
-        <div className="mb-8">
-            <div className="flex items-center gap-2 mb-2">
-                <Link to="/" className="text-gray-500 hover:text-gray-700 transition-colors">
-                    홈
-                </Link>
-                <span className="text-gray-400">/</span>
-                <span className="text-gray-900">{info.name}</span>
-            </div>
+  // 데이터 가드
+  if (!popularPosts || !latestPosts) {
+    return <MainContainer />;
+  }
 
-            <div className="bg-white rounded-xl shadow-sm p-6 md:p-8">
-                <div className="flex items-start gap-4">
-                    <div className={`p-3 rounded-lg ${info.color}`}>
-                        <Icon size={32} />
-                    </div>
-                    <div className="flex-1">
-                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{info.name}</h1>
-                        <p className="text-gray-600">{info.description}</p>
-                        <div className="mt-4 text-sm text-gray-500">총 {posts?.length || 0}개의 정책</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  const mainLatestPost = latestPosts[0] ?? null;
+  const smallLatestPosts = latestPosts.slice(1, 4);
 
-        {/* 포스트 목록 */}
-        {posts && posts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {posts.map(post => (
-                    <Link key={post.id} to={`/posts/${post.slug}`}>
-                        <article className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden h-full">
-                            {post.thumbnail && (
-                                <div className="w-full aspect-square overflow-hidden bg-gray-100">
-                                    <img
-                                        src={post.thumbnail}
-                                        alt={post.title}
-                                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                                    />
-                                </div>
-                            )}
+  return (
+    <MainContainer>
+      {/* Hero */}
+      <CategoryHeroGroup>
+        <HeroTitle>당신을 위한<br /> 청년정책</HeroTitle>
+        <CategoryButtonsContainer>
+          <CategoryButton to="/category/housing">주거지원</CategoryButton>
+          <CategoryButton to="/category/education">교육지원</CategoryButton>
+          <CategoryButton to="/category/jobs">일자리지원</CategoryButton>
+          <CategoryButton to="/category/welfare">복지지원</CategoryButton>
+        </CategoryButtonsContainer>
+      </CategoryHeroGroup>
 
-                            <div className="p-6">
-                                {/* 카테고리 뱃지 */}
-                                <div className="mb-3">
-                                    <span
-                                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${info.color}`}
-                                    >
-                                        {info.name}
-                                    </span>
-                                </div>
+      {/* Popular */}
+      <PopularPostsSection>
+        <SectionTitle>🔥 인기 포스트</SectionTitle>
+        <PopularPostsGrid>
+          {popularPosts.slice(0, 5).map((post) => (
+            <PostThumbnailLink key={post.id} to={`/posts/${post.slug}`}>
+              <img src={post.thumbnail} alt={post.title} />
+            </PostThumbnailLink>
+          ))}
+          {popularPosts.length < 5 &&
+            [...Array(5 - popularPosts.length)].map((_, i) => (
+              <SkeletonPostThumbnail key={`placeholder-popular-${i}`} />
+            ))
+          }
+        </PopularPostsGrid>
+      </PopularPostsSection>
 
-                                {/* 제목 */}
-                                <h2 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 hover:text-blue-600 transition-colors">
-                                    {post.title}
-                                </h2>
+      {/* Latest */}
+      <LatestPostsSection>
+        <SectionTitle>✨ 최신 포스트</SectionTitle>
+        <CategoryFilterContainer>
+          {Object.values(categoryInfo).map((cat) => (
+            <CategoryFilterButton
+              key={cat.name}
+              isActive={getCategorySlugFromName(cat.name) === activeCategory}
+              onClick={() => setActiveCategory(getCategorySlugFromName(cat.name))}
+            >
+              {cat.name}
+            </CategoryFilterButton>
+          ))}
+        </CategoryFilterContainer>
 
-                                {/* 요약 */}
-                                <p className="text-gray-600 text-sm line-clamp-3 mb-4">{post.summary}</p>
+        <LatestPostsGrid>
+          {/* ✅ 대표 포스트: 이미지+내용 한 카드 */}
+          {mainLatestPost ? (
+            <FeaturedRow to={`/posts/${mainLatestPost.slug}`}>
+              <FeaturedImage>
+                <img src={mainLatestPost.thumbnail} alt={mainLatestPost.title} />
+              </FeaturedImage>
+              <FeaturedContent>
+                <MainPostTitle>{mainLatestPost.title}</MainPostTitle>
+                <MainPostSummary>{mainLatestPost.summary}</MainPostSummary>
+                <MainPostDate>{new Date(mainLatestPost.createdAt).toLocaleDateString()}</MainPostDate>
+              </FeaturedContent>
+            </FeaturedRow>
+          ) : (
+            <SkeletonFeaturedRow>
+              <SkeletonFeaturedImage />
+              <SkeletonFeaturedContent>
+                <SkeletonTextLine width="80%" height="50px" marginBottom="15px" />
+                <SkeletonTextLine width="60%" height="30px" />
+                <SkeletonTextLine width="30%" height="20px" alignSelf="flex-end" />
+              </SkeletonFeaturedContent>
+            </SkeletonFeaturedRow>
+          )}
 
-                                {/* 메타 정보 */}
-                                <div className="flex items-center justify-between text-xs text-gray-500">
-                                    <span className="flex items-center">
-                                        <Calendar size={14} className="mr-1" />
-                                        {new Date(post.createdAt).toLocaleDateString()}
-                                    </span>
-                                    <span className="flex items-center">
-                                        <Eye size={14} className="mr-1" />
-                                        {post.viewCount.toLocaleString()}
-                                    </span>
-                                </div>
-                            </div>
-                        </article>
-                    </Link>
-                ))}
-            </div>
-        ) : (
-            <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-                <div className={`inline-flex p-4 rounded-full ${info.color} mb-4`}>
-                    <Icon size={48} />
-                </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">아직 등록된 정책이 없습니다</h2>
-                <p className="text-gray-600 mb-6">
-                    {info.name} 카테고리에 새로운 정책이 등록되면 여기에 표시됩니다.
-                </p>
-                <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium">
-                    <ArrowLeft size={20} className="mr-2" />
-                    다른 정책 둘러보기
-                </Link>
-            </div>
-        )}
-    </div>
-)
+          {/* 그 외 3개 */}
+          {smallLatestPosts.map((post) => (
+            <SmallPostContainer key={post.id} to={`/posts/${post.slug}`}>
+              <img src={post.thumbnail} alt={post.title} />
+            </SmallPostContainer>
+          ))}
+          {smallLatestPosts.length < 3 &&
+            [...Array(3 - smallLatestPosts.length)].map((_, i) => (
+              <SkeletonSmallPostContainer key={`placeholder-small-${i}`} />
+            ))
+          }
+        </LatestPostsGrid>
+      </LatestPostsSection>
+    </MainContainer>
+  );
+};
 
-}
+export default HomePage;
