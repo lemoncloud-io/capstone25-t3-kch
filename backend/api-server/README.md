@@ -24,17 +24,6 @@
   - 중복 생성 방지 옵션 (`--no-skip`)
   - 에러 핸들링 및 상세 로깅
   - 테스트 모드 지원 (`--limit N`)
-- 명령어 옵션
-  ```bash
-  # 신규 정책만 생성 (기본)
-  python -m jobs.blog.generate_all_blogs
-  
-  # 전체 재생성
-  python -m jobs.blog.generate_all_blogs --no-skip
-  
-  # 테스트 (10개만)
-  python -m jobs.blog.generate_all_blogs --limit 10
-  ```
 
 **refactor(prompts): 프롬프트 품질 개선**
 - `blog_content_system_prompt.json` 수정
@@ -58,12 +47,6 @@
   - 성공: 100개
   - 건너뛰기: 0개
   - 실패: 0개
-- 품질 확인 항목
-  - ✅ 마크다운 없이 순수 텍스트로 생성
-  - ✅ 친근한 어조와 구조적 정리 (1., 2., 3. 형식)
-  - ✅ 정책 정보 명확하게 전달 (대상, 혜택, 신청 방법)
-  - ✅ 안내 문구 자동 추가
-  - ✅ 키워드 자동 수집 및 저장
 
 ---
 
