@@ -50,6 +50,12 @@
 - utils/llm_utils.py: PromptGenerator 클래스 구현
 - routes/prompts.py: 프롬프트 API 라우터
 
+**feat(thumbnail): 썸네일 자동 생성 및 S3 업로드 연동**
+- S3 업로드 기능 추가 (boto3 연동)
+- DB 기반 정책 자동 캡션 생성 (LLM 프롬프트 개선)
+- 썸네일 문구 줄바꿈/길이 자동 최적화
+- 로깅 및 캐싱 구조 개선
+
 ---
 
 ### 2025.10.09 - 데이터 정제
@@ -155,6 +161,13 @@ capstone25-t3-kch/
     
 ---
 
+### 2025.11.02 - 썸네일 자동 생성 및 S3 연동
+
+- S3 버킷 업로드 연동 (CORS/권한 설정 포함)
+- LLM 프롬프트 개선 (문구 자연화)
+- 로깅 및 캐싱 구조 안정화
+
+
 ## 로컬 테스트 방법
 
 ### 1. 환경변수 설정
@@ -214,4 +227,36 @@ curl -X POST "http://127.0.0.1:8000/api/policies/20250924005400211793/content?ty
 
 # 제목+요약+본문 일괄 생성
 curl -X POST "http://127.0.0.1:8000/api/policies/20250924005400211793/content?type=full"
+```
+
+## Thumbnail Auto (LLM + S3 Upload)
+
+### 사용 예시
+```bash
+curl -X POST http://127.0.0.1:8000/api/thumbnails/auto \
+  -H "Content-Type: application/json" \
+  -d '{
+    "policy_id": "20250922005400211790",
+    "category": "복지",
+    "max_variants": 3
+  }'
+```
+---
+
+💡 **설명**
+- 위 명령은 정책 ID(`policy_id`)를 기반으로 썸네일 자동 생성 API를 호출합니다.  
+- 백엔드가 DB에서 정책 정보를 조회하고,  
+  LLM(OpenAI API)을 이용해 문구를 생성한 후 이미지를 생성해 S3에 업로드합니다.  
+- 응답 예시는 다음과 같습니다 
+
+```json
+{
+  "ok": true,
+  "caption": "청년 복지,\n당신의 삶을 바꿀 기회!",
+  "result": {
+    "ok": true,
+    "storage": "s3",
+    "url": "https://youth-policy-thumbnails-kch.s3.ap-northeast-2.amazonaws.com/thumbnails/2025/11/20250922005400211790.png"
+  }
+}
 ```
