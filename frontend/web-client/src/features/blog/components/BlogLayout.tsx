@@ -61,11 +61,10 @@ export default function BlogLayout() {
                 {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
             </div>
-            {/* 여기선 더 이상 보더 라인 X (라인은 상단에 w-screen으로 이미 그림) */}
           </div>
         </div>
 
-        {/* Mobile Menu: 헤더 아래 자연 배치 (이제 mt 보정 불필요) */}
+        {/* Mobile Menu: 헤더 아래 자연 배치*/}
         <div
           className={cn(
             'md:hidden bg-white border-t transition-all duration-300 overflow-hidden',
