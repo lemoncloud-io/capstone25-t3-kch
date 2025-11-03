@@ -1,548 +1,434 @@
+// src/pages/HomePage.tsx
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getPosts, type Post } from '@/shared/api/posts'
-import React, { useState } from 'react'
+import React from 'react'
 import styled, { keyframes } from 'styled-components'
 
-// ----------------------------------------------------
-// 1) styled-components
-// ----------------------------------------------------
+/* ==============================
+   0) Globals
+   ============================== */
 const pulse = keyframes`
   0% { background-color: #f0f0f0; }
   50% { background-color: #e0e0e0; }
   100% { background-color: #f0f0f0; }
 `
 
-/** 전체 UI 축소 비율(필요 시 여기만 바꾸면 됨) */
-const UI_SCALE = 0.8
-/** 콘텐츠 기준 폭 (Hero 박스 중앙 정렬용) */
-const CONTENT_MAX_WIDTH = 1200
+const UI_SCALE = 1
 
-const MainContainer = styled.div`
+/* ==============================
+   1) Canvas
+   ============================== */
+const PageWrap = styled.div`
   position: relative;
   width: 100%;
-  min-height: 1400px;
-  background: #FFFFFF;
-  margin: 0 auto;
+  background: #fff;
   overflow-x: hidden;
-  box-sizing: border-box;
 `
 
-/* ✅ 전체 UI 0.8배 축소 (비율/레이아웃 유지) */
 const ScaledRoot = styled.div`
   --ui-scale: ${UI_SCALE};
   position: relative;
-  width: calc(100% / var(--ui-scale));
+  width: calc(1280px / var(--ui-scale));
+  height: calc(2320px / var(--ui-scale));
   transform: scale(var(--ui-scale));
   transform-origin: top center;
+  margin: 0 auto;
+  background: #FFFFFF;
 `
 
-/* ===== Hero 영역: 전체 폭 컨테이너(배경 없음, 중앙 정렬 래퍼 역할) ===== */
-const CategoryHeroGroup = styled.div`
+/* ===== 상단 카테고리/검색 라인 ===== */
+const Breadcrumb = styled.div`
   position: absolute;
-  left: 0;
-  top: 40px;
-  width: 100%;
-  height: 230px;
-  pointer-events: none; /* 내부 요소만 이벤트 받도록 (선택) */
-`
-
-/* ===== 실제 파란 박스: 중앙 배치, 내부 패딩 보유 ===== */
-const HeroBox = styled.div`
-  pointer-events: auto; /* 클릭 가능 */
-  width: 100%;
-  max-width: ${CONTENT_MAX_WIDTH}px;
-  height: 100%;
-  background: linear-gradient(90deg, #D9ECFF 0%, #6B9CC9 100%);
-  box-sizing: border-box;
-
-  display: flex;
-  align-items: center;
-  /* 타이틀과 버튼 묶음을 좌우로 배치하되, 버튼은 오른쪽으로 밀기 */
-  gap: 64px;
-  padding: 0 80px;
-  border-radius: 8px; /* 원하면 0으로 바꿔도 됨 */
-`
-
-const HeroTitle = styled.h1`
-  width: 280px;
-  height: 116px;
-  font-style: normal;
-  font-weight: 600;
-  font-size: 35px;
-  line-height: 58px;
+  left: 83px;
+  top: 50px;
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 18px;
   color: #000000;
 `
 
-const CategoryButtonsContainer = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 15px;
-
-  /* ✅ 타이틀 오른쪽으로 밀착 */
-  margin-left: auto;
-
-  /* 과도한 줄바꿈/늘어짐 방지 (선택) */
-  min-width: 400px;
-  max-width: 420px;
+const CategoryTrack = styled.div`
+  position: absolute;
+  width: 800px;
+  height: 32px;
+  left: 85px;
+  top: 50px;
+`
+const Cat = styled.span<{ left: number }>`
+  position: absolute;
+  left: ${({ left }) => left}px;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 18px;
+  color: #727272;
+`
+const CatDivider = styled.div`
+  position: absolute;
+  width: 20px;
+  left: 135px;
+  top: 10px;
+  border-top: 2px solid rgba(195,187,187,0.41);
+  transform: rotate(-90deg);
 `
 
-const CategoryButton = styled(Link)`
-  width: 190px;
-  height: 60px;
-  background: #FFFFFF;
-  border-radius: 30px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-style: normal;
+/* ===== Search ===== */
+const SearchWrap = styled.div`
+  position: absolute;
+  width: 191px;
+  height: 33px;
+  left: 820px;
+  top: 43px;
+`
+const SearchBox = styled.div`
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid rgba(86,86,86,0.14);
+  border-radius: 25px;
+  box-sizing: border-box;
+  background: #fff;
+`
+const SearchCircle = styled.div`
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  left: 13px;
+  top: 10px;
+  border: 1px solid #000;
+  border-radius: 50%;
+`
+const SearchHandle = styled.div`
+  position: absolute;
+  width: 6.4px;
+  left: 23px;
+  top: 19px;
+  border-top: 1px solid #000;
+  transform: rotate(38.66deg);
+`
+const SearchPlaceholder = styled.div`
+  position: absolute;
+  left: 44px;
+  top: 9px;
+  font-weight: 400;
+  font-size: 10px;
+  line-height: 12px;
+  color: #959595;
+`
+
+/* ===== Section title ===== */
+const SectionTitle = styled.h3<{ left: number; top: number }>`
+  position: absolute;
+  left: ${({ left }) => left}px;
+  top: ${({ top }) => top}px;
   font-weight: 600;
   font-size: 18px;
-  line-height: 24px;
-  color: #000000;
-  text-decoration: none;
-  transition: background 0.3s ease, box-shadow 0.2s ease;
-  border: 1px solid rgba(0,0,0,0.06);
-  &:hover { background: #EAEAEA; }
+  line-height: 19px;
+  color: #000;
+  margin: 0;
 `
 
-const SkeletonCategoryButton = styled.div`
-  width: 210px;
-  height: 65px;
-  background: #f0f0f0;
-  border-radius: 30px;
-  animation: ${pulse} 1.5s infinite;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-`
-
-const PopularPostsSection = styled.section`
+/* ===== 3-up square cards ===== */
+const SquareCard = styled(Link)`
   position: absolute;
-  width: 800px;
-  height: 500px;
-  left: 225px;
-  top: 300px;
-  display: flex;
-  flex-direction: column;
-  gap: 50px;
-`
-
-const SectionTitle = styled.h2`
-  width: 308px;
-  height: 45px;
-  font-style: normal;
-  font-weight: 600;
-  font-size: 35px;
-  line-height: 61px;
-  color: #000000;
-`
-
-const PopularPostsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: 25px;
-  width: 100%;
-  height: 444.86px;
-
-  & > a:nth-child(1) { grid-column: 1 / span 2; grid-row: 1 / span 2; width: 100%; height: 100%; }
-  & > a:nth-child(2) { grid-column: 3 / span 1; grid-row: 1 / span 1; }
-  & > a:nth-child(3) { grid-column: 4 / span 1; grid-row: 1 / span 1; }
-  & > a:nth-child(4) { grid-column: 3 / span 1; grid-row: 2 / span 1; }
-  & > a:nth-child(5) { grid-column: 4 / span 1; grid-row: 2 / span 1; }
-`
-
-const PostThumbnailLink = styled(Link)`
-  display: block;
-  width: 100%;
-  height: 100%;
+  width: 250px;
+  height: 250px;
   background: #F5F5F5;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 4px;
   text-decoration: none;
-  color: inherit;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  &:hover { transform: translateY(-5px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
-  img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
-  &:hover img { transform: scale(1.05); }
+  img { width: 100%; height: 100%; object-fit: cover; }
 `
-
-const SkeletonPostThumbnail = styled.div`
-  display: block;
-  width: 100%;
-  height: 100%;
+const SquareSkeleton = styled.div`
+  position: absolute;
+  width: 250px;
+  height: 250px;
   background: #E0E0E0;
-  overflow: hidden;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-radius: 4px;
   animation: ${pulse} 1.5s infinite;
 `
 
-const LatestPostsSection = styled.section`
+/* ===== Mid divider ===== */
+const MidDivider = styled.div`
   position: absolute;
-  width: 800px;
-  height: 500px;
-  left: 225px;
-  top: 850px;
-  display: flex;
-  flex-direction: column;
-  gap: 40px;
+  width: 888.01px;
+  left: 45px;
+  top: 819px;
+  opacity: 0.1;
+  border-top: 1px solid #383838;
+  box-shadow: 0px 1px 2.5px rgba(0,0,0,0.25);
 `
 
-const CategoryFilterContainer = styled.div`
-  display: flex;
-  gap: 40px;
-  margin-left: 150px;
-  margin-bottom: 20px;
+/* ===== Reco Title ===== */
+const RecoTitle = styled.h2`
+  position: absolute;
+  left: 84px;
+  top: 856px;
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 24px;
+  color: #000;
+  margin: 0;
 `
 
-interface CategoryFilterButtonProps { isActive: boolean }
+/* ===== Blog rows ===== */
+const BlogRowWrap = styled.div<{ top: number }>`
+  position: absolute;
+  width: 888.01px;
+  height: 201px;
+  left: 23px;
+  top: ${({ top }) => top}px;
+`
 
-const CategoryFilterButton = styled.button<CategoryFilterButtonProps>`
-  background: none;
-  border: none;
-  padding: 0;
-  font-style: normal;
+const BlogThumb = styled(Link)`
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  left: 712px;
+  top: 0px;
+  background: #F5F5F5;
+  overflow: hidden;
+  border-radius: 6px;
+  img { width: 100%; height: 100%; object-fit: cover; }
+`
+
+const BlogTitle = styled(Link)`
+  position: absolute;
+  left: 87px;
+  top: 18px;
+  width: 544px;
   font-weight: 600;
   font-size: 22px;
-  line-height: 30px;
-  color: ${props => (props.isActive ? '#6B9CC9' : '#727272')};
-  cursor: pointer;
-  transition: color 0.3s ease;
-  &:hover { color: #6B9CC9; }
-`
-
-const SkeletonCategoryFilterButton = styled.div`
-  animation: ${pulse} 1.5s infinite;
-  background: transparent;
-  width: 100px;
-  height: 30px;
-  color: transparent;
-  border-radius: 4px;
-`
-
-const LatestPostsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-auto-rows: auto;
-  gap: 15px;
-  width: 100%;
-`
-
-/* ===== 대표 카드(이미지+텍스트) ===== */
-const FeaturedRow = styled(Link)`
-  grid-column: 1 / span 3;
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 0;
+  line-height: 27px;
+  color: #000;
   text-decoration: none;
-  color: inherit;
-  border-radius: 8px;
   overflow: hidden;
-  background: transparent;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  &:hover { transform: translateY(-5px); }
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
 `
 
-const FeaturedImage = styled.div`
-  width: 100%;
-  height: 100%;
-  background: #F5F5F5;
-  border-radius: 8px 0 0 8px;
-  overflow: hidden;
-
-  img {
-    width: 100%; height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
-  }
-
-  ${FeaturedRow}:hover & img { transform: scale(1.05); }
-`
-
-const FeaturedContent = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 32px 32px;
-  width: 100%;
-  height: 100%;
-  background: #EAEAEA;
-  border-radius: 0 8px 8px 0;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-`
-
-const SkeletonFeaturedRow = styled.div`
-  grid-column: 1 / span 3;
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 0;
-  height: 301.29px;
-`
-
-const SkeletonFeaturedImage = styled.div`
-  background: #E0E0E0;
-  border-radius: 8px 0 0 8px;
-  animation: ${pulse} 1.5s infinite;
-`
-
-const SkeletonFeaturedContent = styled.div`
-  background: #E0E0E0;
-  border-radius: 0 8px 8px 0;
-  padding: 32px 35px;
-  animation: ${pulse} 1.5s infinite;
-`
-
-/* ===== 작은 썸네일 3개 : 1:1 정사각형 ===== */
-const SmallPostContainer = styled(Link)`
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  background: #F5F5F5;
-  border-radius: 8px;
-  overflow: hidden;
-  text-decoration: none;
-  color: inherit;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  &:hover { transform: translateY(-5px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
-  img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
-  &:hover img { transform: scale(1.05); }
-`
-
-const SkeletonSmallPostContainer = styled.div`
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  background: #E0E0E0;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  animation: ${pulse} 1.5s infinite;
-`
-
-const MainPostTitle = styled.h3`
-  font-style: normal;
-  font-weight: 600;
-  font-size: 30px;
-  line-height: 61px;
-  color: #000000;
-  margin-bottom: 15px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-`
-
-const MainPostSummary = styled.p`
-  font-style: normal;
-  font-weight: 500;
-  font-size: 18px;
-  line-height: 36px;
+const BlogExcerpt = styled.div`
+  position: absolute;
+  left: 87px;
+  top: 63px;
+  width: 544px;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 18px;
   color: #727272;
-  flex-grow: 1;
   overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 `
 
-const MainPostDate = styled.span`
-  font-style: normal;
+const BlogMeta = styled.div`
+  position: absolute;
+  left: 87px;
+  top: 148px;
   font-weight: 300;
-  font-size: 18px;
-  line-height: 30px;
-  color: #000000;
-  align-self: flex-end;
+  font-size: 12px;
+  line-height: 15px;
+  color: #000;
 `
 
-const SkeletonTextLine = styled.div<{ width: string; height: string; marginBottom?: string; alignSelf?: string }>`
-  background: #C0C0C0;
+const RowDivider = styled.div<{ top: number }>`
+  position: absolute;
+  width: 888.01px;
+  left: 23px;
+  top: ${({ top }) => top}px;
+  opacity: 0.1;
+  border-top: 1px solid #383838;
+  box-shadow: 0px 1px 2.5px rgba(0,0,0,0.25);
+`
+
+const BlogRowSkeleton = styled.div<{ top: number }>`
+  position: absolute;
+  width: 888.01px;
+  height: 201px;
+  left: 23px;
+  top: ${({ top }) => top}px;
+  &::before {
+    content: '';
+    position: absolute;
+    left: 712px;
+    top: 0;
+    width: 160px;
+    height: 160px;
+    background: #E0E0E0;
+    border-radius: 6px;
+    animation: ${pulse} 1.5s infinite;
+  }
+`
+
+const SkeletonLine = styled.div<{ left: number; top: number; w: number; h: number }>`
+  position: absolute;
+  left: ${({ left }) => left}px;
+  top: ${({ top }) => top}px;
+  width: ${({ w }) => w}px;
+  height: ${({ h }) => h}px;
+  background: #E0E0E0;
   border-radius: 4px;
-  width: ${props => props.width};
-  height: ${props => props.height};
-  margin-bottom: ${props => props.marginBottom || '0'};
-  align-self: ${props => props.alignSelf || 'auto'};
+  animation: ${pulse} 1.5s infinite;
 `
 
-// ----------------------------------------------------
-// 2) 카테고리 정보 (+ 타입/헬퍼 추가)
-// ----------------------------------------------------
-const categoryInfo = {
-  housing:   { name: '주거지원' },
-  education: { name: '교육지원' },
-  jobs:      { name: '일자리지원' },
-  welfare:   { name: '복지지원' },
-} as const
-
-type CatSlug = keyof typeof categoryInfo
-const getCategoryNameFromSlug = (slug: CatSlug) => categoryInfo[slug].name
-
-// ----------------------------------------------------
-// 3) HomePage
-// ----------------------------------------------------
+/* ==============================
+   2) Page (기능 + 레이아웃)
+   ============================== */
 const HomePage: React.FC = () => {
-  // ✅ 상태는 slug로만 관리
-  const [activeCategory, setActiveCategory] = useState<CatSlug>('housing')
-
-  const { data: popularPosts, isLoading: isLoadingPopular } = useQuery<Post[]>({
+  const { data: popularPosts, isLoading: loadingPopular } = useQuery<Post[]>({
     queryKey: ['posts', 'popular'],
     queryFn: () => getPosts(),
   })
-
-  // ✅ 쿼리키는 slug, API에는 한글 이름 전달
-  const { data: latestPosts, isLoading: isLoadingLatest } = useQuery<Post[]>({
-    queryKey: ['posts', 'latest', activeCategory],
-    queryFn: () => getPosts({ category: getCategoryNameFromSlug(activeCategory) }),
-    enabled: !!activeCategory,
+  const { data: latestPosts, isLoading: loadingLatest } = useQuery<Post[]>({
+    queryKey: ['posts', 'latest'],
+    queryFn: () => getPosts(),
   })
 
-  // 로딩
-  if (isLoadingPopular || isLoadingLatest) {
-    return (
-      <MainContainer>
-        <ScaledRoot>
-          <CategoryHeroGroup>
-            <HeroBox>
-              <HeroTitle>당신을 위한<br /> 청년정책</HeroTitle>
-              <CategoryButtonsContainer>
-                <SkeletonCategoryButton />
-                <SkeletonCategoryButton />
-                <SkeletonCategoryButton />
-                <SkeletonCategoryButton />
-              </CategoryButtonsContainer>
-            </HeroBox>
-          </CategoryHeroGroup>
+  const isLoading = loadingPopular || loadingLatest
+  const safePopular = popularPosts ?? []
+  const safeLatest = latestPosts ?? []
 
-          <PopularPostsSection>
-            <SectionTitle>🔥 인기 포스트</SectionTitle>
-            <PopularPostsGrid>
-              {[...Array(5)].map((_, i) => <SkeletonPostThumbnail key={i} />)}
-            </PopularPostsGrid>
-          </PopularPostsSection>
+  // 개수 고정
+  const popular3 = safePopular.slice(0, 3)
+  const latest3  = safeLatest.slice(0, 3)
+  const blogRows = safeLatest.slice(3, 7) // 4행
 
-          <LatestPostsSection>
-            <SectionTitle>✨ 최신 포스트</SectionTitle>
-            <CategoryFilterContainer>
-              {Object.values(categoryInfo).map((_, i) => <SkeletonCategoryFilterButton key={i} />)}
-            </CategoryFilterContainer>
-
-            <LatestPostsGrid>
-              <SkeletonFeaturedRow>
-                <SkeletonFeaturedImage />
-                <SkeletonFeaturedContent>
-                  <SkeletonTextLine width="80%" height="50px" marginBottom="15px" />
-                  <SkeletonTextLine width="60%" height="30px" />
-                  <SkeletonTextLine width="30%" height="20px" alignSelf="flex-end" />
-                </SkeletonFeaturedContent>
-              </SkeletonFeaturedRow>
-              {[...Array(3)].map((_, i) => <SkeletonSmallPostContainer key={i} />)}
-            </LatestPostsGrid>
-          </LatestPostsSection>
-        </ScaledRoot>
-      </MainContainer>
-    )
-  }
-
-  // 데이터 가드
-  if (!popularPosts || !latestPosts) {
-    return <MainContainer />
-  }
-
-  const mainLatestPost = latestPosts[0] ?? null
-  const smallLatestPosts = latestPosts.slice(1, 4)
+  const thumb = (url?: string) => (url && url.length > 0 ? url : '/assets/placeholder.png')
 
   return (
-    <MainContainer>
+    <PageWrap>
       <ScaledRoot>
-        {/* Hero */}
-        <CategoryHeroGroup>
-          <HeroBox>
-            <HeroTitle>당신을 위한<br /> 청년정책</HeroTitle>
-            <CategoryButtonsContainer>
-              <CategoryButton to="/category/housing">주거지원</CategoryButton>
-              <CategoryButton to="/category/education">교육지원</CategoryButton>
-              <CategoryButton to="/category/jobs">일자리지원</CategoryButton>
-              <CategoryButton to="/category/welfare">복지지원</CategoryButton>
-            </CategoryButtonsContainer>
-          </HeroBox>
-        </CategoryHeroGroup>
+        {/* ==== 상단: 빵부스러기/카테고리/검색 (Header 제거 상태) ==== */}
+        <Breadcrumb>블로그 홈</Breadcrumb>
+        <CategoryTrack>
+          <CatDivider />
+          <Cat left={218}>주거지원</Cat>
+          <Cat left={318}>교육지원</Cat>
+          <Cat left={420}>일자리지원</Cat>
+          <Cat left={539}>복지지원</Cat>
+        </CategoryTrack>
+        <SearchWrap>
+          <SearchBox />
+          <SearchCircle />
+          <SearchHandle />
+          <SearchPlaceholder>검색어 입력</SearchPlaceholder>
+        </SearchWrap>
 
-        {/* Popular */}
-        <PopularPostsSection>
-          <SectionTitle>🔥 인기 포스트</SectionTitle>
-          <PopularPostsGrid>
-            {popularPosts.slice(0, 5).map((post) => (
-              <PostThumbnailLink key={post.id} to={`/posts/${post.slug}`}>
-                <img src={post.thumbnail} alt={post.title} />
-              </PostThumbnailLink>
-            ))}
-            {popularPosts.length < 5 &&
-              [...Array(5 - popularPosts.length)].map((_, i) => (
-                <SkeletonPostThumbnail key={`placeholder-popular-${i}`} />
-              ))
+        {/* ==== 인기 포스트 ==== */}
+        <SectionTitle left={87} top={155}>인기 포스트</SectionTitle>
+        {isLoading ? (
+          <>
+            <SquareSkeleton style={{ left: 84,  top: 191 }} />
+            <SquareSkeleton style={{ left: 353, top: 191 }} />
+            <SquareSkeleton style={{ left: 622, top: 191 }} />
+          </>
+        ) : (
+          <>
+            {(popular3[0])
+              ? <SquareCard to={`/posts/${popular3[0].slug}`} style={{ left: 84, top: 191 }}>
+                  <img src={thumb(popular3[0].thumbnail)} alt={popular3[0].title} />
+                </SquareCard>
+              : <SquareSkeleton style={{ left: 84, top: 191 }} />
             }
-          </PopularPostsGrid>
-        </PopularPostsSection>
-
-        {/* Latest */}
-        <LatestPostsSection>
-          <SectionTitle>✨ 최신 포스트</SectionTitle>
-
-          {/* ✅ 카테고리 탭: slug 기준 렌더/선택 */}
-          <CategoryFilterContainer>
-            {Object.entries(categoryInfo).map(([slug, cat]) => (
-              <CategoryFilterButton
-                key={slug}
-                isActive={(slug as CatSlug) === activeCategory}
-                onClick={() => setActiveCategory(slug as CatSlug)}
-              >
-                {cat.name}
-              </CategoryFilterButton>
-            ))}
-          </CategoryFilterContainer>
-
-          <LatestPostsGrid>
-            {/* ✅ 대표 포스트 */}
-            {mainLatestPost ? (
-              <FeaturedRow to={`/posts/${mainLatestPost.slug}`}>
-                <FeaturedImage>
-                  <img src={mainLatestPost.thumbnail} alt={mainLatestPost.title} />
-                </FeaturedImage>
-                <FeaturedContent>
-                  <MainPostTitle>{mainLatestPost.title}</MainPostTitle>
-                  <MainPostSummary>{mainLatestPost.summary}</MainPostSummary>
-                  <MainPostDate>{new Date(mainLatestPost.createdAt).toLocaleDateString()}</MainPostDate>
-                </FeaturedContent>
-              </FeaturedRow>
-            ) : (
-              <SkeletonFeaturedRow>
-                <SkeletonFeaturedImage />
-                <SkeletonFeaturedContent>
-                  <SkeletonTextLine width="80%" height="50px" marginBottom="15px" />
-                  <SkeletonTextLine width="60%" height="30px" />
-                  <SkeletonTextLine width="30%" height="20px" alignSelf="flex-end" />
-                </SkeletonFeaturedContent>
-              </SkeletonFeaturedRow>
-            )}
-
-            {/* 그 외 3개 (정사각형) */}
-            {smallLatestPosts.map((post) => (
-              <SmallPostContainer key={post.id} to={`/posts/${post.slug}`}>
-                <img src={post.thumbnail} alt={post.title} />
-              </SmallPostContainer>
-            ))}
-            {smallLatestPosts.length < 3 &&
-              [...Array(3 - smallLatestPosts.length)].map((_, i) => (
-                <SkeletonSmallPostContainer key={`placeholder-small-${i}`} />
-              ))
+            {(popular3[1])
+              ? <SquareCard to={`/posts/${popular3[1].slug}`} style={{ left: 353, top: 191 }}>
+                  <img src={thumb(popular3[1].thumbnail)} alt={popular3[1].title} />
+                </SquareCard>
+              : <SquareSkeleton style={{ left: 353, top: 191 }} />
             }
-          </LatestPostsGrid>
-        </LatestPostsSection>
+            {(popular3[2])
+              ? <SquareCard to={`/posts/${popular3[2].slug}`} style={{ left: 622, top: 191 }}>
+                  <img src={thumb(popular3[2].thumbnail)} alt={popular3[2].title} />
+                </SquareCard>
+              : <SquareSkeleton style={{ left: 622, top: 191 }} />
+            }
+          </>
+        )}
+
+        {/* ==== 최신 포스트 ==== */}
+        <SectionTitle left={87} top={480}>최신 포스트</SectionTitle>
+        {isLoading ? (
+          <>
+            <SquareSkeleton style={{ left: 84,  top: 516 }} />
+            <SquareSkeleton style={{ left: 353, top: 516 }} />
+            <SquareSkeleton style={{ left: 622, top: 516 }} />
+          </>
+        ) : (
+          <>
+            {(latest3[0])
+              ? <SquareCard to={`/posts/${latest3[0].slug}`} style={{ left: 84, top: 516 }}>
+                  <img src={thumb(latest3[0].thumbnail)} alt={latest3[0].title} />
+                </SquareCard>
+              : <SquareSkeleton style={{ left: 84, top: 516 }} />
+            }
+            {(latest3[1])
+              ? <SquareCard to={`/posts/${latest3[1].slug}`} style={{ left: 353, top: 516 }}>
+                  <img src={thumb(latest3[1].thumbnail)} alt={latest3[1].title} />
+                </SquareCard>
+              : <SquareSkeleton style={{ left: 353, top: 516 }} />
+            }
+            {(latest3[2])
+              ? <SquareCard to={`/posts/${latest3[2].slug}`} style={{ left: 622, top: 516 }}>
+                  <img src={thumb(latest3[2].thumbnail)} alt={latest3[2].title} />
+                </SquareCard>
+              : <SquareSkeleton style={{ left: 622, top: 516 }} />
+            }
+          </>
+        )}
+
+        <MidDivider />
+
+        {/* ==== 당신을 위한 청년정책 (리스트 4행) ==== */}
+        <RecoTitle>당신을 위한 청년정책</RecoTitle>
+        {isLoading ? (
+          <>
+            {[914, 1138, 1356, 1580].map((top, i) => (
+              <React.Fragment key={`row-skel-${i}`}>
+                <BlogRowSkeleton top={top} />
+                <SkeletonLine left={87} top={top+18} w={380} h={23} />
+                <SkeletonLine left={87} top={top+63} w={520} h={45} />
+                <SkeletonLine left={87} top={top+148} w={86} h={19} />
+                <RowDivider top={[1115,1333,1557,1775][i]} />
+              </React.Fragment>
+            ))}
+          </>
+        ) : (
+          <>
+            {blogRows.map((post, i) => {
+              const tops   = [914, 1138, 1356, 1580] as const
+              const lines  = [1115, 1333, 1557, 1775] as const
+              const top    = tops[i]
+              const lineY  = lines[i]
+              return (
+                <React.Fragment key={post.id}>
+                  <BlogRowWrap top={top}>
+                    <BlogThumb to={`/posts/${post.slug}`}>
+                      <img src={thumb(post.thumbnail)} alt={post.title} />
+                    </BlogThumb>
+                    <BlogTitle to={`/posts/${post.slug}`}>{post.title}</BlogTitle>
+                    <BlogExcerpt>{post.summary}</BlogExcerpt>
+                    <BlogMeta>{new Date(post.createdAt).toLocaleDateString()}</BlogMeta>
+                  </BlogRowWrap>
+                  <RowDivider top={lineY} />
+                </React.Fragment>
+              )
+            })}
+            {/* 부족한 행은 스켈레톤으로 메움 */}
+            {Array.from({ length: Math.max(0, 4 - blogRows.length) }).map((_, j) => {
+              const idx = blogRows.length + j
+              const tops   = [914, 1138, 1356, 1580] as const
+              const lines  = [1115, 1333, 1557, 1775] as const
+              return (
+                <React.Fragment key={`row-gap-${idx}`}>
+                  <BlogRowSkeleton top={tops[idx]} />
+                  <SkeletonLine left={87} top={tops[idx]+18}  w={380} h={23} />
+                  <SkeletonLine left={87} top={tops[idx]+63}  w={520} h={45} />
+                  <SkeletonLine left={87} top={tops[idx]+148} w={86}  h={19} />
+                  <RowDivider top={lines[idx]} />
+                </React.Fragment>
+              )
+            })}
+          </>
+        )}
       </ScaledRoot>
-    </MainContainer>
+    </PageWrap>
   )
 }
 
