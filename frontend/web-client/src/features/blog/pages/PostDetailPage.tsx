@@ -72,9 +72,7 @@ export default function PostDetailPage() {
   return (
     // 가로 스크롤 방지
     <div style={{ overflowX: 'hidden' }}>
-      {/* 부모 래퍼 높이를 스케일 적용 후 실제 높이로 맞춤 → footer 공백 제거 */}
       <div style={{ position: 'relative', height: visualH || 'auto' }}>
-        {/* ✅ 스케일러: 가운데 정렬 (left:50% + translateX(-50%)) */}
         <div
           ref={scalerRef}
           style={{
@@ -126,7 +124,7 @@ export default function PostDetailPage() {
               </div>
             </header>
 
-            {/* 썸네일 (정사각) */}
+            {/* 썸네일*/}
             {post.thumbnail && (
               <div className="mt-10 mx-auto w-full max-w-[553px]">
                 <div className="aspect-square bg-[#F5F5F5] rounded overflow-hidden">
