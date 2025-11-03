@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Calendar, User, Eye, ArrowLeft, Share2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { getPost, type Post } from '@/shared/api/posts'
+import { Helmet } from 'react-helmet-async'
 
 export default function PostDetailPage() {
     const { slug } = useParams<{ slug: string }>()
@@ -41,6 +42,21 @@ export default function PostDetailPage() {
     }
 
     return (
+    <>
+        <Helmet>
+            <title>{post?.meta?.title || post?.title}</title>
+            {post?.meta?.description && <meta name="description" content={post.meta.description} />}
+            {post?.meta?.keywords?.length > 0 && (
+                <meta name="keywords" content={post.meta.keywords.join(', ')} />
+            )}
+            {/* 썸네일 이미지 */}
+            {post?.meta?.thumbnail_img && (
+                <meta property="og:image" content={post.meta.thumbnail_img} />
+            )}
+            {/* robots */}
+            <meta name="robots" content={post?.meta?.robots || 'noindex,nofollow'} />
+        </Helmet>
+
         <article className="max-w-4xl mx-auto">
             {/* Navigation */}
             <div className="mb-6 flex items-center justify-between">
@@ -95,5 +111,6 @@ export default function PostDetailPage() {
                 </div>
             </div>
         </article>
+    </>
     )
 }
