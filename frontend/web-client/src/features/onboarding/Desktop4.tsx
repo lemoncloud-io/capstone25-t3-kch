@@ -5,7 +5,7 @@ import Header from './Header';
 import { Home, BookOpen, Briefcase, TrendingUp, DollarSign, ShoppingBag, Film, Heart, Globe, Users, ChevronLeft } from 'lucide-react'; 
 
 // =========================================================================
-// 1. 통합 카테고리 매핑 정의 (CategoryPage.tsx에서 사용한 4개의 대주제)
+// 1. 통합 카테고리 매핑 정의 
 // =========================================================================
 const INTEREST_TO_NEW_SLUG_MAP = {
     '취업 지원': 'jobs',
@@ -17,17 +17,18 @@ const INTEREST_TO_NEW_SLUG_MAP = {
     '문화/여가': 'welfareCulture',
     '건강/상담': 'welfareCulture',
     '해외 기회': 'jobs',
-    '청년 참여': 'jobs', // 청년 참여도 '일자리' 카테고리에 포함
+    '청년 참여': 'jobs', 
 } as const;
 
+// 🌟 추가: NewCategorySlug 타입 정의 (오류 해결 핵심)
+type NewCategorySlug = typeof INTEREST_TO_NEW_SLUG_MAP[keyof typeof INTEREST_TO_NEW_SLUG_MAP];
+
+
 // =========================================================================
-// 타입 정의
+// 타입 및 데이터 정의
 // =========================================================================
 type IconType = typeof Briefcase; 
 
-// 2. 기존 INTEREST_CATEGORIES 배열 수정: 
-// name(한글명)을 기준으로 맵핑할 것이므로 slug 속성은 더 이상 사용되지 않지만,
-// 기존 코드의 데이터 구조를 유지하고 재사용성을 높이기 위해 name과 key만 남깁니다.
 const INTEREST_CATEGORIES: { key: string; name: string; icon: IconType }[] = [
     { key: 'employment_support', name: '취업 지원', icon: Briefcase },
     { key: 'education_license', name: '교육/자격증', icon: BookOpen },
@@ -42,12 +43,13 @@ const INTEREST_CATEGORIES: { key: string; name: string; icon: IconType }[] = [
 ] as const;
 
 interface Desktop4Props {
-    // onSelectInterests는 이제 통합된 4개 중 하나의 slug를 받게 됩니다.
     onSelectInterests: (interests: string[]) => void;
+    // 🌟 추가: 뒤로가기 콜백 함수 타입 정의
+    onGoBack: () => void; 
 }
 
 // =========================================================================
-// InterestItem 컴포넌트 (변경 없음, item 타입만 소폭 수정)
+// InterestItem 컴포넌트 
 // =========================================================================
 
 interface ItemProps {
@@ -59,9 +61,10 @@ interface ItemProps {
 const InterestItem: React.FC<ItemProps> = ({ item, isSelected, onClick }) => {
     const IconComponent = item.icon;
     
+    // 카드 크기 조정: max-w, min-h, lg:h 적용
     const itemClasses = `
         flex flex-col items-center justify-center text-center 
-        w-full aspect-square min-h-[150px] lg:h-[250px] p-4 rounded-2xl cursor-pointer 
+        w-full max-w-[180px] aspect-square min-h-[100px] lg:h-[150px] p-4 rounded-2xl cursor-pointer 
         transition-all duration-200 shadow-lg hover:shadow-xl
         ${isSelected 
             ? 'bg-[#B0CEEA] border-4 border-[#2376C4]' 
@@ -70,26 +73,26 @@ const InterestItem: React.FC<ItemProps> = ({ item, isSelected, onClick }) => {
     `;
     
     const iconColor = isSelected ? 'text-[#2376C4]' : 'text-[#B0CEEA]';
+    // 텍스트 크기 조정: text-base lg:text-lg 적용
     const textClasses = isSelected 
-        ? 'text-lg lg:text-xl text-[#1a5c9a] font-extrabold' 
-        : 'text-lg lg:text-xl text-[#2376C4] font-semibold';
+        ? 'text-base lg:text-lg text-[#1a5c9a] font-extrabold' 
+        : 'text-base lg:text-lg text-[#2376C4] font-semibold';
 
     return (
         <div 
             className={itemClasses} 
             onClick={onClick}
         >
-            {/* 아이콘 컨테이너 */}
-            <div className="w-16 h-16 lg:w-24 lg:h-24 mb-3 flex items-center justify-center flex-shrink-0">
+            {/* 아이콘 컨테이너 및 아이콘 크기 조정 */}
+            <div className="w-10 h-10 lg:w-14 lg:h-14 mb-1 flex items-center justify-center flex-shrink-0">
                 <IconComponent 
-                    size={64}
-                    className={`${iconColor} lg:w-24 lg:h-24`}
+                    size={40}
+                    className={`${iconColor} lg:w-10 lg:h-10`}
                     role="img"
                     aria-label={`${item.name} 아이콘`}
                 />
             </div>
             
-            {/* 텍스트 */}
             <span className={`leading-snug px-2 ${textClasses}`}>
                 {item.name}
             </span>
@@ -99,54 +102,79 @@ const InterestItem: React.FC<ItemProps> = ({ item, isSelected, onClick }) => {
 
 
 // =========================================================================
-// 메인 컴포넌트 (Desktop4) - 핵심 수정 로직
+// 메인 컴포넌트 (Desktop4) 
 // =========================================================================
 
-const Desktop4: React.FC<Desktop4Props> = ({ onSelectInterests }) => {
-    const [selectedInterest, setSelectedInterest] = useState<string | null>(null);
+const Desktop4: React.FC<Desktop4Props> = ({ onSelectInterests, onGoBack }) => { 
+    const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
 
     const toggleInterest = (interestKey: string) => {
-        setSelectedInterest(prev => (prev === interestKey ? null : interestKey));
+        setSelectedInterests(prev => {
+            if (prev.includes(interestKey)) {
+                return prev.filter(key => key !== interestKey);
+            } else {
+                return [...prev, interestKey];
+            }
+        });
     };
 
-    const isSelectionValid = selectedInterest !== null;
+    const isSelectionValid = selectedInterests.length > 0;
 
-    // 3. handleNext 로직 수정: 선택된 관심사를 통합 카테고리 slug로 변환합니다.
     const handleNext = () => {
-        if (isSelectionValid && selectedInterest) {
-            // 1. 선택된 관심사의 key를 사용하여 **한글 이름**을 찾습니다.
-            const selectedItem = INTEREST_CATEGORIES.find(item => item.key === selectedInterest);
-            const interestName = selectedItem ? selectedItem.name : null;
+        if (isSelectionValid) {
             
-            if (interestName) {
-                // 2. 한글 이름을 사용하여 **통합 카테고리 slug**를 맵핑 테이블에서 찾습니다.
-                const newCategorySlug = INTEREST_TO_NEW_SLUG_MAP[interestName as keyof typeof INTEREST_TO_NEW_SLUG_MAP];
+            // 🌟 수정된 부분 1: map의 반환 타입을 명시적으로 지정
+            const selectedSlugs = selectedInterests
+                .map((key): NewCategorySlug | null => {
+                    const selectedItem = INTEREST_CATEGORIES.find(item => item.key === key);
+                    const interestName = selectedItem ? selectedItem.name : null;
 
-                // 3. 통합된 slug를 onSelectInterests로 전달합니다.
-                if (newCategorySlug) {
-                    onSelectInterests([newCategorySlug]); 
-                }
+                    if (interestName) {
+                        return INTEREST_TO_NEW_SLUG_MAP[interestName as keyof typeof INTEREST_TO_NEW_SLUG_MAP];
+                    }
+                    return null;
+                })
+                // 🌟 수정된 부분 2: 필터링된 결과의 타입을 정확히 NewCategorySlug로 가드
+                .filter((slug): slug is NewCategorySlug => slug !== null); 
+
+            if (selectedSlugs.length > 0) {
+                // onSelectInterests는 string[]을 받습니다. NewCategorySlug는 string의 유니온 타입이므로 호환됩니다.
+                onSelectInterests(selectedSlugs); 
             }
         }
     };
 
     const contentPaddingTopClass = "pt-20 pb-16 lg:pt-0 lg:pb-0"; 
+    // 🌟 수정: mt-[110px] -> mt-10으로 변경하여 제목을 위로 올림
+    const questionMarginTopClass = "mt-19"; 
+    
 
     return (
         <div className="w-screen min-h-screen bg-white flex flex-col items-stretch relative font-inter">
-            {/* ... (UI 코드는 변경 없음) */}
             <Header />
 
-            <div className={`flex flex-col items-center flex-grow justify-center px-5 w-full max-w-[1400px] mx-auto ${contentPaddingTopClass}`}>
+            <div className={`flex flex-col items-center flex-grow justify-center px-5 w-full max-w-[1400px] mx-auto relative ${contentPaddingTopClass}`}>
+                
+                {/* 뒤로가기 버튼 위치는 Desktop3와 동일하게 유지 */}
+                <button
+                    onClick={onGoBack}
+                    className="absolute top-[40px] left-[180px] text-[#2376C4] hover:opacity-70 transition-opacity p-2 z-20"
+                    aria-label="이전 단계로"
+                >
+                    <ChevronLeft size={30} />
+                </button>
 
-                <h2 className="text-2xl sm:text-3xl lg:text-[30px] font-bold text-gray-800 text-center mb-8 lg:mb-12">
+                {/* 🌟 수정: mt-[110px] 대신 questionMarginTopClass (mt-10) 적용 */}
+                <h2 className={`text-xl sm:text-2xl lg:text-[25px] font-bold text-gray-800 text-center ${questionMarginTopClass} mb-8 lg:mb-12`}>
                     당신의 관심사는 무엇인가요?
                 </h2>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 lg:gap-5 w-full max-w-[1200px] mb-8 lg:mb-12">
-                    {INTEREST_CATEGORIES.map(item => {
-                        const isSelected = selectedInterest === item.key;
-
+                {/* 그리드 컨테이너: 간격(gap) 축소 및 max-w 조정, 버튼과의 간격을 위해 mb-4 lg:mb-6으로 축소 */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 lg:gap-3 w-full max-w-[1000px] mb-4 lg:mb-6">
+                    {INTEREST_CATEGORIES.map(item => { 
+                        // 선택 상태 확인 로직 변경 (배열에 포함되어 있는지 확인)
+                        const isSelected = selectedInterests.includes(item.key);
+                        
                         return (
                             <InterestItem
                                 key={item.key}
@@ -160,20 +188,22 @@ const Desktop4: React.FC<Desktop4Props> = ({ onSelectInterests }) => {
 
                 <button
                     className={`
-                        w-full max-w-sm sm:w-[300px] h-[60px] lg:h-[70px] mt-4 lg:mt-8 mb-6 lg:mb-10 
-                        rounded-full text-white text-xl lg:text-3xl font-semibold transition-colors duration-200
+                        w-full max-w-sm sm:w-[180px] h-[50px] lg:h-[60px] 
+                        mt-4 lg:mt-1 mb-4 lg:mb-6 // 버튼 윗쪽 마진 축소 (lg:mt-1 적용)
+                        rounded-full text-white text-xl lg:text-xl font-semibold transition-colors duration-200
                         ${isSelectionValid ? 'bg-[#2376C4] hover:bg-[#1a5c9a] cursor-pointer shadow-xl' : 'bg-[#CCCCCC] cursor-not-allowed'}
                     `}
                     onClick={handleNext}
                     disabled={!isSelectionValid}
                 >
-                    선택 완료 ({selectedInterest ? 1 : 0}개)
+                    {/* 선택 개수 표시 로직 변경 */}
+                    선택 완료 ({selectedInterests.length}개)
                 </button>
 
                 <div className="flex justify-center gap-2 w-full mb-8">
-                    <div className="w-4 h-4 rounded-full bg-[#E0E0E0]" />
-                    <div className="w-4 h-4 rounded-full bg-[#E0E0E0]" />
-                    <div className="w-4 h-4 rounded-full bg-[#B0CEEA]" />  
+                    <div className="w-3.5 h-3.5 rounded-full bg-[#E0E0E0]" />
+                    <div className="w-3.5 h-3.5 rounded-full bg-[#E0E0E0]" />
+                    <div className="w-3.5 h-3.5 rounded-full bg-[#B0CEEA]" />  
                 </div>
             </div>
         </div>

@@ -11,12 +11,12 @@ const HeaderFrame = styled.div`
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 25px;
+    gap: 20px;
     width: fit-content;
     height: auto; 
     margin: 0; 
     padding: 26px 30px 18px 30px; 
-    font-size: 40px;
+    font-size: 28px;
     font-weight: 600;
 `;
 
@@ -44,8 +44,8 @@ const Header: React.FC = () => {
                 <img 
                     src="/KCodingHansung_logo.png" 
                     alt="K-Coding Hansung Logo" 
-                    width="112" 
-                    height="108" 
+                    width="84"
+                    height="81" 
                 />
                 <HeaderTitle>K-Coding Hansung</HeaderTitle> 
             </HeaderFrame>

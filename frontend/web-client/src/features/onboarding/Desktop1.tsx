@@ -22,16 +22,8 @@ const ContentArea = styled.div`
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 30px;
-    margin-top: 100px;
-`;
-
-// 이모지 스타일 (.waving-emoji)
-const WavingEmoji = styled.span`
-    font-size: 200px;
-    line-height: 1;
-    display: inline-block;
-    margin-bottom: 30px;
+    gap: 10px;
+    margin-top: 0px;
 `;
 
 // 추천 텍스트 (.recommend-text)
@@ -39,8 +31,8 @@ const RecommendText = styled.p`
     width: 621px;
     font-style: normal;
     font-weight: 600;
-    font-size: 35px;
-    line-height: 48px;
+    font-size: 20px;
+    line-height: 25px;
     text-align: center;
     color: #000000;
 `;
@@ -52,13 +44,13 @@ const StartButton = styled.button`
     align-items: center;
     padding: 20px 67px;
     gap: 10px;
-    width: 369px;
-    height: 71px;
+    width: 220px;
+    height: 60px;
     background: #B0CEEA;
     border-radius: 50px;
     cursor: pointer;
     border: none;
-    margin-top: 50px;
+    margin-top: 30px;
     /* transition: background-color 0.3s;
 
     &:hover {
@@ -70,7 +62,7 @@ const StartButton = styled.button`
 const StartButtonText = styled.span`
     font-style: normal;
     font-weight: 600;
-    font-size: 50px;
+    font-size: 21px;
     line-height: 61px;
     color: #2376C4;
 `;
@@ -93,8 +85,15 @@ const Desktop1: React.FC<Desktop1Props> = ({ onStart }) => {
             
             <ContentArea>
                 
-                {/* 기존 WavingEmoji 대신 이미지 사용 */}
-                <img src="/Lemon_hi.png" alt="손 흔드는 이모지" style={{ width: '350px', height: '350px', marginBottom: '30px' }} />
+                <img 
+                    src="/Lemon_hi.png" 
+                    alt="손 흔드는 이모지" 
+                    style={{ 
+                        width: '300px', 
+                        height: '300px', 
+                        marginBottom: '30px' 
+                    }} 
+                />
                 
                 <RecommendText>
                     케코한 블로그는<br />당신에게 꼭 맞는 청년 정책을<br />추천해 드립니다.

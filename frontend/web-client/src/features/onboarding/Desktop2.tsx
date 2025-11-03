@@ -26,24 +26,24 @@ const ContentArea2 = styled.div`
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding-top: 0;
+    padding-top: 60px;
 `;
 
 // 질문 텍스트 스타일 (.question-text-2)
 const QuestionText2 = styled.h2`
-    font-size: 30px;
+    font-size: 25px;
     font-weight: 700;
     color: #333333;
     margin-top: 0;
-    margin-bottom: 50px;
+    margin-bottom: 40px;
 `;
 
 // 선택 영역 컨테이너 (.selection-area-2)
 const SelectionArea2 = styled.div`
     display: flex;
     flex-direction: row;
-    gap: 100px;
-    margin-bottom: 100px;
+    gap: 15px;
+    margin-bottom: 50px;
 `;
 
 // 상태 선택 버튼 스타일 (.status-button-2)
@@ -55,8 +55,8 @@ const StatusButton2 = styled.button`
     padding: 30px;
     gap: 15px;
 
-    width: 300px;
-    height: 350px;
+    width: 280px;
+    height: 250px;
 
     background: #FFFFFF;
     border: 3px solid #B0CEEA;
@@ -70,18 +70,10 @@ const StatusButton2 = styled.button`
     }
 `;
 
-// **StatusEmoji2 스타일 컴포넌트는 더 이상 사용되지 않으므로 주석 처리하거나 제거하는 것이 좋습니다.**
-const StatusEmoji2 = styled.span`
-    font-size: 120px;
-    line-height: 1;
-    display: inline-block;
-    /* margin-bottom: 15px; */
-`;
-
 const StatusText2 = styled.span`
     font-style: normal;
     font-weight: 600;
-    font-size: 30px;
+    font-size: 24px;
     line-height: 36px;
     color: #2376C4;
 `;
@@ -89,7 +81,7 @@ const StatusText2 = styled.span`
 const PaginationContainer2 = styled.div`
     display: flex;
     justify-content: center;
-    margin-top: 0;
+    margin-top: 145px;
     padding-bottom: 0;
     gap: 10px;
 `;
