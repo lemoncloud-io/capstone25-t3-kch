@@ -1,0 +1,4 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/backend/api-server/.venv/bin/python",
+  "python.terminal.activateEnvironment": true
+}
