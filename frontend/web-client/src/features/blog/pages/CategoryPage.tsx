@@ -87,7 +87,6 @@ export default function CategoryPage() {
           transform: `scale(${UI_SCALE})`,
           transformOrigin: 'top center',
           width: '100%',
-          minHeight: `calc(100vh / ${UI_SCALE})`,
           display: 'block',
           margin: '0 auto',
         }}

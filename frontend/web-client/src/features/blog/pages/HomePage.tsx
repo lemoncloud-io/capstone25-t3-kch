@@ -21,7 +21,7 @@ const CONTENT_MAX_WIDTH = 1200
 const MainContainer = styled.div`
   position: relative;
   width: 100%;
-  min-height: 2000px;
+  min-height: 1400px;
   background: #FFFFFF;
   margin: 0 auto;
   overflow-x: hidden;
@@ -368,7 +368,7 @@ const SkeletonTextLine = styled.div<{ width: string; height: string; marginBotto
 `
 
 // ----------------------------------------------------
-// 2) 카테고리 정보
+// 2) 카테고리 정보 (+ 타입/헬퍼 추가)
 // ----------------------------------------------------
 const categoryInfo = {
   housing:   { name: '주거지원' },
@@ -377,27 +377,27 @@ const categoryInfo = {
   welfare:   { name: '복지지원' },
 } as const
 
+type CatSlug = keyof typeof categoryInfo
+const getCategoryNameFromSlug = (slug: CatSlug) => categoryInfo[slug].name
+
 // ----------------------------------------------------
 // 3) HomePage
 // ----------------------------------------------------
 const HomePage: React.FC = () => {
-  const [activeCategory, setActiveCategory] = useState<string>('주거지원')
-
-  const getCategorySlugFromName = (name: string) => {
-    const entry = Object.entries(categoryInfo).find(([, v]) => v.name === name);
-    return entry ? entry[0] : '';
-  };
+  // ✅ 상태는 slug로만 관리
+  const [activeCategory, setActiveCategory] = useState<CatSlug>('housing')
 
   const { data: popularPosts, isLoading: isLoadingPopular } = useQuery<Post[]>({
     queryKey: ['posts', 'popular'],
     queryFn: () => getPosts(),
-  });
+  })
 
+  // ✅ 쿼리키는 slug, API에는 한글 이름 전달
   const { data: latestPosts, isLoading: isLoadingLatest } = useQuery<Post[]>({
     queryKey: ['posts', 'latest', activeCategory],
-    queryFn: () => getPosts({ category: activeCategory }),
+    queryFn: () => getPosts({ category: getCategoryNameFromSlug(activeCategory) }),
     enabled: !!activeCategory,
-  });
+  })
 
   // 로딩
   if (isLoadingPopular || isLoadingLatest) {
@@ -443,7 +443,7 @@ const HomePage: React.FC = () => {
           </LatestPostsSection>
         </ScaledRoot>
       </MainContainer>
-    );
+    )
   }
 
   // 데이터 가드
@@ -490,12 +490,14 @@ const HomePage: React.FC = () => {
         {/* Latest */}
         <LatestPostsSection>
           <SectionTitle>✨ 최신 포스트</SectionTitle>
+
+          {/* ✅ 카테고리 탭: slug 기준 렌더/선택 */}
           <CategoryFilterContainer>
-            {Object.values(categoryInfo).map((cat) => (
+            {Object.entries(categoryInfo).map(([slug, cat]) => (
               <CategoryFilterButton
-                key={cat.name}
-                isActive={getCategorySlugFromName(cat.name) === activeCategory}
-                onClick={() => setActiveCategory(getCategorySlugFromName(cat.name))}
+                key={slug}
+                isActive={(slug as CatSlug) === activeCategory}
+                onClick={() => setActiveCategory(slug as CatSlug)}
               >
                 {cat.name}
               </CategoryFilterButton>
