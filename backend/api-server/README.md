@@ -5,7 +5,7 @@
 ## 변경 이력 (Changelog)
 
 ---
-### 2025.11.03 - SEO 메타태그 추가
+### 2025.11.04 - SEO 메타태그 추가
 
 #### 주요 변경사항
 
@@ -14,7 +14,7 @@
   - `type=meta` 추가: 별도 LLM 호출 없이 기존 값으로 메타 구성
     - `title`: `generate_title(policy_data)` 결과
     - `description`: `generate_summary(policy_data)` 결과
-    - `keywords`: `content_data.keywords`
+    - `keywords`: `policy_data.keywords`
     - `thumbnail_img`: S3 URL(옵션(보강예정), 없으면 미출력)
     - `robots`: 옵션(검색로봇)
   - `type=full` 보완: 본문(`blog_content`)과 함께 위 메타 구조 포함해 반환
