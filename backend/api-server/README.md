@@ -368,105 +368,22 @@ curl -X POST http://127.0.0.1:8000/api/thumbnails/auto \
 
 ---
 
-## 정책 자동 업데이트 크론잡 설정 (EC2)
+## 정책 자동 업데이트 크론잡 (EC2)
 
-### 빠른 시작 (Quick Start)
-
-#### 1. 자동 설정 스크립트 실행
+### 빠른 시작
 ```bash
-cd /home/ubuntu/capstone25-t3-kch-2/backend/api-server
-
-# 실행 권한 부여
-chmod +x setup_cron.sh
-
-# 자동 설정 실행
-./setup_cron.sh
-```
-
-이 스크립트는 다음을 자동으로 처리합니다:
-- Python 패키지 설치
-- .env 파일 검증
-- 크론 헬퍼 스크립트 생성
-- Crontab 등록 (대화형 시간 선택)
-
-#### 2. 테스트 실행
-```bash
-# Dry-run 모드 (실제 저장 없이 테스트)
-./test_update.sh
-
-# 또는
-python3 jobs/update_policies.py --dry-run --max-pages 1
-```
-
-#### 3. 실제 실행
-```bash
-# 수동 실행
-python3 jobs/update_policies.py
-
-# 또는 헬퍼 스크립트 실행
-~/run_policy_update.sh
-```
-
-### 크론잡 시간 설정 예시
-
-| 스케줄 | Cron 표현식 | 설명 |
-|--------|-------------|------|
-| 매일 오전 3시 | `0 3 * * *` | 새벽에 실행 (권장) |
-| 매일 자정 | `0 0 * * *` | 자정에 실행 |
-| 매 6시간마다 | `0 */6 * * *` | 하루 4회 실행 |
-
-### 로그 확인
-
-```bash
-# 실시간 로그 보기
-tail -f ~/capstone25-t3-kch-2/backend/api-server/logs/cron_output.log
-
-# 오늘 날짜 로그
-tail -f ~/capstone25-t3-kch-2/backend/api-server/logs/update_policies_$(date +%Y%m%d).log
-
-# 크론 상태 확인
-tail -f ~/capstone25-t3-kch-2/backend/api-server/logs/cron_status.log
-```
-
-### FastAPI 서버 24시간 실행 (PM2)
-
-크론잡이 썸네일 API를 호출하므로 FastAPI 서버가 항상 실행 중이어야 합니다.
-
-```bash
-# PM2 설치 (필요시)
-npm install -g pm2
-
-# FastAPI 서버 실행
 cd ~/capstone25-t3-kch-2/backend/api-server
-pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" --name api-server
-
-# 재부팅 시 자동 시작
-pm2 startup
-pm2 save
-
-# 프로세스 확인
-pm2 list
-pm2 logs api-server
+./setup_cron.sh     # 자동 설정
+./test_update.sh    # 테스트
 ```
 
-### 트러블슈팅
-
+### PM2로 FastAPI 서버 실행
 ```bash
-# 크론 등록 확인
-crontab -l
-
-# 크론 서비스 상태
-sudo systemctl status cron
-
-# DB 연결 테스트
-psql $DB_URL -c "SELECT COUNT(*) FROM policy_raw;"
-
-# FastAPI 서버 확인
-curl http://localhost:8000/api/health
+pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" --name api-server
+pm2 startup && pm2 save
 ```
 
 ### 상세 가이드
-
-더 자세한 내용은 [CRON_SETUP.md](./CRON_SETUP.md)를 참조하세요.
+[크론잡_가이드.md](./크론잡_가이드.md) 참조
 
 ---
