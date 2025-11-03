@@ -4,20 +4,6 @@ import { useQuery } from '@tanstack/react-query'
 import { Calendar, Eye } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { getPost, type Post } from '@/shared/api/posts'
-import React, { useLayoutEffect, useRef, useState } from 'react'
-
-// ----------------------------------------------------
-// 1) UI SCALE
-// ----------------------------------------------------
-const UI_SCALE = 0.6
-const CONTENT_MAX_WIDTH = 1200
-
-const nameToKey: Record<string, string> = {
-  주거지원: 'housing',
-  교육지원: 'education',
-  일자리지원: 'jobs',
-  복지지원: 'welfare',
-}
 
 export default function PostDetailPage() {
   const { slug } = useParams<{ slug: string }>()
@@ -69,38 +55,13 @@ export default function PostDetailPage() {
   const categoryName = post.category || '카테고리'
   const categoryKey = nameToKey[categoryName]
 
-  return (
-    // 가로 스크롤 방지
-    <div style={{ overflowX: 'hidden' }}>
-      <div style={{ position: 'relative', height: visualH || 'auto' }}>
-        <div
-          ref={scalerRef}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: '50%',
-            transform: `translateX(-50%) scale(${UI_SCALE})`,
-            transformOrigin: 'top center',
-            width: '100%',
-            margin: 0,
-            paddingBottom: 0,
-          }}
-        >
-          {/* 내부 컨텐츠 */}
-          <article
-            style={{ maxWidth: `${CONTENT_MAX_WIDTH}px` }}
-            className="mx-auto w-full px-4 sm:px-6 lg:px-8"
-          >
-            {/* 브레드크럼 */}
-            <nav className="mt-6 text-[15px] text-gray-700">
-              <Link to="/" className="hover:text-blue-600">홈</Link>
-              <span className="mx-2 text-gray-300">/</span>
-              {categoryKey ? (
-                <Link
-                  to={`/category/${categoryKey}`}
-                  className="font-semibold text-[#6B9CC9] hover:underline"
-                >
-                  {categoryName}
+    return (
+        <article className="max-w-4xl mx-auto">
+            {/* Navigation */}
+            <div className="mb-6 flex items-center justify-between">
+                <Link to="/" className="inline-flex items-center text-gray-600 hover:text-blue-600 transition">
+                    <ArrowLeft size={20} className="mr-2" />
+                    목록으로
                 </Link>
               ) : (
                 <span>{categoryName}</span>
@@ -147,11 +108,7 @@ export default function PostDetailPage() {
                 <div className="prose prose-slate max-w-none prose-headings:text-black prose-p:text-black prose-strong:text-black prose-li:text-black [&>*:last-child]:mb-0">
                   <ReactMarkdown>{post.content}</ReactMarkdown>
                 </div>
-              </div>
-            </section>
-          </article>
-        </div>
-      </div>
-    </div>
-  )
+            </div>
+        </article>
+    )
 }
