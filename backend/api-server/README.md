@@ -4,6 +4,65 @@
 
 ## 변경 이력 (Changelog)
 
+### 2025.11.03 - 정책 자동 업데이트 크론잡 시스템 구축
+
+#### 주요 변경사항
+
+**feat(cron): 정책 자동 업데이트 크론잡 시스템**
+- `jobs/update_policies.py` 구현
+  - youthcenter.go.kr API에서 최신 정책 자동 수집
+  - DB와 비교하여 신규 정책만 필터링 및 저장
+  - 신규 정책에 대해 썸네일 자동 생성 API 호출
+  - 블로그 자동 생성 및 DB 저장
+  - 상세 로그 기록 (날짜별 로그 파일)
+  - Dry-run 모드 지원 (`--dry-run`)
+  - 페이지 제한 옵션 (`--max-pages N`)
+
+**feat(setup): 자동 설정 스크립트**
+- `setup_cron.sh`: 크론잡 자동 설정 스크립트
+  - 환경 변수 자동 검증
+  - Python 패키지 자동 설치
+  - 크론 헬퍼 스크립트 자동 생성
+  - 대화형 크론 시간 설정 (매일 3시, 자정, 9시, 6시간마다 등)
+  - 기존 크론잡 덮어쓰기 확인
+- `test_update.sh`: 빠른 테스트 스크립트
+  - 기본 dry-run 모드로 안전한 테스트
+  - 로그 경로 자동 안내
+
+**docs(cron): 상세 설정 가이드**
+- `CRON_SETUP.md` 추가
+  - EC2 환경 설정 가이드
+  - PM2로 FastAPI 24시간 실행 설정
+  - 크론잡 설정 및 검증 방법
+  - 로그 확인 및 트러블슈팅
+  - 시스템 리소스 모니터링 가이드
+
+**chore(deps): 패키지 추가**
+- `requirements.txt` 업데이트
+  - openai>=1.0.0: LLM API 연동
+  - cachetools: LLM 응답 캐싱
+  - pillow: 이미지 처리
+
+**시스템 아키텍처**
+```
+[크론잡 (매일 1회)]
+     ↓
+[Python 스크립트 실행 (update_policies.py)]
+     ↓
+[API 호출 → youthcenter.go.kr에서 최신 정책 목록 가져오기]
+     ↓
+[PostgreSQL DB 연결 → 기존 정책 테이블 조회]
+     ↓
+[차이 비교 → 신규 정책만 필터링]
+     ↓
+[신규 정책 있으면]
+     ├─ DB에 insert (policy_raw, policy_clean)
+     ├─ 썸네일 자동 생성 API 호출 (/api/thumbnails/auto)
+     └─ 블로그 글 자동 생성 (blog_posts 테이블)
+```
+
+---
+
 ### 2025.11.02 - 블로그 자동 생성 시스템 구축
 
 #### 주요 변경사항
@@ -306,3 +365,108 @@ curl -X POST http://127.0.0.1:8000/api/thumbnails/auto \
   }
 }
 ```
+
+---
+
+## 정책 자동 업데이트 크론잡 설정 (EC2)
+
+### 빠른 시작 (Quick Start)
+
+#### 1. 자동 설정 스크립트 실행
+```bash
+cd /home/ubuntu/capstone25-t3-kch-2/backend/api-server
+
+# 실행 권한 부여
+chmod +x setup_cron.sh
+
+# 자동 설정 실행
+./setup_cron.sh
+```
+
+이 스크립트는 다음을 자동으로 처리합니다:
+- Python 패키지 설치
+- .env 파일 검증
+- 크론 헬퍼 스크립트 생성
+- Crontab 등록 (대화형 시간 선택)
+
+#### 2. 테스트 실행
+```bash
+# Dry-run 모드 (실제 저장 없이 테스트)
+./test_update.sh
+
+# 또는
+python3 jobs/update_policies.py --dry-run --max-pages 1
+```
+
+#### 3. 실제 실행
+```bash
+# 수동 실행
+python3 jobs/update_policies.py
+
+# 또는 헬퍼 스크립트 실행
+~/run_policy_update.sh
+```
+
+### 크론잡 시간 설정 예시
+
+| 스케줄 | Cron 표현식 | 설명 |
+|--------|-------------|------|
+| 매일 오전 3시 | `0 3 * * *` | 새벽에 실행 (권장) |
+| 매일 자정 | `0 0 * * *` | 자정에 실행 |
+| 매 6시간마다 | `0 */6 * * *` | 하루 4회 실행 |
+
+### 로그 확인
+
+```bash
+# 실시간 로그 보기
+tail -f ~/capstone25-t3-kch-2/backend/api-server/logs/cron_output.log
+
+# 오늘 날짜 로그
+tail -f ~/capstone25-t3-kch-2/backend/api-server/logs/update_policies_$(date +%Y%m%d).log
+
+# 크론 상태 확인
+tail -f ~/capstone25-t3-kch-2/backend/api-server/logs/cron_status.log
+```
+
+### FastAPI 서버 24시간 실행 (PM2)
+
+크론잡이 썸네일 API를 호출하므로 FastAPI 서버가 항상 실행 중이어야 합니다.
+
+```bash
+# PM2 설치 (필요시)
+npm install -g pm2
+
+# FastAPI 서버 실행
+cd ~/capstone25-t3-kch-2/backend/api-server
+pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" --name api-server
+
+# 재부팅 시 자동 시작
+pm2 startup
+pm2 save
+
+# 프로세스 확인
+pm2 list
+pm2 logs api-server
+```
+
+### 트러블슈팅
+
+```bash
+# 크론 등록 확인
+crontab -l
+
+# 크론 서비스 상태
+sudo systemctl status cron
+
+# DB 연결 테스트
+psql $DB_URL -c "SELECT COUNT(*) FROM policy_raw;"
+
+# FastAPI 서버 확인
+curl http://localhost:8000/api/health
+```
+
+### 상세 가이드
+
+더 자세한 내용은 [CRON_SETUP.md](./CRON_SETUP.md)를 참조하세요.
+
+---
