@@ -6,6 +6,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { Toaster } from '@/shared/components/ui/sonner'
 import App from './App'
 import './index.css'
+import { HelmetProvider } from 'react-helmet-async'
 
 // 환경변수
 console.log('=== Frontend Environment Variables ===')
@@ -29,7 +30,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
         <BrowserRouter>
             <QueryClientProvider client={queryClient}>
-                <App />
+                <HelmetProvider>
+                    <App />
+                </HelmetProvider>
                 <Toaster />
                 <ReactQueryDevtools initialIsOpen={false} />
             </QueryClientProvider>
