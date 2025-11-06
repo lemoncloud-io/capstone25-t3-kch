@@ -412,6 +412,20 @@ def build_content_data(clean: Dict[str, Any]) -> Dict[str, Any]:
     # 금액을 읽기 쉽게
     benefit_text = format_benefit_simple(clean.get("amount_min"), clean.get("amount_max"))
     
+    # 기간 추정: end가 없으면 본문/요약에서 마감일을 추정
+    end_guess = clean.get("period_end")
+    if not end_guess:
+        end_guess = _extract_deadline_from_text(
+            "\n".join(
+                [
+                    str(clean.get("summary") or ""),
+                    str(clean.get("content") or clean.get("content_text") or ""),
+                ]
+            )
+        )
+        if end_guess:
+            clean["period_end"] = end_guess
+    
     # 기간 상태
     status = get_simple_status(clean.get("period_start"), clean.get("period_end"))
     
@@ -451,6 +465,55 @@ def build_content_data(clean: Dict[str, Any]) -> Dict[str, Any]:
         "ref_url1": clean["extra"].get("refUrlAddr1"),
         "ref_url2": clean["extra"].get("refUrlAddr2"),
     }
+
+def _extract_deadline_from_text(text: Optional[str]) -> Optional[str]:
+    """
+    본문/요약에서 '신청/접수/마감/까지' 근처의 날짜를 찾아 ISO(YYYY-MM-DD)로 반환
+    지원 포맷: 2025.11.06, 2025-11-06, 2025/11/06, 2025년 11월 6일, 11.06, 11-06
+    연도가 없으면 현재 연도 기준으로 가정
+    """
+    if not text:
+        return None
+    import re
+    from datetime import datetime
+    text = re.sub(r"\s+", " ", str(text))
+    # 키워드 위치
+    kw_iter = list(re.finditer(r"신청|접수|마감|까지", text))
+    if not kw_iter:
+        kw_iter = []
+    kw_positions = [m.start() for m in kw_iter]
+
+    # 날짜 패턴 수집
+    patterns = [
+        r"(?P<y>20\d{2})[./-](?P<m>0?[1-9]|1[0-2])[./-](?P<d>0?[1-9]|[12]\d|3[01])",
+        r"(?P<y>20\d{2})년\s*(?P<m>0?[1-9]|1[0-2])월\s*(?P<d>0?[1-9]|[12]\d|3[01])일",
+        r"(?P<m>0?[1-9]|1[0-2])[./-](?P<d>0?[1-9]|[12]\d|3[01])",  # 연도 없는 경우
+    ]
+    candidates: list[tuple[str, int]] = []  # (yyyy-mm-dd, distance)
+    for pat in patterns:
+        for m in re.finditer(pat, text):
+            y = m.groupdict().get("y")
+            mth = m.group("m")
+            day = m.group("d")
+            if not (mth and day):
+                continue
+            if y is None:
+                y = str(datetime.now().year)
+            try:
+                dt = datetime(int(y), int(mth), int(day))
+                iso = dt.strftime("%Y-%m-%d")
+            except ValueError:
+                continue
+            # 키워드와의 최소 거리
+            pos = m.start()
+            dist = min((abs(pos - kp) for kp in kw_positions), default=0)
+            candidates.append((iso, dist))
+
+    if not candidates:
+        return None
+    # 키워드에 가장 가까운 날짜 우선, 같으면 최근 날짜 선택
+    candidates.sort(key=lambda x: (x[1], x[0]))
+    return candidates[0][0]
 
 def format_benefit_simple(amount_min: Optional[int], amount_max: Optional[int]) -> str:
     """
