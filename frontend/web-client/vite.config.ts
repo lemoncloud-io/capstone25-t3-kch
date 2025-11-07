@@ -6,6 +6,9 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
     plugins: [react(), tailwindcss()],
+    server: {
+        host: true, // 동일 네트워크의 모바일 기기에서 접속 가능하도록
+    },
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
