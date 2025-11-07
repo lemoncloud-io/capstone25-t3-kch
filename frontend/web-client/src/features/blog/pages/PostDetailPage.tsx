@@ -2,7 +2,8 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Calendar, Eye, ArrowLeft, Home, Share2, Link as LinkIcon } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
+import { Helmet } from 'react-helmet-async'
 import { setOgTags } from '@/shared/lib/seo'
 import ReactMarkdown from 'react-markdown'
 import { getPost, type Post } from '@/shared/api/posts'
@@ -55,6 +56,15 @@ export default function PostDetailPage() {
     }
   }, [post])
 
+  const helmetData = useMemo(() => {
+    const title = post?.meta?.title ?? post?.title ?? 'KCH Blog'
+    const description = post?.meta?.description ?? post?.summary ?? undefined
+    const keywords = post?.meta?.keywords ?? []
+    const robots = post?.meta?.robots ?? 'noindex,nofollow'
+    const ogImage = post?.meta?.thumbnail_img ?? post?.thumbnail ?? undefined
+    return { title, description, keywords, robots, ogImage }
+  }, [post])
+
   /* ========== 로딩 ========== */
   if (isLoading) {
     return (
@@ -75,6 +85,10 @@ export default function PostDetailPage() {
   if (!post) {
     return (
       <MainLayout>
+        <Helmet>
+          <title>포스트를 찾을 수 없습니다 · KCH Blog</title>
+          <meta name="robots" content="noindex,nofollow" />
+        </Helmet>
         <div className="text-center py-20">
           <div className="inline-flex p-8 rounded-full bg-gray-100 mb-6">
             <Home size={48} className="text-gray-400" />
@@ -102,6 +116,16 @@ export default function PostDetailPage() {
   /* ========== 본문 ========== */
   return (
     <MainLayout>
+      <Helmet>
+        <title>{helmetData.title}</title>
+        {helmetData.description && <meta name="description" content={helmetData.description} />}
+        {helmetData.keywords.length > 0 && (
+          <meta name="keywords" content={helmetData.keywords.join(', ')} />
+        )}
+        <meta name="robots" content={helmetData.robots} />
+        {helmetData.ogImage && <meta property="og:image" content={helmetData.ogImage} />}
+      </Helmet>
+
       <article className="max-w-5xl mx-auto">
         {/* 히어로 섹션 - 블러 배경 + 제목/메타 정보 */}
         <div className="relative aspect-[21/9] rounded-2xl overflow-hidden mb-12 shadow-xl">
@@ -131,7 +155,7 @@ export default function PostDetailPage() {
               </h1>
               
               {/* 메타 정보 */}
-              <div className="flex items-center gap-6 text-white/90">
+              <div className="flex flex-wrap items-center gap-4 text-white/90">
                 <span className="flex items-center gap-2">
                   <Calendar size={18} className="drop-shadow" />
                   <span className="font-medium">{getRelativeTime(post.createdAt)}</span>
@@ -141,6 +165,11 @@ export default function PostDetailPage() {
                 <span className="flex items-center gap-2">
                   <Eye size={18} className="drop-shadow" />
                   <span className="font-medium">{fmtNum(post.viewCount)}</span>
+                </span>
+                <span className="hidden sm:flex items-center gap-2">
+                  <span className="px-3 py-1 bg-white/15 rounded-full text-sm font-semibold">
+                    {cat}
+                  </span>
                 </span>
               </div>
             </div>
@@ -153,12 +182,10 @@ export default function PostDetailPage() {
             <button
               onClick={async () => {
                 const shareData = { title: post.title, text: post.summary, url: window.location.href }
-                // Web Share API
                 if (navigator.share) {
                   try { await navigator.share(shareData) } catch {}
                   return
                 }
-                // Fallback: 링크 복사
                 await navigator.clipboard.writeText(window.location.href)
                 alert('링크가 복사되었습니다.')
               }}

@@ -30,7 +30,8 @@
         "sonner": "^2.0.7",
         "tailwind-merge": "^3.3.1",
         "tailwindcss-animate": "^1.0.7",
-        "zustand": "^5.0.8"
+        "zustand": "^5.0.8",
+        "react-helmet-async": "^2.0.5"
     },
     "devDependencies": {
         "@eslint/js": "^9.35.0",

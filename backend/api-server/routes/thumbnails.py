@@ -146,36 +146,25 @@ def _draw_centered_outline_text(
     layer_small = layer.resize((w, h), Image.LANCZOS)
     img.alpha_composite(layer_small, (x, y))
 
-def _maybe_upload_s3(png_bytes: bytes, key: str) -> Optional[tuple[str, str]]:
+def _maybe_upload_s3(png_bytes: bytes, key: str) -> Optional[str]:
+    """S3 설정이 있으면 업로드하고 URL을 반환."""
     if not S3_BUCKET:
         return None
     try:
-        # 현재 날짜 기준 경로 생성
-        full_key = f"{S3_PREFIX}/{key}"
-        
-        print(f"[S3] bucket={S3_BUCKET}")
-        print(f"[S3] region={S3_REGION}")
-        print(f"[S3] full_key={full_key}")
-        print(f"[S3] url=https://{S3_BUCKET}.s3.{S3_REGION}.amazonaws.com/{full_key}")
-
-        
         client = boto3.client("s3", region_name=S3_REGION or None)
         client.put_object(
             Bucket=S3_BUCKET,
-            Key=full_key,  # 경로 포함
+            Key=key,
             Body=png_bytes,
             ContentType="image/png",
             CacheControl="public, max-age=31536000, immutable",
         )
-        
-        # URL 생성 로직 업데이트
         if S3_REGION:
-            return (f"https://{S3_BUCKET}.s3.{S3_REGION}.amazonaws.com/{full_key}", full_key)
-        return (f"https://{S3_BUCKET}.s3.amazonaws.com/{full_key}", full_key)
+            return f"https://{S3_BUCKET}.s3.{S3_REGION}.amazonaws.com/{key}"
+        return f"https://{S3_BUCKET}.s3.amazonaws.com/{key}"
     except Exception as e:
         print("[WARN] S3 upload failed:", repr(e))
         return None
-
 
 # ========= 카테고리 매핑 =========
 CATEGORY_ALIAS = {
@@ -195,8 +184,6 @@ BG_MAP = {
     "welfare":   BG_DIR / "bg_welfare.png",
     "education": BG_DIR / "bg_education.png",
 }
-
-
 
 SAFE_RECT_PCT = {
     "jobs":      {"x": 0.10, "y": 0.18, "w": 0.80, "h": 0.52},
@@ -239,25 +226,35 @@ def generate(req: Req):
     checksum = "sha256:" + hashlib.sha256(data).hexdigest()
     ymd = datetime.datetime.now().strftime("%Y/%m")
 
-    # filename = f"{req.policy_id}_{int(datetime.datetime.now().timestamp())}.png"
-    filename = f"{req.policy_id}_{hashlib.md5(data).hexdigest()[:10]}.png"
+    hash_suffix = hashlib.md5(data).hexdigest()[:10]
+    filename = f"{req.policy_id}_{hash_suffix}.png"
 
-    s3_key = filename
-    result = _maybe_upload_s3(data, s3_key)
-    if not result:
-        # 로컬 저장 분기 (지금 코드 그대로)
+    s3_key = f"{S3_PREFIX}/{ymd}/{filename}"
+    s3_url = _maybe_upload_s3(data, s3_key)
+
+    if not s3_url:
         out_path = OUT_DIR / filename
-        with open(out_path, "wb") as f:
-            f.write(data)
+        try:
+            with open(out_path, "wb") as f:
+                f.write(data)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Save failed: {e}")
         return {
-            "ok": True, "storage": "local", "path": str(out_path),
-            "policy_id": req.policy_id, "category": req.category, "checksum": checksum,
+            "ok": True,
+            "storage": "local",
+            "path": str(out_path),
+            "policy_id": req.policy_id,
+            "category": req.category,
+            "checksum": checksum,
         }
 
-    s3_url, full_key = result  # ← 여기서만 언패킹
     return {
-        "ok": True, "storage": "s3", "url": s3_url, "bucket": S3_BUCKET, "key": full_key,
-        "policy_id": req.policy_id, "category": req.category, "checksum": checksum,
+        "ok": True,
+        "storage": "s3",
+        "url": s3_url,
+        "bucket": S3_BUCKET,
+        "key": s3_key,
+        "policy_id": req.policy_id,
+        "category": req.category,
+        "checksum": checksum,
     }
-
-    

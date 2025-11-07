@@ -2,8 +2,7 @@ import { env } from '@/shared/lib/env'
 
 const S3_PUBLIC_BASE =
   env.S3_PUBLIC_BASE ??
-  "https://youth-policy-thumbnails-kch.s3.ap-northeast-2.amazonaws.com/"
-
+  'https://youth-policy-thumbnails-kch.s3.ap-northeast-2.amazonaws.com/'
 export interface PostMeta {
   title: string
   description: string
@@ -589,15 +588,15 @@ export const getPost = async (slug: string): Promise<Post | undefined> => {
             throw new Error(`HTTP error! status: ${response.status}`)
         }
         const b = await response.json()
-        
+
         // 단건 매핑 - 헬퍼 함수 적용
         const mapped: Post = {
             id: String(b.plcy_no ?? slug),
             title: b.blog_title ?? '제목 없음',
             slug: String(b.plcy_no ?? slug),
             summary: b.blog_summary ?? '',
-            category: normCategory(b.category),   // 정규화
-            thumbnail: resolveThumbnail(b),       // URL 복원
+            category: normCategory(b.category), // 정규화
+            thumbnail: resolveThumbnail(b), // URL 복원
             author: '정책관리팀',
             viewCount: Number(b.view_count ?? 0),
             createdAt: b.updated_at ?? new Date().toISOString(),
