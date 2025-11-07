@@ -1,14 +1,31 @@
+# === FastAPI & Server ===
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
 python-dotenv==1.0.0
 
-requests
+# === Database ===
 SQLAlchemy==2.0.*
-psycopg2-binary
+psycopg2-binary==2.9.11
 
-# LLM & 썸네일 생성
-openai>=1.0.0
-cachetools
+# === Network & API ===
+requests==2.32.3
+cachetools==6.0.0
 
-# 이미지 처리
-pillow
+# === AWS S3 ===
+boto3==1.35.5
+
+# === Image & Pillow ===
+Pillow==10.3.0
+
+# === OpenAI API ===
+openai==1.53.0
+
+# === Scheduler / Cron ===
+python-crontab==3.1.0
+
+# === Logging & Utilities ===
+loguru==0.7.2
+tqdm==4.66.5
+
+# === Optional (for safety) ===
+typing-extensions==4.12.2

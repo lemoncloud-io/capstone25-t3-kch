@@ -1,5 +1,13 @@
 import { env } from '@/shared/lib/env'
 
+export interface PostMeta {
+  title: string
+  description: string
+  keywords: string[]
+  thumbnail_img?: string
+  robots?: string
+}
+
 export interface Post {
     id: string
     title: string
@@ -11,6 +19,7 @@ export interface Post {
     viewCount: number
     createdAt: string
     content: string
+    meta?: PostMeta
 }
 
 export const mockPosts: Post[] = [
@@ -230,7 +239,12 @@ export const getPost = async (slug: string): Promise<Post | undefined> => {
             throw new Error(`HTTP error! status: ${response.status}`)
         }
 
-        return await response.json()
+        const data = await response.json()
+
+        return {
+        ...data,
+        meta: data.meta ?? undefined,
+        } as Post // meta 보존해서 반환
     } catch (error) {
         console.error('API 호출 실패:', error)
         return mockPosts.find(post => post.slug === slug)
