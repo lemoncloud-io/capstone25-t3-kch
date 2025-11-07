@@ -111,7 +111,7 @@ export default function PostDetailPage() {
     )
   }
 
-  const cat = post.category?.replace('지원', '') || '정책'
+  const cat = post.category || '정책'
 
   /* ========== 본문 ========== */
   return (

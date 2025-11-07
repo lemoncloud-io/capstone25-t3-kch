@@ -12,22 +12,22 @@ import { setDefaultOg } from '@/shared/lib/seo'
    ========================= */
 const categoryInfo = {
   housing: {
-    name: '주거지원',
+    name: '주거',
     icon: Home,
     description: '청년들을 위한 주거 지원 정책을 확인하세요',
   },
   education: {
-    name: '교육지원',
+    name: '교육',
     icon: BookOpen,
     description: '학자금, 장학금, 교육 프로그램 지원 정보',
   },
   jobs: {
-    name: '일자리지원',
+    name: '일자리',
     icon: Briefcase,
     description: '채용, 직업훈련, 고용 연계 등 일자리 정보',
   },
   welfare: {
-    name: '복지지원',
+    name: '복지',
     icon: Heart,
     description: '건강·상담, 생활안정, 문화/여가 등 복지 지원',
   },
@@ -114,7 +114,7 @@ function CategoryPostCard({ post }: { post: Post }) {
    ========================= */
 function CategoryPostItem({ post }: { post: Post }) {
   const THUMB = 150
-  const cat = post.category?.replace('지원', '') || '정책'
+  const cat = post.category || '정책'
 
   return (
     <Link

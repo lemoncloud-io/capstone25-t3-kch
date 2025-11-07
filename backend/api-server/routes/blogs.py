@@ -47,28 +47,41 @@ def _match_category(text: str, candidates: List[str]) -> Optional[str]:
     return None
 
 
-def normalize_category(raw_category: Optional[str], auto_category: Optional[str] = None) -> str:
-    """DB/자동 분류 카테고리를 네 가지 정규화 라벨로 변환"""
-    sources = [raw_category, auto_category]
-    texts: List[str] = []
-    for src in sources:
+def normalize_category(
+    raw_category: Optional[str],
+    auto_category: Optional[str] = None,
+    *texts: Optional[str]
+) -> str:
+    """제목/요약/본문 등 다양한 단서를 바탕으로 카테고리를 정규화"""
+
+    candidates: List[str] = []
+
+    for src in (raw_category, auto_category):
         if not src:
             continue
         cleaned = str(src).strip()
         if cleaned:
-            texts.append(cleaned.lower())
+            candidates.append(cleaned.lower())
 
-    joined = " ".join(texts)
+    for extra in texts:
+        if not extra:
+            continue
+        cleaned = str(extra).strip().lower()
+        if cleaned:
+            candidates.append(cleaned)
+
+    joined = " ".join(candidates)
 
     for label, groups in KEYWORDS_BY_CATEGORY.items():
-        if _match_category(joined, [kw.lower() for kw in groups["ko"]]):
+        ko = [kw.lower() for kw in groups["ko"]]
+        if _match_category(joined, ko):
             return label
         if _match_category(joined, groups["en"]):
             return label
         if _match_category(joined, groups["codes"]):
             return label
 
-    # 키워드 매칭이 안 되면 기본값
+    # 키워드 매칭 실패 시 기본값
     return "교육"
 
 
@@ -204,7 +217,13 @@ def ensure_thumbnail_fields(conn, row: Dict, columns: set[str]):
     row.setdefault("thumbnail_url", None)
 
     original_category = row.get("category_original") or row.get("category")
-    normalized_category = normalize_category(original_category, row.get("category_auto"))
+    normalized_category = normalize_category(
+        original_category,
+        row.get("category_auto"),
+        row.get("blog_title"),
+        row.get("blog_summary"),
+        row.get("blog_content"),
+    )
     row.setdefault("category_original", original_category)
     row["category_normalized"] = normalized_category
     row["category"] = normalized_category
