@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Edit, Trash2, Eye, Plus } from 'lucide-react'
-import { getPosts, type Post } from '@/shared/api/posts'
+import { getPosts, type Post } from '@/shared/api/posts.backup'
 import { toast } from 'sonner'
 
 export default function PostsManagePage() {

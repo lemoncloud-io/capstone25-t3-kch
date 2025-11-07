@@ -1,0 +1,15 @@
+/* Inter 폰트는 Google Fonts CDN 사용 (index.html에서 로드) */
+
+/* Lacquer 폰트 - StartPage에서 사용 */
+@font-face {
+    font-family: 'Lacquer';
+    src: url('/fonts/Lacquer-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  
+    /* 글자 모양 랜덤 변형 방지 설정 */
+    font-variant-ligatures: none;
+    font-feature-settings: 'salt' 0, 'ss01' 0, 'ss02' 0, 'cv01' 0, 'calt' 0;
+}
+

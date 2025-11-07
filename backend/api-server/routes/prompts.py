@@ -110,10 +110,7 @@ async def generate_policy_content(
             
         elif type == "blog":
             generated_content = generator.generate_blog_content(policy_data)
-            
-            # 안내 문구 및 참조 URL 추가
             generated_content = add_blog_footer(generated_content, policy_data)
-            
             return GeneratedBlogContent(blog_content=generated_content)
 
         elif type == "meta":
@@ -135,10 +132,7 @@ async def generate_policy_content(
             title = generator.generate_title(policy_data)
             summary = generator.generate_summary(policy_data)
             blog_content = generator.generate_blog_content(policy_data)
-            
-            # 안내 문구 및 참조 URL 추가
             blog_content = add_blog_footer(blog_content, policy_data)
-            
             keywords = (policy_data.get("keywords") or [])[:3]
             #thumbnail_img = policy_data.get("thumbnail_img") or None
             meta = GeneratedMeta(

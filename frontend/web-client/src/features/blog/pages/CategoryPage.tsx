@@ -1,168 +1,451 @@
+// src/pages/CategoryPage.tsx
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Home, BookOpen, Briefcase, ArrowLeft, Calendar, Eye } from 'lucide-react'
-import { getPosts } from '@/shared/api/posts'
+import { Home, BookOpen, Briefcase, Heart, Calendar, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
+import { getPosts, type Post } from '@/shared/api/posts'
+import MainLayout from '@/features/blog/components/layout/MainLayout'
+import { useMemo, useState, useRef, useEffect } from 'react'
+import { setDefaultOg } from '@/shared/lib/seo'
 
+/* =========================
+   카테고리 정의
+   ========================= */
 const categoryInfo = {
-    housing: {
-        name: '주거지원',
-        icon: Home,
-        description: '청년, 신혼부부를 위한 주거 지원 정책을 확인하세요.',
-        color: 'bg-blue-100 text-blue-700',
-    },
-    education: {
-        name: '교육지원',
-        icon: BookOpen,
-        description: '학자금, 장학금, 교육 프로그램 지원 정보입니다.',
-        color: 'bg-green-100 text-green-700',
-    },
+  housing: {
+    name: '주거지원',
+    icon: Home,
+    description: '청년들을 위한 주거 지원 정책을 확인하세요',
+  },
+  education: {
+    name: '교육지원',
+    icon: BookOpen,
+    description: '학자금, 장학금, 교육 프로그램 지원 정보',
+  },
+  jobs: {
+    name: '일자리지원',
+    icon: Briefcase,
+    description: '채용, 직업훈련, 고용 연계 등 일자리 정보',
+  },
+  welfare: {
+    name: '복지지원',
+    icon: Heart,
+    description: '건강·상담, 생활안정, 문화/여가 등 복지 지원',
+  },
+} as const
+
+type CategoryKey = keyof typeof categoryInfo
+
+/* =========================
+   유틸
+   ========================= */
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+const fmtNum = (n?: number) => (n ?? 0).toLocaleString('ko-KR')
+
+const getRelativeTime = (iso: string) => {
+  const now = new Date()
+  const target = new Date(iso)
+  const diffMs = now.getTime() - target.getTime()
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const diffMonths = Math.floor(diffDays / 30)
+  const diffYears = Math.floor(diffDays / 365)
+
+  if (diffDays === 0) return '오늘'
+  if (diffDays === 1) return '어제'
+  if (diffDays < 7) return `${diffDays}일 전`
+  if (diffDays < 14) return '1주일 전'
+  if (diffDays < 21) return '2주일 전'
+  if (diffDays < 28) return '3주일 전'
+  if (diffDays < 60) return '1달 전'
+  if (diffYears >= 1) return `${diffYears}년 전`
+  return `${diffMonths}달 전`
 }
 
-export default function CategoryPage() {
-    const { category } = useParams<{ category: string }>()
-    const info = categoryInfo[category as keyof typeof categoryInfo]
-
-    // NOTE: 카테고리별 포스트 조회
-    const { data: posts, isLoading } = useQuery({
-        queryKey: ['posts', 'category', category],
-        queryFn: () => getPosts({ category: info?.name }),
-        enabled: !!category && !!info,
-    })
-
-    // 잘못된 카테고리 처리
-    if (!info) {
-        return (
-            <div className="min-h-[60vh] flex flex-col items-center justify-center">
-                <h1 className="text-2xl font-bold text-gray-800 mb-4">존재하지 않는 카테고리입니다</h1>
-                <Link to="/" className="flex items-center text-blue-600 hover:text-blue-700">
-                    <ArrowLeft size={20} className="mr-2" />
-                    홈으로 돌아가기
-                </Link>
+/* =========================
+   카드형 포스트 (홈페이지 스타일)
+   ========================= */
+function CategoryPostCard({ post }: { post: Post }) {
+  return (
+    <Link
+      to={`/posts/${post.slug}`}
+      className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FEBC02] rounded-lg h-full max-w-md mx-auto md:max-w-none"
+      aria-label={post.title}
+    >
+      <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-gray-200 h-full flex flex-col">
+        {/* 썸네일 */}
+        <div className="aspect-square bg-gray-100 overflow-hidden relative flex-shrink-0">
+          {post.thumbnail ? (
+            <img
+              src={post.thumbnail}
+              alt={post.title}
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+              이미지 없음
             </div>
-        )
-    }
-
-    const Icon = info.icon
-
-    // 로딩 상태
-    if (isLoading) {
-        return (
-            <div>
-                {/* 카테고리 헤더 */}
-                <div className="mb-8">
-                    <div className="animate-pulse">
-                        <div className="h-10 bg-gray-200 rounded w-48 mb-4"></div>
-                        <div className="h-4 bg-gray-200 rounded w-96"></div>
-                    </div>
-                </div>
-
-                {/* 포스트 스켈레톤 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3, 4, 5, 6].map(i => (
-                        <div key={i} className="bg-white rounded-lg shadow-sm p-6 animate-pulse">
-                            <div className="h-48 bg-gray-200 rounded mb-4"></div>
-                            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        )
-    }
-
-    return (
-        <div>
-            {/* 카테고리 헤더 */}
-            <div className="mb-8">
-                <div className="flex items-center gap-2 mb-2">
-                    <Link to="/" className="text-gray-500 hover:text-gray-700 transition-colors">
-                        홈
-                    </Link>
-                    <span className="text-gray-400">/</span>
-                    <span className="text-gray-900">{info.name}</span>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-sm p-6 md:p-8">
-                    <div className="flex items-start gap-4">
-                        <div className={`p-3 rounded-lg ${info.color}`}>
-                            <Icon size={32} />
-                        </div>
-                        <div className="flex-1">
-                            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{info.name}</h1>
-                            <p className="text-gray-600">{info.description}</p>
-                            <div className="mt-4 text-sm text-gray-500">총 {posts?.length || 0}개의 정책</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* 포스트 목록 */}
-            {posts && posts.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {posts.map(post => (
-                        <Link key={post.id} to={`/posts/${post.slug}`}>
-                            <article className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden h-full">
-                                {/* 썸네일 */}
-                                {post.thumbnail && (
-                                    <div className="aspect-video overflow-hidden bg-gray-100">
-                                        <img
-                                            src={post.thumbnail}
-                                            alt={post.title}
-                                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                                        />
-                                    </div>
-                                )}
-
-                                <div className="p-6">
-                                    {/* 카테고리 뱃지 */}
-                                    <div className="mb-3">
-                                        <span
-                                            className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${info.color}`}
-                                        >
-                                            {info.name}
-                                        </span>
-                                    </div>
-
-                                    {/* 제목 */}
-                                    <h2 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 hover:text-blue-600 transition-colors">
-                                        {post.title}
-                                    </h2>
-
-                                    {/* 요약 */}
-                                    <p className="text-gray-600 text-sm line-clamp-3 mb-4">{post.summary}</p>
-
-                                    {/* 메타 정보 */}
-                                    <div className="flex items-center justify-between text-xs text-gray-500">
-                                        <span className="flex items-center">
-                                            <Calendar size={14} className="mr-1" />
-                                            {new Date(post.createdAt).toLocaleDateString()}
-                                        </span>
-                                        <span className="flex items-center">
-                                            <Eye size={14} className="mr-1" />
-                                            {post.viewCount.toLocaleString()}
-                                        </span>
-                                    </div>
-                                </div>
-                            </article>
-                        </Link>
-                    ))}
-                </div>
-            ) : (
-                // 빈 상태
-                <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-                    <div className={`inline-flex p-4 rounded-full ${info.color} mb-4`}>
-                        <Icon size={48} />
-                    </div>
-                    <h2 className="text-xl font-semibold text-gray-900 mb-2">아직 등록된 정책이 없습니다</h2>
-                    <p className="text-gray-600 mb-6">
-                        {info.name} 카테고리에 새로운 정책이 등록되면 여기에 표시됩니다.
-                    </p>
-                    <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium">
-                        <ArrowLeft size={20} className="mr-2" />
-                        다른 정책 둘러보기
-                    </Link>
-                </div>
-            )}
+          )}
         </div>
+
+        {/* 텍스트 */}
+        <div className="p-4 flex-1 flex flex-col">
+          <h3 className="font-bold text-lg line-clamp-2 group-hover:text-[#FEBC02] transition-colors">
+            {post.title}
+          </h3>
+          <p className="text-sm text-gray-600 mt-2 line-clamp-2 flex-1">{post.summary}</p>
+          <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+            <span className="flex items-center gap-1">
+              <Calendar size={14} />
+              {fmtDate(post.createdAt)}
+            </span>
+            <span className="flex items-center gap-1">
+              <Eye size={14} />
+              {fmtNum(post.viewCount)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+/* =========================
+   가로형 포스트 (홈페이지 스타일)
+   ========================= */
+function CategoryPostItem({ post }: { post: Post }) {
+  const THUMB = 150
+  const cat = post.category?.replace('지원', '') || '정책'
+
+  return (
+    <Link
+      to={`/posts/${post.slug}`}
+      className="group grid grid-cols-[1fr_auto] items-start gap-6 py-6 md:gap-8 md:py-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FEBC02] max-w-md mx-auto md:max-w-none"
+      aria-label={post.title}
+    >
+      {/* 왼쪽 텍스트 */}
+      <div className="min-w-0 flex flex-col justify-between" style={{ minHeight: THUMB }}>
+        <div>
+          <div className="text-sm font-bold mb-2 text-[#FEBC02]">[{cat}]</div>
+          <h3 className="text-[22px] md:text-[26px] font-extrabold tracking-tight text-gray-900 leading-snug group-hover:text-[#FEBC02] transition-colors line-clamp-2">
+            {post.title}
+          </h3>
+          <p className="mt-3 text-[15px] text-gray-500 leading-7 line-clamp-2">
+            {post.summary}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-4 text-xs text-gray-400 mt-4">
+          <span className="flex items-center gap-1">
+            <Calendar size={14} />
+            {getRelativeTime(post.createdAt)}
+            <span className="px-2">·</span>
+            {fmtDate(post.createdAt)}
+          </span>
+          <span className="flex items-center gap-1">
+            <Eye size={14} />
+            {fmtNum(post.viewCount)}
+          </span>
+        </div>
+      </div>
+
+      {/* 오른쪽 썸네일 */}
+      <div
+        className="rounded-xl border border-gray-200 bg-[#EAF2FB] overflow-hidden shadow-sm flex-shrink-0"
+        style={{ width: THUMB, height: THUMB }}
+      >
+        {post.thumbnail ? (
+          <img
+            src={post.thumbnail}
+            alt={post.title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full grid place-items-center text-gray-400 text-xs">
+            이미지 없음
+          </div>
+        )}
+      </div>
+    </Link>
+  )
+}
+
+/* =========================
+   페이지네이션 (홈페이지 스타일)
+   ========================= */
+function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number
+  totalPages: number
+  onPageChange: (page: number) => void
+}) {
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
+
+  return (
+    <div className="flex items-center justify-center gap-4 mt-8">
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        aria-label="이전 페이지"
+      >
+        <ChevronLeft size={24} />
+      </button>
+
+      {pages.map((page) => (
+        <button
+          key={page}
+          onClick={() => onPageChange(page)}
+          className={`w-10 h-10 rounded-full font-medium transition-all ${
+            currentPage === page
+              ? 'bg-[#FEBC02] text-white shadow-md'
+              : 'bg-white text-gray-900 hover:bg-gray-100'
+          }`}
+          aria-current={currentPage === page ? 'page' : undefined}
+        >
+          {page}
+        </button>
+      ))}
+
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        aria-label="다음 페이지"
+      >
+        <ChevronRight size={24} />
+      </button>
+    </div>
+  )
+}
+
+/* =========================
+   카테고리 페이지
+   ========================= */
+export default function CategoryPage() {
+  const { category } = useParams<{ category: CategoryKey }>()
+  const info = category ? categoryInfo[category] : undefined
+  
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [sortKey, setSortKey] = useState<'latest' | 'popular'>('latest')
+  const [currentPage, setCurrentPage] = useState(1)
+  
+  // 🎯 뷰 모드별 다른 개수!
+  const ITEMS_PER_PAGE = viewMode === 'grid' ? 9 : 6
+
+  const listRef = useRef<HTMLDivElement>(null)
+
+  // 뷰 모드 변경 시 1페이지로 리셋
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [viewMode])
+
+  // 데이터 로드
+  const { data = [], isLoading } = useQuery<Post[], Error>({
+    queryKey: ['posts', 'category', category],
+    queryFn: () => getPosts(),
+    enabled: !!info,
+  })
+
+  // 필터링 및 정렬
+  const filteredAndSorted = useMemo(() => {
+    if (!info) return []
+    
+    const filtered = data.filter((post) => post.category === info.name)
+    
+    if (sortKey === 'popular') {
+      return [...filtered].sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0))
+    }
+    return [...filtered].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )
+  }, [data, info, sortKey])
+
+  // 페이지네이션
+  const totalPages = Math.ceil(filteredAndSorted.length / ITEMS_PER_PAGE)
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const currentPosts = filteredAndSorted.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  useEffect(() => {
+    if (info) setDefaultOg({ title: `KCH Blog - ${info.name}` })
+  }, [info])
+
+  // 잘못된 카테고리
+  if (!info) {
+    return (
+      <MainLayout>
+        <div className="text-center py-20">
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">
+            존재하지 않는 카테고리입니다
+          </h1>
+          <Link
+            to="/"
+            className="inline-flex items-center text-[#FEBC02] hover:text-[#FDB913] font-medium"
+          >
+            홈으로 돌아가기
+          </Link>
+        </div>
+      </MainLayout>
+    )
+  }
+
+  const Icon = info.icon
+
+  return (
+    <MainLayout>
+      <div className="space-y-12">
+        {/* 카테고리 헤더 - 노란색 테마 */}
+        <section className="bg-gradient-to-br from-[#FFF9E6] to-[#FFF3CC] rounded-2xl p-10 md:p-12 border border-[#FEBC02]/20">
+          <div className="flex items-center gap-8">
+            <div className="w-24 h-24 bg-white rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+              <Icon className="w-12 h-12 text-[#FEBC02]" />
+            </div>
+            <div className="flex-1">
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+                {info.name}
+              </h1>
+              <p className="text-gray-700 text-lg">{info.description}</p>
+            </div>
+            {!isLoading && filteredAndSorted.length > 0 && (
+              <div className="text-center hidden md:block">
+                <div className="text-5xl font-extrabold text-[#FEBC02]">
+                  {filteredAndSorted.length}
+                </div>
+                <div className="text-sm text-gray-600 mt-1">개의 정책</div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* 로딩 */}
+        {isLoading && (
+          <div className="text-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FEBC02] mx-auto" />
+            <p className="mt-4 text-gray-600">로딩 중...</p>
+          </div>
+        )}
+
+        {/* 컨트롤 바 */}
+        {!isLoading && filteredAndSorted.length > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setSortKey('latest')}
+                className={`px-5 py-2 rounded-lg font-semibold text-sm transition-all ${
+                  sortKey === 'latest'
+                    ? 'bg-[#FEBC02] text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                최신순
+              </button>
+              <button
+                onClick={() => setSortKey('popular')}
+                className={`px-5 py-2 rounded-lg font-semibold text-sm transition-all ${
+                  sortKey === 'popular'
+                    ? 'bg-[#FEBC02] text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                인기순
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">
+                총 <span className="font-bold text-gray-900">{filteredAndSorted.length}</span>개
+              </span>
+              <div className="h-4 w-px bg-gray-300" />
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-lg transition-colors ${
+                  viewMode === 'grid'
+                    ? 'bg-[#FEBC02] text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <rect x="3" y="3" width="7" height="7" />
+                  <rect x="14" y="3" width="7" height="7" />
+                  <rect x="3" y="14" width="7" height="7" />
+                  <rect x="14" y="14" width="7" height="7" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-lg transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-[#FEBC02] text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <line x1="4" y1="6" x2="20" y2="6" strokeWidth="2" />
+                  <line x1="4" y1="12" x2="20" y2="12" strokeWidth="2" />
+                  <line x1="4" y1="18" x2="20" y2="18" strokeWidth="2" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 포스트 목록 */}
+        {!isLoading && (
+          <div ref={listRef}>
+            {currentPosts.length > 0 ? (
+              <>
+                {viewMode === 'grid' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+                    {currentPosts.map((post) => (
+                      <CategoryPostCard key={post.id} post={post} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-200">
+                    {currentPosts.map((post) => (
+                      <CategoryPostItem key={post.id} post={post} />
+                    ))}
+                  </div>
+                )}
+
+                {/* 🎯 항상 페이지네이션 표시! (게시물이 1개라도 있으면) */}
+                {filteredAndSorted.length > 0 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={Math.max(totalPages, 1)}
+                    onPageChange={handlePageChange}
+                  />
+                )}
+              </>
+            ) : (
+              <div className="text-center py-20">
+                <div className="inline-flex p-8 rounded-full bg-gray-100 mb-6">
+                  <Icon size={48} className="text-gray-400" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">
+                  아직 등록된 정책이 없습니다
+                </h2>
+                <p className="text-gray-600 mb-6">
+                  {info.name} 카테고리에 새로운 정책이 등록되면 여기에 표시됩니다.
+                </p>
+                <Link
+                  to="/"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-[#FEBC02] text-white rounded-lg font-semibold hover:bg-[#FDB913] transition-colors"
+                >
+                  홈으로 돌아가기
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </MainLayout>
+  )
 }

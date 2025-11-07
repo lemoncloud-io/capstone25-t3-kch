@@ -1,0 +1,108 @@
+/* Onboarding.css */
+
+.onboarding-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+  text-align: center;
+  background-color: #f7f9fc; /* 연한 배경색 */
+}
+
+.skip-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.onboarding-page {
+  max-width: 500px;
+  width: 100%;
+  margin-bottom: 50px;
+}
+
+.onboarding-page h2 {
+  font-size: 28px;
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.onboarding-page p {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 30px;
+}
+
+/* --- 2단계 스타일: 카테고리 그리드 --- */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2열 배치 */
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.category-button {
+  padding: 20px 10px;
+  background-color: #fff;
+  border: 2px solid #ddd;
+  border-radius: 12px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.category-button:hover {
+  border-color: #007bff;
+}
+
+.category-button.selected {
+  background-color: #e6f0ff; /* 선택 시 연한 파란색 배경 */
+  border-color: #007bff;
+  color: #007bff;
+  font-weight: bold;
+}
+
+/* --- 공통 버튼 스타일 --- */
+.primary-button {
+  padding: 12px 30px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: 100%;
+}
+
+.primary-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* --- 페이지 인디케이터 --- */
+.page-indicator {
+  position: absolute;
+  bottom: 40px;
+  display: flex;
+  gap: 8px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  background-color: #ccc;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.dot.active {
+  background-color: #007bff;
+}

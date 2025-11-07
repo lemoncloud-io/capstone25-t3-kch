@@ -1,5 +1,5 @@
 import { FileText, Users, TrendingUp, Activity } from 'lucide-react'
-import { mockPosts } from '@/shared/api/posts'
+import { mockPosts } from '@/shared/api/posts.backup'
 
 export default function DashboardPage() {
     // mockPosts 기반 통계 계산

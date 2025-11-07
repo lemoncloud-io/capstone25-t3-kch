@@ -147,7 +147,7 @@ def _draw_centered_outline_text(
     img.alpha_composite(layer_small, (x, y))
 
 def _maybe_upload_s3(png_bytes: bytes, key: str) -> Optional[str]:
-    """S3 설정이 있으면 업로드하고 URL 반환. 없으면 None."""
+    """S3 설정이 있으면 업로드하고 URL을 반환."""
     if not S3_BUCKET:
         return None
     try:
@@ -226,8 +226,8 @@ def generate(req: Req):
     checksum = "sha256:" + hashlib.sha256(data).hexdigest()
     ymd = datetime.datetime.now().strftime("%Y/%m")
 
-    # filename = f"{req.policy_id}_{int(datetime.datetime.now().timestamp())}.png"
-    filename = f"{req.policy_id}.png"
+    hash_suffix = hashlib.md5(data).hexdigest()[:10]
+    filename = f"{req.policy_id}_{hash_suffix}.png"
 
     s3_key = f"{S3_PREFIX}/{ymd}/{filename}"
     s3_url = _maybe_upload_s3(data, s3_key)

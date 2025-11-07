@@ -4,6 +4,33 @@
 
 ## 변경 이력 (Changelog)
 
+---
+### 2025.11.04 - SEO 메타태그 추가
+
+#### 주요 변경사항
+
+**feat(blog): LLM 블로그 자동 생성 파이프라인 구축**
+- 백엔드 `prompts.py`
+  - `type=meta` 추가: 별도 LLM 호출 없이 기존 값으로 메타 구성
+    - `title`: `generate_title(policy_data)` 결과
+    - `description`: `generate_summary(policy_data)` 결과
+    - `keywords`: `policy_data.keywords`
+    - `thumbnail_img`: S3 URL(옵션, 향후 확장 예정)
+    - `robots`: 검색 로봇 제어 값
+  - `type=full` 보완: 본문(`blog_content`)과 함께 위 메타 구조 포함해 반환
+  - `type=blog`: 생성된 본문에 `add_blog_footer` 적용 (안내 문구 + 참고 링크 자동 부착)
+
+- 프론트엔드
+  - `main.tsx`: `<App />`를 `<HelmetProvider>`로 감싸도록 수정
+  - 타입 보강: `Post` 인터페이스에 `meta?: { title, description, keywords[], thumbnail_img?, robots? }`
+  - `getPost()` 응답 보강: `meta`가 있으면 그대로 전달
+  - `PostDetailPage.tsx`: `<Helmet>` 블록으로 SEO 메타 태그 주입 + 레이아웃 개선
+
+### 동작 요약
+- 메타 태그 => 백엔드가 조립한 값을 프론트가 `<Helmet>`으로 `<head>`에 주입.
+- `thumbnail_img`는 공유 시 뜨는 미리보기 이미지로, 현재는 로고/썸네일 확장 시 사용 예정.
+
+---
 ### 2025.11.03 - 정책 자동 업데이트 크론잡 시스템 구축
 
 #### 주요 변경사항
