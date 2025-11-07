@@ -14,6 +14,7 @@ project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
 
 from utils.llm_utils import PromptGenerator
+from utils.blog_utils import add_blog_footer
 
 # .env 로드
 load_dotenv()
@@ -148,9 +149,8 @@ def generate_all_blogs(skip_existing: bool = True, limit: int = None):
             blog_content = generator.generate_blog_content(policy)
             time.sleep(0.5)
             
-            # 안내 문구 추가
-            disclaimer = "\n\n이 정책의 연령, 소득 기준 등 세부 조건은 실제와 다를 수 있으니, 신청 전 반드시 공식 웹사이트에서 최신 정보를 확인하시기 바랍니다."
-            blog_content = blog_content.strip() + disclaimer
+            # 안내 문구 및 참조 URL 추가
+            blog_content = add_blog_footer(blog_content, policy)
             
             # DB 저장
             keywords = []

@@ -4,30 +4,62 @@
 
 ## 변경 이력 (Changelog)
 
----
-### 2025.11.04 - SEO 메타태그 추가
+### 2025.11.03 - 정책 자동 업데이트 크론잡 시스템 구축
 
 #### 주요 변경사항
 
-**feat(blog): LLM 블로그 자동 생성 파이프라인 구축**
-- 백엔드 `prompts.py`
-  - `type=meta` 추가: 별도 LLM 호출 없이 기존 값으로 메타 구성
-    - `title`: `generate_title(policy_data)` 결과
-    - `description`: `generate_summary(policy_data)` 결과
-    - `keywords`: `policy_data.keywords`
-    - `thumbnail_img`: S3 URL(옵션(보강예정), 없으면 미출력)
-    - `robots`: 옵션(검색로봇)
-  - `type=full` 보완: 본문(`blog_content`)과 함께 위 메타 구조 포함해 반환
+**feat(cron): 정책 자동 업데이트 크론잡 시스템**
+- `jobs/update_policies.py` 구현
+  - youthcenter.go.kr API에서 최신 정책 자동 수집
+  - DB와 비교하여 신규 정책만 필터링 및 저장
+  - 신규 정책에 대해 썸네일 자동 생성 API 호출
+  - 블로그 자동 생성 및 DB 저장
+  - 상세 로그 기록 (날짜별 로그 파일)
+  - Dry-run 모드 지원 (`--dry-run`)
+  - 페이지 제한 옵션 (`--max-pages N`)
 
-- 프론트엔드
-  - `main.tsx`: `<App />`를 `<HelmetProvider>`로 감싸도록 수정
-  - 타입 보강: `Post` 인터페이스에 `meta?: { title, description, keywords[], thumbnail_img?, robots? }`
-  - `getPost()` 응답 보강: `meta`가 있으면 그대로 전달
-  - `PostDetailPage.tsx`: `<Helmet>` 블록 추가  
+**feat(setup): 자동 설정 스크립트**
+- `setup_cron.sh`: 크론잡 자동 설정 스크립트
+  - 환경 변수 자동 검증
+  - Python 패키지 자동 설치
+  - 크론 헬퍼 스크립트 자동 생성
+  - 대화형 크론 시간 설정 (매일 3시, 자정, 9시, 6시간마다 등)
+  - 기존 크론잡 덮어쓰기 확인
+- `test_update.sh`: 빠른 테스트 스크립트
+  - 기본 dry-run 모드로 안전한 테스트
+  - 로그 경로 자동 안내
 
-### 동작 요약
-- 메타 태그 => 백엔드가 조립한 값을 프론트가 `<Helmet>`으로 `<head>`에 주입.
-- `thumbnail_img`는 공유 시 뜨는 미리보기 이미지로, 현재는 주석 처리해두었으며 추후 메인 페이지 공유 시 로고 이미지, 블로그 글 공유 시 해당 썸네일 이미지가 뜨도록 수정 예정.
+**docs(cron): 상세 설정 가이드**
+- `CRON_SETUP.md` 추가
+  - EC2 환경 설정 가이드
+  - PM2로 FastAPI 24시간 실행 설정
+  - 크론잡 설정 및 검증 방법
+  - 로그 확인 및 트러블슈팅
+  - 시스템 리소스 모니터링 가이드
+
+**chore(deps): 패키지 추가**
+- `requirements.txt` 업데이트
+  - openai>=1.0.0: LLM API 연동
+  - cachetools: LLM 응답 캐싱
+  - pillow: 이미지 처리
+
+**시스템 아키텍처**
+```
+[크론잡 (매일 1회)]
+     ↓
+[Python 스크립트 실행 (update_policies.py)]
+     ↓
+[API 호출 → youthcenter.go.kr에서 최신 정책 목록 가져오기]
+     ↓
+[PostgreSQL DB 연결 → 기존 정책 테이블 조회]
+     ↓
+[차이 비교 → 신규 정책만 필터링]
+     ↓
+[신규 정책 있으면]
+     ├─ DB에 insert (policy_raw, policy_clean)
+     ├─ 썸네일 자동 생성 API 호출 (/api/thumbnails/auto)
+     └─ 블로그 글 자동 생성 (blog_posts 테이블)
+```
 
 ---
 
