@@ -2,7 +2,7 @@
 
 import os
 from functools import lru_cache
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import psycopg2
 import psycopg2.extras
@@ -16,19 +16,72 @@ S3_BUCKET = os.getenv("S3_BUCKET", "youth-policy-thumbnails-kch")
 S3_REGION = os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "ap-northeast-2"))
 
 
-def normalize_category(raw_category: str) -> str:
-    """DB 카테고리를 썸네일 카테고리로 변환"""
-    cat = (raw_category or "").strip()
+KEYWORDS_BY_CATEGORY = {
+    "일자리": {
+        "ko": ["일자리", "취업", "구직", "채용", "고용", "근로", "직무", "직업", "창업", "인턴", "도제", "근속", "훈련"],
+        "en": ["job", "employment", "work", "career", "startup", "entrepreneur"],
+        "codes": ["employment", "job"],
+    },
+    "주거": {
+        "ko": ["주거", "전세", "월세", "보증금", "임대", "이사", "주택", "청약", "전월세", "부동산"],
+        "en": ["housing", "rent", "lease"],
+        "codes": ["housing"],
+    },
+    "복지": {
+        "ko": ["복지", "건강", "상담", "문화", "생활", "생활비", "교통비", "의료", "검진", "정신", "바우처", "참여", "권리", "여가", "돌봄"],
+        "en": ["welfare", "health", "culture", "life"],
+        "codes": ["welfare", "culture"],
+    },
+    "교육": {
+        "ko": ["교육", "장학", "자격", "대학", "연수", "교환학생", "어학", "학자금", "스쿨", "교육·훈련", "학습", "캠프", "멘토"],
+        "en": ["education", "scholar", "training", "study", "learning", "academy"],
+        "codes": ["education", "training"],
+    },
+}
 
-    if any(k in cat for k in ["일자리", "취업", "취업 지원", "창업"]):
-        return "일자리"
-    if "주거" in cat:
-        return "주거"
-    if any(k in cat for k in ["복지", "건강", "건강·상담", "상담", "청년 참여"]):
-        return "복지"
-    if any(k in cat for k in ["교육", "해외 기회"]):
-        return "교육"
 
+def _match_category(text: str, candidates: List[str]) -> Optional[str]:
+    for key in candidates:
+        if key and key in text:
+            return key
+    return None
+
+
+def normalize_category(
+    raw_category: Optional[str],
+    auto_category: Optional[str] = None,
+    *texts: Optional[str]
+) -> str:
+    """제목/요약/본문 등 다양한 단서를 바탕으로 카테고리를 정규화"""
+
+    candidates: List[str] = []
+
+    for src in (raw_category, auto_category):
+        if not src:
+            continue
+        cleaned = str(src).strip()
+        if cleaned:
+            candidates.append(cleaned.lower())
+
+    for extra in texts:
+        if not extra:
+            continue
+        cleaned = str(extra).strip().lower()
+        if cleaned:
+            candidates.append(cleaned)
+
+    joined = " ".join(candidates)
+
+    for label, groups in KEYWORDS_BY_CATEGORY.items():
+        ko = [kw.lower() for kw in groups["ko"]]
+        if _match_category(joined, ko):
+            return label
+        if _match_category(joined, groups["en"]):
+            return label
+        if _match_category(joined, groups["codes"]):
+            return label
+
+    # 키워드 매칭 실패 시 기본값
     return "교육"
 
 
@@ -83,6 +136,11 @@ def _build_select_fields(columns: set[str], include_content: bool = False) -> Li
 
     base.extend(["category", "region", "updated_at"])
 
+    if "category_auto" in columns:
+        base.append("category_auto")
+    else:
+        base.append("NULL::text AS category_auto")
+
     if "thumbnail_key" in columns:
         base.append("thumbnail_key")
     else:
@@ -97,7 +155,7 @@ def _build_select_fields(columns: set[str], include_content: bool = False) -> Li
 
 
 @router.get("/blogs")
-def list_blogs(limit: int = 12):
+def list_blogs(limit: int = 40):
     conn = get_conn()
     columns = _get_blog_table_columns()
     rows: List[Dict] = []
@@ -158,6 +216,18 @@ def ensure_thumbnail_fields(conn, row: Dict, columns: set[str]):
     row.setdefault("thumbnail_key", None)
     row.setdefault("thumbnail_url", None)
 
+    original_category = row.get("category_original") or row.get("category")
+    normalized_category = normalize_category(
+        original_category,
+        row.get("category_auto"),
+        row.get("blog_title"),
+        row.get("blog_summary"),
+        row.get("blog_content"),
+    )
+    row.setdefault("category_original", original_category)
+    row["category_normalized"] = normalized_category
+    row["category"] = normalized_category
+
     has_key_col = "thumbnail_key" in columns
     has_url_col = "thumbnail_url" in columns
 
@@ -171,7 +241,7 @@ def ensure_thumbnail_fields(conn, row: Dict, columns: set[str]):
     try:
         req = AutoReq(
             policy_id=row["plcy_no"],
-            category=normalize_category(row.get("category")),
+            category=normalized_category,
             max_variants=2,
             allow_emoji=False,
         )

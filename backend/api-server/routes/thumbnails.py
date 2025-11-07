@@ -9,23 +9,23 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from PIL import Image, ImageDraw, ImageFont
 
+from settings import settings
+
 router = APIRouter(prefix="/thumbnails", tags=["thumbnails"])
 
 # ========= 경로/환경 =========
 ROOT_DIR   = Path(__file__).resolve().parents[1]  # backend/api-server
 ASSETS_DIR = ROOT_DIR / "assets"
 BG_DIR     = ASSETS_DIR / "backgrounds"           # assets/backgrounds/*.png
-OUT_DIR    = ROOT_DIR / "data" / "thumbnails"
-OUT_DIR.mkdir(parents=True, exist_ok=True)
+OUT_DIR    = settings.thumbnail_output_dir
 
 # 폰트 경로
 # FONT_PATH  = ASSETS_DIR / "fonts" / "BMDOHYEON_ttf.ttf"
 FONT_PATH  = ASSETS_DIR / "fonts" / "BMJUA_ttf.ttf"
 
-
-S3_BUCKET  = os.getenv("S3_BUCKET", "").strip()
-S3_PREFIX  = os.getenv("S3_PREFIX", "thumbnails").strip()
-S3_REGION  = os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "")).strip()
+S3_BUCKET  = settings.s3_bucket
+S3_PREFIX  = settings.s3_prefix
+S3_REGION  = settings.aws_region
 
 # ========= 요청 모델 =========
 class Req(BaseModel):
@@ -148,7 +148,7 @@ def _draw_centered_outline_text(
 
 def _maybe_upload_s3(png_bytes: bytes, key: str) -> Optional[str]:
     """S3 설정이 있으면 업로드하고 URL을 반환."""
-    if not S3_BUCKET:
+    if not settings.use_s3:
         return None
     try:
         client = boto3.client("s3", region_name=S3_REGION or None)
@@ -239,9 +239,13 @@ def generate(req: Req):
                 f.write(data)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Save failed: {e}")
+
+        public_url = f"/thumbnails/{filename}"
+
         return {
             "ok": True,
-            "storage": "local",
+            "storage": "static",
+            "url": public_url,
             "path": str(out_path),
             "policy_id": req.policy_id,
             "category": req.category,

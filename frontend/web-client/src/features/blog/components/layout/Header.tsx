@@ -33,10 +33,10 @@ export default function Header() {
 
   // 카테고리 매핑
   const categoryMap: Record<string, string[]> = {
-    '/category/housing': ['주거지원', '주거'],
-    '/category/education': ['교육지원', '교육'],
-    '/category/jobs': ['일자리지원', '일자리'],
-    '/category/welfare': ['복지지원', '복지'],
+    '/category/housing': ['주거', '주거지원'],
+    '/category/education': ['교육', '교육지원'],
+    '/category/jobs': ['일자리', '일자리지원'],
+    '/category/welfare': ['복지', '복지지원'],
   }
 
   const isActive = (path: string) => {

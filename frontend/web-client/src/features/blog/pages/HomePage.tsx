@@ -89,7 +89,7 @@ function PostCard({ post }: { post: Post }) {
 function RecommendedPostItem({ post }: { post: Post }) {
   const THUMB = 150
 
-  const cat = post.category?.replace('지원', '') || '정책'
+  const cat = post.category || '정책'
   const catClass = 'text-[#FEBC02]' // 카테고리별 색상 추가 가능
 
   return (

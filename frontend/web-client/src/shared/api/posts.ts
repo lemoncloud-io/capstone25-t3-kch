@@ -3,6 +3,9 @@ import { env } from '@/shared/lib/env'
 const S3_PUBLIC_BASE =
   env.S3_PUBLIC_BASE ??
   'https://youth-policy-thumbnails-kch.s3.ap-northeast-2.amazonaws.com/'
+
+export const CATEGORY_LABELS = ['일자리', '주거', '복지', '교육'] as const
+export type CategoryLabel = (typeof CATEGORY_LABELS)[number]
 export interface PostMeta {
   title: string
   description: string
@@ -16,7 +19,7 @@ export interface Post {
     title: string
     slug: string
     summary: string
-    category: string
+    category: CategoryLabel
     thumbnail: string
     author: string
     viewCount: number
@@ -31,7 +34,7 @@ export const mockPosts: Post[] = [
         title: '2024년 청년 주거지원 정책 총정리',
         slug: '2024-youth-housing-support',
         summary: '청년들을 위한 다양한 주거지원 프로그램을 한눈에 확인하세요. LH 청년전세임대부터 월세 지원까지.',
-        category: '주거지원',
+        category: '주거',
         thumbnail: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 1234,
@@ -78,7 +81,7 @@ export const mockPosts: Post[] = [
         title: '신입사원을 위한 취업 준비 지원금 안내',
         slug: 'job-preparation-support',
         summary: '구직 활동에 필요한 비용을 지원받을 수 있는 정부 프로그램을 소개합니다.',
-        category: '일자리지원',
+        category: '일자리',
         thumbnail: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 892,
@@ -125,7 +128,7 @@ export const mockPosts: Post[] = [
         title: '대학생 학자금 대출 및 장학금 프로그램',
         slug: 'student-loan-scholarship',
         summary: '등록금 부담을 줄일 수 있는 다양한 학자금 지원 제도를 알아보세요.',
-        category: '교육지원',
+        category: '교육',
         thumbnail: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 2103,
@@ -184,7 +187,7 @@ export const mockPosts: Post[] = [
         title: '청년 창업 지원금 및 멘토링 프로그램',
         slug: 'youth-startup-support-2024',
         summary: '청년 창업을 위한 정부 지원금과 전문가 멘토링을 함께 받을 수 있습니다.',
-        category: '일자리지원',
+        category: '일자리',
         thumbnail: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 1567,
@@ -209,7 +212,7 @@ export const mockPosts: Post[] = [
         title: '대학생 생활비 및 교통비 지원',
         slug: 'student-living-cost-support',
         summary: '대학생들의 경제적 부담을 덜어주는 생활비와 교통비 지원 제도입니다.',
-        category: '복지지원',
+        category: '복지',
         thumbnail: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 892,
@@ -233,7 +236,7 @@ export const mockPosts: Post[] = [
         title: '청년 문화생활 할인 및 무료 이용권',
         slug: 'youth-culture-discount',
         summary: '영화, 공연, 전시회 등 다양한 문화생활을 저렴하게 즐길 수 있는 혜택을 제공합니다.',
-        category: '복지지원',
+        category: '복지',
         thumbnail: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 756,
@@ -255,7 +258,7 @@ export const mockPosts: Post[] = [
         title: '지방 청년 일자리 정착 지원금',
         slug: 'regional-youth-job-settlement',
         summary: '지방에서 일자리를 찾는 청년들에게 정착 지원금과 주거 보조를 제공합니다.',
-        category: '일자리지원',
+        category: '일자리',
         thumbnail: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 1345,
@@ -276,7 +279,7 @@ export const mockPosts: Post[] = [
         title: '청년 직업훈련 무료 수강 지원',
         slug: 'youth-vocational-training',
         summary: 'IT, 디자인, 마케팅 등 실무 중심 직업훈련을 무료로 수강할 수 있습니다.',
-        category: '교육지원',
+        category: '교육',
         thumbnail: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 2234,
@@ -302,7 +305,7 @@ export const mockPosts: Post[] = [
         title: '청년 건강검진 무료 지원 사업',
         slug: 'youth-health-checkup',
         summary: '만 19세~34세 청년을 대상으로 종합 건강검진을 무료로 제공합니다.',
-        category: '복지지원',
+        category: '복지',
         thumbnail: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 678,
@@ -325,7 +328,7 @@ export const mockPosts: Post[] = [
         title: '청년 해외 인턴십 및 어학연수 지원',
         slug: 'youth-overseas-internship',
         summary: '해외 취업과 글로벌 역량 강화를 위한 인턴십 및 어학연수 비용을 지원합니다.',
-        category: '교육지원',
+        category: '교육',
         thumbnail: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 1890,
@@ -353,7 +356,7 @@ K-Move 스쿨을 통해 신청하세요.`,
         title: '청년 월세 특별지원 확대 안내',
         slug: 'youth-rent-support-extended',
         summary: '월세 지원 한도 상향 및 대상 확대 내용을 정리했습니다.',
-        category: '주거지원',
+        category: '주거',
         thumbnail: 'https://images.unsplash.com/photo-1523217582562-09d0def993a6?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 1120,
@@ -365,7 +368,7 @@ K-Move 스쿨을 통해 신청하세요.`,
         title: '취업준비생 면접 정장 대여 지원',
         slug: 'interview-suit-support',
         summary: '면접 정장 무료/할인 대여 서비스를 지역별로 정리했습니다.',
-        category: '일자리지원',
+        category: '일자리',
         thumbnail: 'https://images.unsplash.com/photo-1520975916090-3105956dac38?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 980,
@@ -377,7 +380,7 @@ K-Move 스쿨을 통해 신청하세요.`,
         title: '청년 마음건강 바우처',
         slug: 'youth-mental-health-voucher',
         summary: '심리상담 지원 바우처의 신청 방법과 금액을 소개합니다.',
-        category: '복지지원',
+        category: '복지',
         thumbnail: 'https://images.unsplash.com/photo-1516302350523-c6f95f7e122b?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 1512,
@@ -389,7 +392,7 @@ K-Move 스쿨을 통해 신청하세요.`,
         title: '지역 인재 채용 연계형 훈련',
         slug: 'regional-hire-training',
         summary: '지자체와 기업이 함께하는 채용 연계 훈련 프로그램 안내.',
-        category: '일자리지원',
+        category: '일자리',
         thumbnail: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 1320,
@@ -401,7 +404,7 @@ K-Move 스쿨을 통해 신청하세요.`,
         title: '저소득층 장학금 한눈에 보기',
         slug: 'low-income-scholarship-guide',
         summary: '지자체/민간 장학금 정보를 통합해 비교했습니다.',
-        category: '교육지원',
+        category: '교육',
         thumbnail: 'https://images.unsplash.com/photo-1460518451285-97b6aa326961?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 2044,
@@ -413,7 +416,7 @@ K-Move 스쿨을 통해 신청하세요.`,
         title: '청년 창업 공간 무상 제공 리스트',
         slug: 'startup-space-list',
         summary: '메이커스페이스, 공유오피스 등 창업 공간 지원을 모았습니다.',
-        category: '일자리지원',
+        category: '일자리',
         thumbnail: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 1677,
@@ -425,7 +428,7 @@ K-Move 스쿨을 통해 신청하세요.`,
         title: '청년 문화누리카드 사용처 모음',
         slug: 'culture-card-usage',
         summary: '영화관, 공연장, 전시관 등 주요 사용처를 정리했습니다.',
-        category: '복지지원',
+        category: '복지',
         thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 845,
@@ -437,7 +440,7 @@ K-Move 스쿨을 통해 신청하세요.`,
         title: '지방 청년 주거 이전 지원금',
         slug: 'youth-relocation-housing',
         summary: '지방 정착을 위한 이사비/보증금 지원 제도를 소개합니다.',
-        category: '주거지원',
+        category: '주거',
         thumbnail: 'https://images.unsplash.com/photo-1501183638710-841dd1904471?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 1233,
@@ -449,7 +452,7 @@ K-Move 스쿨을 통해 신청하세요.`,
         title: '대학생 교환학생 장학 프로그램',
         slug: 'exchange-student-scholarship',
         summary: '교환학생 참가자 대상 장학금/항공권 지원 정보를 제공합니다.',
-        category: '교육지원',
+        category: '교육',
         thumbnail: 'https://images.unsplash.com/photo-1496307653780-42ee777d4833?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 1755,
@@ -461,7 +464,7 @@ K-Move 스쿨을 통해 신청하세요.`,
         title: '사회초년생 필수 금융교육',
         slug: 'financial-education-for-youth',
         summary: '신용관리, 대출, 카드 사용 등 필수 금융 지식을 모았습니다.',
-        category: '복지지원',
+        category: '복지',
         thumbnail: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400&h=300&fit=crop&crop=center',
         author: '정책관리팀',
         viewCount: 990,
@@ -483,29 +486,46 @@ function resolveThumbnail(b: any): string {
   return "";
 }
 
+const CATEGORY_KEYWORDS: Record<CategoryLabel, string[]> = {
+  일자리: ['일자리', '취업', '채용', '고용', '근로', '직무', '직업', '창업', '인턴', '도제', '근속', '훈련', '구직', '일경험'],
+  주거: ['주거', '전세', '월세', '보증금', '임대', '이사', '주택', '청약', '전월세', '공공임대'],
+  복지: ['복지', '건강', '상담', '문화', '생활', '생활비', '교통비', '의료', '검진', '정신', '바우처', '참여', '권리', '여가', '돌봄', '치료', '바우쳐'],
+  교육: ['교육', '장학', '자격', '대학', '연수', '교환학생', '어학', '학자금', '스쿨', '훈련', '학습', '캠프', '멘토', '강좌', '강의'],
+}
+
+const CATEGORY_KEYWORDS_EN: Record<CategoryLabel, string[]> = {
+  일자리: ['job', 'employment', 'work', 'career', 'startup', 'entrepreneur', 'labor'],
+  주거: ['housing', 'rent', 'lease', 'residence', 'home'],
+  복지: ['welfare', 'health', 'culture', 'life', 'benefit', 'support'],
+  교육: ['education', 'scholar', 'training', 'study', 'learning', 'academy', 'school'],
+}
+
 /** 
- * 백엔드 카테고리를 프론트 표준 라벨로 정규화
- * 백엔드 category를 4종(주거지원/일자리지원/교육지원/복지지원)으로 강제 정규화
+ * 카테고리를 네 가지 표준 라벨(일자리/주거/복지/교육)로 정규화
  * @param raw - 백엔드에서 온 카테고리명
  * @returns 정규화된 카테고리명
  */
-function normCategory(raw?: string): "주거지원" | "일자리지원" | "교육지원" | "복지지원" {
-  const s = (raw ?? "").trim();
-
-  if (/(주거|전세|월세|보증금|임대|이사|정착|주택|청약)/.test(s)) {
-    return "주거지원";
-  }
-  if (/(일자리|취업|채용|창업|근로|근속|직업|훈련|도제|고용|인턴|알바)/.test(s)) {
-    return "일자리지원";
-  }
-  if (/(교육|장학|자격|대학|연수|교환학생|어학|학자금|스쿨|훈련)/.test(s)) {
-    return "교육지원";
-  }
-  if (/(복지|건강|상담|문화|여가|의료|검진|정신|바우처|생활비|교통비|보건|참여)/.test(s)) {
-    return "복지지원";
+function normCategory(raw?: string): CategoryLabel {
+  const original = (raw ?? '').trim();
+  if (CATEGORY_LABELS.includes(original as CategoryLabel)) {
+    return original as CategoryLabel;
   }
 
-  return "복지지원";
+  const lower = original.toLowerCase();
+
+  for (const label of CATEGORY_LABELS) {
+    const keywords = CATEGORY_KEYWORDS[label];
+    if (keywords.some((kw) => kw && lower.includes(kw))) {
+      return label;
+    }
+    const enKeywords = CATEGORY_KEYWORDS_EN[label];
+    if (enKeywords.some((kw) => kw && lower.includes(kw))) {
+      return label;
+    }
+  }
+
+  // 기본값: 교육
+  return '교육';
 }
 
 // ============ API 함수들 ============
@@ -531,19 +551,22 @@ export const getPosts = async (params?: { category?: string }): Promise<Post[]> 
         const items = Array.isArray((data as any).items) ? (data as any).items : data
         
         // 목록 매핑 - 헬퍼 함수 적용
-        const mapped: Post[] = items.map((b: any) => ({
+        const mapped: Post[] = items.map((b: any) => {
+            const rawCategory = b.category_normalized ?? b.category ?? b.category_original ?? ''
+            return {
             id: String(b.plcy_no ?? b.id ?? Math.random().toString(36).slice(2)),
             title: b.blog_title ?? b.title ?? '제목 없음',
             slug: String(b.plcy_no ?? b.slug ?? Math.random().toString(36).slice(2)),
             summary: b.blog_summary ?? b.summary ?? '',
-            category: normCategory(b.category),            // ✅ 정규화
+            category: normCategory(rawCategory),            // ✅ 정규화
             thumbnail: resolveThumbnail(b),                // ✅ URL 복원
             author: '정책관리팀',
             viewCount: Number(b.view_count ?? b.viewCount ?? 0),
             createdAt: b.updated_at ?? new Date().toISOString(),
             content: b.blog_content ?? b.content ?? '',
             meta: b.meta ?? undefined,
-        }))
+        }
+        })
         return mapped
     } catch (error) {
         console.error('API 호출 실패:', error)
@@ -590,18 +613,19 @@ export const getPost = async (slug: string): Promise<Post | undefined> => {
         const b = await response.json()
 
         // 단건 매핑 - 헬퍼 함수 적용
+        const rawCategory = b.category_normalized ?? b.category ?? b.category_original ?? ''
         const mapped: Post = {
             id: String(b.plcy_no ?? slug),
             title: b.blog_title ?? '제목 없음',
             slug: String(b.plcy_no ?? slug),
             summary: b.blog_summary ?? '',
-            category: normCategory(b.category), // 정규화
+            category: normCategory(rawCategory), // 정규화
             thumbnail: resolveThumbnail(b), // URL 복원
             author: '정책관리팀',
             viewCount: Number(b.view_count ?? 0),
             createdAt: b.updated_at ?? new Date().toISOString(),
             content: b.blog_content ?? '',
-            meta: undefined,
+            meta: b.meta ?? undefined,
         }
         return mapped
     } catch (error) {
