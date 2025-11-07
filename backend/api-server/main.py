@@ -1,21 +1,12 @@
-import os, sys
-from pathlib import Path
-from dotenv import load_dotenv
+import os
+import sys
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from openai import OpenAI
 
 from schemas import RewriteReq
-
-# .env 로드: backend/api-server/.env 우선, 없으면 루트 .env 폴백
-BACKEND_ENV = Path(__file__).resolve().parent / ".env"           # backend/api-server/.env
-ROOT_ENV    = Path(__file__).resolve().parents[2] / ".env"       # blog-platform/.env
-
-if BACKEND_ENV.exists():
-    load_dotenv(dotenv_path=BACKEND_ENV)
-elif ROOT_ENV.exists():
-    load_dotenv(dotenv_path=ROOT_ENV)
+from settings import settings
 
 from logging_config import setup_logging, get_logger
 
@@ -29,7 +20,7 @@ logger = get_logger(__name__)
 
 # OpenAI 클라이언트 헬퍼 (요청 시점 생성)
 def get_openai_client() -> OpenAI:
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = settings.openai_api_key
     if not api_key:
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY not set")
     return OpenAI(api_key=api_key)
@@ -39,17 +30,23 @@ sys.path.append(os.path.dirname(__file__))
 # FastAPI 앱 초기화
 app = FastAPI(title="Blog API Server")
 
+# Static thumbnails (local fallback)
+THUMB_STATIC_DIR = settings.thumbnail_output_dir
+if "thumbnails" not in {route.name for route in app.routes if hasattr(route, "name")}:
+    app.mount("/thumbnails", StaticFiles(directory=str(THUMB_STATIC_DIR)), name="thumbnails")
+
 # 환경 로그 (API 키 값은 직접 출력하지 않음)
 print("=== Backend Environment Variables ===")
-print(f"NODE_ENV: {os.getenv('NODE_ENV', 'not set')}")
-print(f"VERSION: {os.getenv('VERSION', 'not set')}")
-print(f"API_KEY: {os.getenv('API_KEY', 'not set')}")
-print(f"WEB_ORIGIN: {os.getenv('WEB_ORIGIN', 'not set')}")
-print(f"OPENAI_API_KEY: {'set' if os.getenv('OPENAI_API_KEY') else 'not set'}")
+print(f"NODE_ENV: {settings.environment}")
+print(f"VERSION: {settings.version}")
+print(f"WEB_ORIGIN: {settings.web_origin}")
+print(f"OPENAI_API_KEY: {'set' if settings.openai_api_key else 'not set'}")
+print(f"STORE_MODE: {settings.store_mode}")
+print(f"S3_BUCKET: {settings.s3_bucket or 'not set'}")
 print("=====================================")
 
 # CORS 설정
-web_origin = os.getenv("WEB_ORIGIN") or "http://localhost:5173"
+web_origin = settings.web_origin
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list({web_origin, "http://localhost:5173"}),

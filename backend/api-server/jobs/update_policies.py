@@ -21,7 +21,6 @@ import requests
 import argparse
 from pathlib import Path
 from datetime import datetime
-from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from openai import OpenAI
 
@@ -35,18 +34,17 @@ from jobs.ontong.quality import run_quality_checks
 from jobs.ontong.storage_pg import upsert_raw_pg, upsert_clean_pg
 from utils.llm_utils import PromptGenerator
 from utils.blog_utils import add_blog_footer
+from settings import get_settings
 
-# .env 로드
-load_dotenv(dotenv_path=project_root / ".env")
-load_dotenv(dotenv_path=project_root.parent.parent / ".env")
+settings = get_settings()
 
 # 환경 변수
 API_URL = "https://www.youthcenter.go.kr/go/ythip/getPlcy"
-API_KEY = os.getenv("YOUTHCENTER_API_KEY")
+API_KEY = settings.youthcenter_api_key
 PAGE_SIZE = int(os.getenv("PAGE_SIZE", "50"))
 MAX_PAGES = int(os.getenv("MAX_PAGES", "5"))
-DB_URL = os.getenv("DB_URL")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+DB_URL = settings.ensure_database_url()
+OPENAI_API_KEY = settings.openai_api_key
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 # 로그 디렉토리 설정
