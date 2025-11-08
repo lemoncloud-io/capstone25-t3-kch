@@ -119,11 +119,24 @@ fi
 # 시작 로그
 echo "[START] \$(date '+%Y-%m-%d %H:%M:%S')" >> \$STATUS_FILE
 
-# 스크립트 실행
+# 정책 업데이트 실행
+echo "[INFO] 정책 데이터 업데이트 시작..." >> \$LOG_FILE
 \$PYTHON_BIN \$PROJECT_DIR/jobs/update_policies.py >> \$LOG_FILE 2>&1
+POLICY_EXIT_CODE=\$?
+
+# 정책 업데이트가 성공했으면 블로그도 생성
+if [ \$POLICY_EXIT_CODE -eq 0 ]; then
+    echo "[INFO] 정책 업데이트 완료. 블로그 생성 시작..." >> \$LOG_FILE
+    \$PYTHON_BIN \$PROJECT_DIR/jobs/blog/generate_all_blogs.py >> \$LOG_FILE 2>&1
+    BLOG_EXIT_CODE=\$?
+    echo "[INFO] 블로그 생성 완료 (Exit code: \$BLOG_EXIT_CODE)" >> \$LOG_FILE
+    EXIT_CODE=\$BLOG_EXIT_CODE
+else
+    echo "[ERROR] 정책 업데이트 실패 (Exit code: \$POLICY_EXIT_CODE). 블로그 생성을 건너뜁니다." >> \$LOG_FILE
+    EXIT_CODE=\$POLICY_EXIT_CODE
+fi
 
 # 종료 상태 기록
-EXIT_CODE=\$?
 echo "[END] \$(date '+%Y-%m-%d %H:%M:%S') - Exit code: \$EXIT_CODE" >> \$STATUS_FILE
 
 exit \$EXIT_CODE

@@ -6,6 +6,8 @@ import { useEffect, useMemo } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { setOgTags } from '@/shared/lib/seo'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 import { getPost, type Post } from '@/shared/api/posts'
 import MainLayout from '@/features/blog/components/layout/MainLayout'
 
@@ -228,17 +230,31 @@ export default function PostDetailPage() {
             prose-h3:text-lg prose-h3:mb-2 prose-h3:mt-4
             prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-4
             prose-strong:text-gray-900 prose-strong:font-semibold
-            prose-a:text-[#FEBC02] prose-a:no-underline hover:prose-a:underline
+            prose-a:text-[#FEBC02] prose-a:no-underline hover:prose-a:underline prose-a:break-all
             prose-ul:my-4 prose-ol:my-4
             prose-li:text-gray-700 prose-li:mb-2
             prose-blockquote:border-l-4 prose-blockquote:border-[#FEBC02] prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-gray-600
             prose-code:bg-gray-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:text-gray-800
             prose-pre:bg-gray-900 prose-pre:text-gray-100
             prose-img:rounded-xl prose-img:shadow-md
+            prose-table:border-collapse prose-table:w-full prose-table:my-6
+            prose-th:bg-gray-100 prose-th:border prose-th:border-gray-300 prose-th:px-4 prose-th:py-3 prose-th:text-left prose-th:font-semibold prose-th:text-gray-900
+            prose-td:border prose-td:border-gray-300 prose-td:px-4 prose-td:py-3 prose-td:text-gray-700
+            prose-tr:border-b prose-tr:border-gray-200
             [&>*:first-child]:mt-0
             [&>*:last-child]:mb-0
           ">
-            <ReactMarkdown>{post.content}</ReactMarkdown>
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeRaw]}
+              components={{
+                a: ({ node, ...props }) => (
+                  <a {...props} target="_blank" rel="noopener noreferrer" />
+                ),
+              }}
+            >
+              {post.content}
+            </ReactMarkdown>
           </div>
         </section>
 
