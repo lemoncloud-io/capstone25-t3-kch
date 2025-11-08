@@ -147,11 +147,40 @@ class PromptGenerator:
             benefit = content_data.get("benefit", policy_summary)
             apply_method = content_data.get("apply_method", "온라인 신청")
             documents = content_data.get("documents", "신청 시 안내")
+            ref_url1 = content_data.get("ref_url1", "")
+            ref_url2 = content_data.get("ref_url2", "")
         else:
             target = "청년"
             benefit = policy_summary
             apply_method = "온라인 신청"
             documents = "신청 시 안내"
+            ref_url1 = ""
+            ref_url2 = ""
+        
+        # 참고 링크 정보 구성
+        ref_urls = []
+        if ref_url1:
+            ref_urls.append(ref_url1)
+        if ref_url2:
+            ref_urls.append(ref_url2)
+        
+        ref_links_text = ""
+        if len(ref_urls) == 1:
+            ref_links_text = f"- 참고 링크: {ref_urls[0]}"
+        elif len(ref_urls) >= 2:
+            ref_links_text = "\n".join([f"- 참고 링크 {i}: {url}" for i, url in enumerate(ref_urls, 1)])
+        
+        # 참고 링크 지시사항
+        if ref_links_text:
+            link_instruction = (
+                "⚠️ 매우 중요:\n"
+                "- 아래 참고 링크를 마크다운 형식([링크제목](URL))으로 변환하여 글 맨 마지막 '참고 링크' 섹션에 작성하세요.\n"
+                "- 링크 개수만큼 모두 포함하세요. (1개면 1개, 2개면 2개)\n"
+                "- '자세한 사항은...', '아래 홈페이지를...' 같은 설명 문구는 절대 추가하지 마세요.\n\n"
+                f"[제공된 참고 링크]\n{ref_links_text}\n"
+            )
+        else:
+            link_instruction = "⚠️ 참고 링크가 없습니다. 참고 링크 섹션을 만들지 마세요.\n"
         
         user_prompt = (
             "[작성 항목]\n"
@@ -160,6 +189,7 @@ class PromptGenerator:
             f"3. 어떤 혜택을 받을 수 있나요?: {benefit} 내용을 구체적으로 작성해줘.\n"
             f"4. 어떻게 신청하나요?: {apply_method} 정보를 안내해줘.\n"
             f"5. 필요한 서류: {documents}\n\n"
+            f"{link_instruction}\n"
             "[정책 정보]\n"
             f"{json.dumps(policy_data, ensure_ascii=False, indent=2)}"
         )

@@ -141,13 +141,13 @@ def generate_all_blogs(skip_existing: bool = True, limit: int = None):
             
             # 블로그 생성
             blog_title = generator.generate_title(policy)
-            time.sleep(0.5)  # Rate limit 방지
+            time.sleep(0.1)  # Rate limit 방지
             
             blog_summary = generator.generate_summary(policy)
-            time.sleep(0.5)
+            time.sleep(0.1)
             
             blog_content = generator.generate_blog_content(policy)
-            time.sleep(0.5)
+            time.sleep(0.1)
             
             # 안내 문구 및 참조 URL 추가
             blog_content = add_blog_footer(blog_content, policy)
