@@ -35,6 +35,7 @@ from jobs.ontong.storage_pg import upsert_raw_pg, upsert_clean_pg
 from utils.llm_utils import PromptGenerator
 from utils.blog_utils import add_blog_footer
 from settings import get_settings
+from routes.blogs import normalize_category
 
 settings = get_settings()
 
@@ -162,6 +163,15 @@ def generate_and_save_blog(engine, client, policy_data: dict):
         if policy_data.get('content_data') and isinstance(policy_data['content_data'], dict):
             keywords = policy_data['content_data'].get('keywords', [])
         
+        # 블로그 생성/저장 시 카테고리[일자리/주거/교육/복지]로 통일
+        raw_cat = policy_data.get('category') or policy_data.get('category_auto')
+        confirmed_category = normalize_category(
+            raw_cat,
+            policy_data.get('category_auto'),
+            policy_data.get('title'),
+            policy_data.get('summary'),
+        )
+
         # DB 저장
         with engine.begin() as conn:
             conn.execute(text("""
@@ -184,7 +194,7 @@ def generate_and_save_blog(engine, client, policy_data: dict):
                 "title": blog_title,
                 "summary": blog_summary,
                 "content": blog_content,
-                "category": policy_data.get('category_auto'),
+                "category": confirmed_category,
                 "region": policy_data.get('region'),
                 "keywords": keywords
             })

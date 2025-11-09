@@ -16,6 +16,7 @@ from cachetools import TTLCache
 DB_READY = False
 try:
     from sqlalchemy.orm import Session
+    from sqlalchemy import text
     from db import get_session, PolicyClean  # 실제 경로/이름에 맞게 조정
     DB_READY = True
 except Exception:  # pragma: no cover
@@ -59,7 +60,7 @@ logger.info(f"USE_DB: {USE_DB}, OPENAI_MODEL: {OPENAI_MODEL}")
 # ==== 요청 모델 ==============================================================
 class AutoReq(BaseModel):
     policy_id: str
-    category: str                # "주거/일자리/복지/교육"
+    category: Optional[str] = None    # "주거/일자리/복지/교육"
     max_variants: int = 4        # 후보 개수(2~5 권장)
     allow_emoji: bool = False    # 이모지 허용 여부
     force_two_lines: bool = True # 2줄 강제 여부
@@ -330,6 +331,7 @@ def generate_from_policy(req: AutoReq):
     - USE_DB=true: DB에서 정책 로드
     - USE_DB=false: fixtures 또는 최소 값으로 LLM 실행
     """
+    req.category = (req.category or None)
     logger.info("📸 썸네일 자동 생성 요청", extra={
         "policy_id": req.policy_id,
         "category": req.category,
@@ -347,6 +349,17 @@ def generate_from_policy(req: AutoReq):
             if not pol:
                 logger.error("DB에서 정책 못 찾음", extra={"policy_id": req.policy_id})
                 raise HTTPException(status_code=404, detail=f"policy not found: {req.policy_id}")
+            confirmed_cat = None
+            try:
+                row = ses.execute(
+                    text("SELECT category FROM blog_posts WHERE plcy_no = :p"),
+                    {"p": req.policy_id}
+                ).first()
+                if row and row[0]:
+                    confirmed_cat = row[0]
+            except Exception:
+                confirmed_cat = None  # 실패해도 무시
+
             policy_dict = {
                 "policy_id": req.policy_id,
                 "title": pol.title,
@@ -356,8 +369,8 @@ def generate_from_policy(req: AutoReq):
                 "target": pol.target,
                 "deadline": pol.deadline,
                 "summary": pol.summary,
-                "category": pol.category or req.category,
-            }
+                "category": confirmed_cat or (pol.category or req.category) or "기타",
+            } 
     else:
         policy_dict = _load_fixture_or_min(req.policy_id, fallback_category=req.category)
 
@@ -380,7 +393,15 @@ def generate_from_policy(req: AutoReq):
     })
 
     # 4) 이미지 생성
-    thumb_req = ThumbReq(policy_id=req.policy_id, category=req.category, caption=best)
+    final_category = (policy_dict.get("category") or req.category or "기타").strip()
+    logger.info("카테고리 확정", extra={
+        "policy_id": req.policy_id,
+        "final_category": final_category,
+        "source": ("db" if final_category == confirmed_cat else
+                "policy_clean" if getattr(pol, "category", None) == final_category else
+                "request_or_default")
+    })
+    thumb_req = ThumbReq(policy_id=req.policy_id, category=final_category, caption=best)
     result = generate_thumbnail(thumb_req)
 
     logger.info("썸네일 생성 완료", extra={

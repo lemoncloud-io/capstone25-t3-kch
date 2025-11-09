@@ -29,6 +29,19 @@ if not OPENAI_API_KEY:
 engine = create_engine(DB_URL, pool_pre_ping=True)
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+def _confirm_category_for_policy(policy: dict) -> str:
+    """
+    policy dict에서 최종 카테고리 라벨을 확정한다.
+    1) policy['category'] (이미 확정된 라벨)가 우선이다.
+    2) 라벨이 없으면 category_auto를 라벨로 사용한다.
+    3) 그래도 없으면 '기타'로 분류한다.
+    """
+    label = (policy.get('category') or '').strip()
+    if label:
+        return label
+    auto_ = (policy.get('category_auto') or '').strip()
+    return auto_ or '기타'
+
 def create_blog_table():
     """블로그 테이블 생성"""
     print("블로그 테이블 생성 중")
@@ -157,12 +170,13 @@ def generate_all_blogs(skip_existing: bool = True, limit: int = None):
             if policy.get('content_data') and isinstance(policy['content_data'], dict):
                 keywords = policy['content_data'].get('keywords', [])
             
+            confirmed_category = _confirm_category_for_policy(policy)
             save_blog_to_db(
                 plcy_no=plcy_no,
                 title=blog_title,
                 summary=blog_summary,
                 content=blog_content,
-                category=policy.get('category_auto'),
+                category=confirmed_category,
                 region=policy.get('region'),
                 keywords=keywords
             )
