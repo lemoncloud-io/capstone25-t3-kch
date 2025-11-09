@@ -10,6 +10,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import { getPost, type Post } from '@/shared/api/posts'
 import MainLayout from '@/features/blog/components/layout/MainLayout'
+import { toast } from 'sonner'
 
 /* =========================
    유틸
@@ -67,6 +68,50 @@ export default function PostDetailPage() {
     return { title, description, keywords, robots, ogImage }
   }, [post])
 
+  const handleShare = async () => {
+    // 로딩 중이거나 post가 없으면 실행 안 함
+    if (isLoading || !post) {
+      toast.error('게시글을 불러오는 중이에요.');
+      return;
+    }
+
+    const shareData = {
+      title: post.title,
+      text: post.summary || '', 
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      // 모바일 (Web Share API)
+      try {
+        await navigator.share(shareData);
+      } catch (error) {
+        // 사용자에게 오류 알림.
+        console.error('Share API 오류:', error);
+        toast.error('공유에 실패했습니다.');
+      }
+    } else {
+      // 데스크톱 (클립보드 복사)
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success('링크가 클립보드에 복사되었습니다.');
+      } catch (err) {
+        console.error('클립보드 복사 오류:', err);
+        toast.error('링크 복사에 실패했습니다.');
+      }
+    }
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success('링크가 클립보드에 복사되었습니다.'); // alert 대신 toast 사용
+    } catch (err) {
+      console.error('클립보드 복사 오류:', err);
+      toast.error('링크 복사에 실패했습니다.');
+    }
+  };
+  
   /* ========== 로딩 ========== */
   if (isLoading) {
     return (
@@ -182,25 +227,14 @@ export default function PostDetailPage() {
         <div className="max-w-4xl mx-auto mb-6">
           <div className="flex items-center justify-end gap-3">
             <button
-              onClick={async () => {
-                const shareData = { title: post.title, text: post.summary, url: window.location.href }
-                if (navigator.share) {
-                  try { await navigator.share(shareData) } catch {}
-                  return
-                }
-                await navigator.clipboard.writeText(window.location.href)
-                alert('링크가 복사되었습니다.')
-              }}
+              onClick={handleShare} // '공유' 버튼
               className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
             >
               <Share2 className="w-4 h-4" />
               <span className="text-sm font-medium">공유</span>
             </button>
             <button
-              onClick={async () => {
-                await navigator.clipboard.writeText(window.location.href)
-                alert('링크가 복사되었습니다.')
-              }}
+              onClick={handleCopyLink} // '링크복사' 버튼
               className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <LinkIcon className="w-4 h-4" />
