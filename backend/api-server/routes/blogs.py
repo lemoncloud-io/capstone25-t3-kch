@@ -216,18 +216,11 @@ def ensure_thumbnail_fields(conn, row: Dict, columns: set[str]):
     row.setdefault("thumbnail_key", None)
     row.setdefault("thumbnail_url", None)
 
-    original_category = row.get("category_original") or row.get("category")
-    normalized_category = normalize_category(
-        original_category,
-        row.get("category_auto"),
-        row.get("blog_title"),
-        row.get("blog_summary"),
-        row.get("blog_content"),
-    )
-    row.setdefault("category_original", original_category)
-    row["category_normalized"] = normalized_category
-    if not row.get("category"): #DB에 카테고리가 저장되어 있지 않은 경우에만 보정값으로 사용힌디.
-        row["category"] = normalized_category
+    # 카테고리 보정 없이 blog_posts.category 값을 바로 가져와서 
+    # thumbnail_categoty에 저장하도록 수정했기에 
+    # 해당 테이블에 category 값이 무조건 들어있어야 합니다.
+    # DB에 category 값이 없으면 경고를 남기고 썸네일 생성을 중단합니다.
+    thumbnail_category = row.get("category")
 
     has_key_col = "thumbnail_key" in columns
     has_url_col = "thumbnail_url" in columns
@@ -238,11 +231,15 @@ def ensure_thumbnail_fields(conn, row: Dict, columns: set[str]):
     if row.get("thumbnail_key"):
         row["thumbnail_url"] = s3_url_from_key(row["thumbnail_key"])
         return
-
+    
+    if not thumbnail_category:
+        print(f"[WARN] 썸네일 생성 중단 (DB에 category 값이 없음): {row.get('plcy_no')}")
+        return
+    
     try:
         req = AutoReq(
             policy_id=row["plcy_no"],
-            category=normalized_category,
+            category=thumbnail_category,
             max_variants=2,
             allow_emoji=False,
         )

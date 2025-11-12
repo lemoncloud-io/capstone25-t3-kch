@@ -501,32 +501,11 @@ const CATEGORY_KEYWORDS_EN: Record<CategoryLabel, string[]> = {
 }
 
 /** 
- * 카테고리를 네 가지 표준 라벨(일자리/주거/복지/교육)로 정규화
+ * 프론트엔드는 백엔드에서 저장한 카테고리 값을 그대로 사용하도록 수정
+ *
  * @param raw - 백엔드에서 온 카테고리명
  * @returns 정규화된 카테고리명
  */
-function normCategory(raw?: string): CategoryLabel {
-  const original = (raw ?? '').trim();
-  if (CATEGORY_LABELS.includes(original as CategoryLabel)) {
-    return original as CategoryLabel;
-  }
-
-  const lower = original.toLowerCase();
-
-  for (const label of CATEGORY_LABELS) {
-    const keywords = CATEGORY_KEYWORDS[label];
-    if (keywords.some((kw) => kw && lower.includes(kw))) {
-      return label;
-    }
-    const enKeywords = CATEGORY_KEYWORDS_EN[label];
-    if (enKeywords.some((kw) => kw && lower.includes(kw))) {
-      return label;
-    }
-  }
-
-  // 기본값: 교육
-  return '교육';
-}
 
 // ============ API 함수들 ============
 
@@ -552,13 +531,17 @@ export const getPosts = async (params?: { category?: string }): Promise<Post[]> 
         
         // 목록 매핑 - 헬퍼 함수 적용
         const mapped: Post[] = items.map((b: any) => {
-            const rawCategory = b.category_normalized ?? b.category ?? b.category_original ?? ''
+            // categoryFromBackend 값 추출 (백엔드 카테고리 값 그대로 가져와 프론트에서 사용)
+            const categoryFromBackend = b.category
             return {
             id: String(b.plcy_no ?? b.id ?? Math.random().toString(36).slice(2)),
             title: b.blog_title ?? b.title ?? '제목 없음',
             slug: String(b.plcy_no ?? b.slug ?? Math.random().toString(36).slice(2)),
             summary: b.blog_summary ?? b.summary ?? '',
-            category: normCategory(rawCategory),            // ✅ 정규화
+            category: (CATEGORY_LABELS.includes(categoryFromBackend) 
+                ? categoryFromBackend 
+                : '복지') as CategoryLabel,  
+                // 기본값 '복지'으로 설정 => 교육보다 복지를 기본값으로 했을 때 더 자연스럽게 분류됨.
             thumbnail: resolveThumbnail(b),                // ✅ URL 복원
             author: '정책관리팀',
             viewCount: Number(b.view_count ?? b.viewCount ?? 0),
@@ -612,14 +595,17 @@ export const getPost = async (slug: string): Promise<Post | undefined> => {
         }
         const b = await response.json()
 
-        // 단건 매핑 - 헬퍼 함수 적용
-        const rawCategory = b.category_normalized ?? b.category ?? b.category_original ?? ''
+        // categoryFromBackend 값 추출 (백엔드 카테고리 값 그대로 가져와 프론트에서 사용)
+        const categoryFromBackend = b.category
+        
         const mapped: Post = {
             id: String(b.plcy_no ?? slug),
             title: b.blog_title ?? '제목 없음',
             slug: String(b.plcy_no ?? slug),
             summary: b.blog_summary ?? '',
-            category: normCategory(rawCategory), // 정규화
+            category: (CATEGORY_LABELS.includes(categoryFromBackend) 
+                ? categoryFromBackend 
+                : '복지') as CategoryLabel,  // 기본값 '복지'으로 설정
             thumbnail: resolveThumbnail(b), // URL 복원
             author: '정책관리팀',
             viewCount: Number(b.view_count ?? 0),
