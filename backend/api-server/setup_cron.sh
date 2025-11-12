@@ -130,7 +130,18 @@ if [ \$POLICY_EXIT_CODE -eq 0 ]; then
     \$PYTHON_BIN \$PROJECT_DIR/jobs/blog/generate_all_blogs.py >> \$LOG_FILE 2>&1
     BLOG_EXIT_CODE=\$?
     echo "[INFO] 블로그 생성 완료 (Exit code: \$BLOG_EXIT_CODE)" >> \$LOG_FILE
-    EXIT_CODE=\$BLOG_EXIT_CODE
+    
+    # 블로그 생성이 성공했으면 썸네일도 생성
+    if [ \$BLOG_EXIT_CODE -eq 0 ]; then
+        echo "[INFO] 썸네일 생성 시작..." >> \$LOG_FILE
+        \$PYTHON_BIN \$PROJECT_DIR/jobs/thumbnail_refresh.py >> \$LOG_FILE 2>&1
+        THUMBNAIL_EXIT_CODE=\$?
+        echo "[INFO] 썸네일 생성 완료 (Exit code: \$THUMBNAIL_EXIT_CODE)" >> \$LOG_FILE
+        EXIT_CODE=\$THUMBNAIL_EXIT_CODE
+    else
+        echo "[ERROR] 블로그 생성 실패 (Exit code: \$BLOG_EXIT_CODE). 썸네일 생성을 건너뜁니다." >> \$LOG_FILE
+        EXIT_CODE=\$BLOG_EXIT_CODE
+    fi
 else
     echo "[ERROR] 정책 업데이트 실패 (Exit code: \$POLICY_EXIT_CODE). 블로그 생성을 건너뜁니다." >> \$LOG_FILE
     EXIT_CODE=\$POLICY_EXIT_CODE
