@@ -6,6 +6,45 @@ import MainLayout from '../components/layout/MainLayout'
 import { Calendar, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useRef, useState, useEffect } from 'react'
 import { setDefaultOg } from '@/shared/lib/seo'
+import { readOnboarding } from '@/features/onboarding/readOnboarding'
+import { env } from '@/shared/lib/env'
+
+/* =========================
+   추천 API 타입
+   ========================= */
+type OnboardingProfile = {
+  userStatus: 'student' | 'jobseeker'
+  userAge: '19-24' | '25-29' | '30-34' | '35+'
+  userRegion: string
+  userInterests: string[]
+}
+
+type RecommendItem = {
+  id: number
+  plcy_no: string
+  title: string
+  summary?: string
+  category?: string
+  region?: string
+  score: number
+}
+
+type RecommendResp = {
+  algo: string
+  items: RecommendItem[]
+}
+
+async function fetchRecommendations(profile: OnboardingProfile): Promise<RecommendResp> {
+  const res = await fetch(`${env.API_BASE_URL}/recommendations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(profile),
+  })
+  if (!res.ok) {
+    throw new Error(`추천 API 실패: ${res.status}`)
+  }
+  return res.json()
+}
 
 /* =========================
    유틸: 날짜/숫자 포맷
@@ -14,7 +53,6 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
 const fmtNum = (n?: number) => (n ?? 0).toLocaleString('ko-KR')
 
-// 상대 시간 계산 (N일 전)
 const getRelativeTime = (iso: string) => {
   const now = new Date()
   const target = new Date(iso)
@@ -45,7 +83,6 @@ function PostCard({ post }: { post: Post }) {
       aria-label={post.title}
     >
       <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-gray-200 h-full flex flex-col">
-        {/* 썸네일 */}
         <div className="aspect-square bg-gray-100 overflow-hidden relative flex-shrink-0">
           {post.thumbnail ? (
             <img
@@ -60,7 +97,6 @@ function PostCard({ post }: { post: Post }) {
           )}
         </div>
 
-        {/* 텍스트 */}
         <div className="p-4 flex-1 flex flex-col">
           <h3 className="font-bold text-lg line-clamp-2 group-hover:text-[#FEBC02] transition-colors">
             {post.title}
@@ -83,14 +119,12 @@ function PostCard({ post }: { post: Post }) {
 }
 
 /* =========================
-   추천(가로형) 포스트 — 캡처 스타일
-   왼쪽 큰 제목/요약, 오른쪽 정사각 썸네일, 행별 구분선
+   추천(가로형) 포스트
    ========================= */
 function RecommendedPostItem({ post }: { post: Post }) {
   const THUMB = 150
-
   const cat = post.category || '정책'
-  const catClass = 'text-[#FEBC02]' // 카테고리별 색상 추가 가능
+  const catClass = 'text-[#FEBC02]'
 
   return (
     <Link
@@ -98,8 +132,6 @@ function RecommendedPostItem({ post }: { post: Post }) {
       className="group grid grid-cols-[1fr_auto] items-start gap-6 py-6 md:gap-8 md:py-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FEBC02] max-w-md mx-auto md:max-w-none"
       aria-label={post.title}
     >
-      {/* 왼쪽 텍스트: 위는 카테고리/제목/요약, 아래는 날짜
-          날짜를 이미지 하단과 맞추기 위해 min-h를 썸네일과 동일하게 두고 flex로 분리 */}
       <div className="min-w-0 flex flex-col justify-between" style={{ minHeight: THUMB }}>
         <div>
           <div className={`text-sm font-bold mb-2 ${catClass}`}>[{cat}]</div>
@@ -111,7 +143,6 @@ function RecommendedPostItem({ post }: { post: Post }) {
           </p>
         </div>
 
-        {/* 날짜: "N일 전 | 날짜" 형식 */}
         <div className="text-xs text-gray-400 mt-4">
           {getRelativeTime(post.createdAt)}
           <span className="px-3">|</span>
@@ -119,7 +150,6 @@ function RecommendedPostItem({ post }: { post: Post }) {
         </div>
       </div>
 
-      {/* 오른쪽 썸네일: 동적 Tailwind 클래스 제거 (빌드 안정화) */}
       <div
         className="rounded-xl border border-gray-200 bg-[#EAF2FB] overflow-hidden shadow-sm flex-shrink-0"
         style={{ width: THUMB, height: THUMB }}
@@ -131,7 +161,9 @@ function RecommendedPostItem({ post }: { post: Post }) {
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="w-full h-full grid place-items-center text-gray-400 text-xs">이미지 없음</div>
+          <div className="w-full h-full grid place-items-center text-gray-400 text-xs">
+            이미지 없음
+          </div>
         )}
       </div>
     </Link>
@@ -139,7 +171,7 @@ function RecommendedPostItem({ post }: { post: Post }) {
 }
 
 /* =========================
-   페이지네이션 - 원형 디자인
+   페이지네이션
    ========================= */
 function Pagination({
   currentPage,
@@ -154,7 +186,6 @@ function Pagination({
 
   return (
     <div className="flex items-center justify-center gap-4 mt-8">
-      {/* 이전 버튼 */}
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
@@ -164,7 +195,6 @@ function Pagination({
         <ChevronLeft size={24} />
       </button>
 
-      {/* 페이지 번호 */}
       {pages.map((page) => (
         <button
           key={page}
@@ -180,7 +210,6 @@ function Pagination({
         </button>
       ))}
 
-      {/* 다음 버튼 */}
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
@@ -194,52 +223,83 @@ function Pagination({
 }
 
 /* =========================
-   페이지
+   페이지 컴포넌트
    ========================= */
 export default function HomePage() {
   useEffect(() => {
     setDefaultOg({ title: 'KCH Blog - 홈' })
   }, [])
-  // 페이지네이션
+
   const [currentPage, setCurrentPage] = useState(1)
   const ITEMS_PER_PAGE = 6
 
-  // 데이터 로드
-  const { data = [], isLoading } = useQuery<Post[], Error>({
+  // 전체 포스트
+  const { data: posts = [], isLoading } = useQuery<Post[], Error>({
     queryKey: ['posts', 'all'],
     queryFn: () => getPosts(),
   })
 
-  // 파생 데이터
+  // 인기/최신 정렬
   const sortedByViews = useMemo(
-    () => [...data].sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0)),
-    [data],
+    () => [...posts].sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0)),
+    [posts],
   )
   const sortedByDate = useMemo(
-    () => [...data].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [data],
+    () => [...posts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [posts],
   )
 
   const popularPosts = sortedByViews.slice(0, 3)
   const latestPosts = sortedByDate.slice(0, 3)
 
-  const totalPages = Math.ceil(sortedByDate.length / ITEMS_PER_PAGE)
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-  const currentRecommendedPosts = sortedByDate.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+  // 온보딩 + 추천
+  const profile = readOnboarding() as OnboardingProfile | null
 
-  // 스크롤 이동
+  const {
+    data: recoData,
+    isLoading: isRecoLoading,
+    isError: isRecoError,
+  } = useQuery<RecommendResp, Error>({
+    queryKey: ['recommendations', profile],
+    queryFn: () => fetchRecommendations(profile as OnboardingProfile),
+    enabled: !!profile && env.USE_SERVER, // 서버 모드일 때만
+    staleTime: 1000 * 60 * 5,
+  })
+
+  // plcy_no -> Post 맵 (id 가 plcy_no 로 매핑돼 있음)
+  const postMapByPlcyNo = useMemo(
+    () => new Map(posts.map((p) => [String(p.id), p])),
+    [posts],
+  )
+
+  // 추천 결과와 블로그 join
+  const recommendedJoined: Post[] = useMemo(() => {
+    const items = recoData?.items ?? []
+    const result: Post[] = []
+    for (const it of items) {
+      const p = postMapByPlcyNo.get(String(it.plcy_no))
+      if (p) result.push(p)
+    }
+    return result
+  }, [recoData?.items, postMapByPlcyNo])
+
+  // 페이지네이션용 소스 (추천 없으면 최신순으로 폴백)
+  const sourceForReco = recommendedJoined.length > 0 ? recommendedJoined : sortedByDate
+  const totalPages = Math.ceil(sourceForReco.length / ITEMS_PER_PAGE) || 1
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const currentRecommendedPosts = sourceForReco.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+
   const recoRef = useRef<HTMLDivElement>(null)
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
     recoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  /* ========== 로딩 ========== */
   if (isLoading) {
     return (
       <MainLayout>
         <div className="space-y-12">
-          {/* 인기 스켈레톤 */}
+          {/* 스켈레톤은 기존 코드 그대로 유지 */}
           <section aria-labelledby="section-popular">
             <h2 id="section-popular" className="text-2xl font-bold mb-6">
               인기 포스트
@@ -257,7 +317,6 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* 최신 스켈레톤 */}
           <section aria-labelledby="section-latest">
             <h2 id="section-latest" className="text-2xl font-bold mb-6">
               최신 포스트
@@ -275,7 +334,6 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* 로딩 스피너 */}
           <div className="text-center py-16">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FEBC02] mx-auto" />
             <p className="mt-4 text-gray-600">로딩 중...</p>
@@ -285,7 +343,6 @@ export default function HomePage() {
     )
   }
 
-  /* ========== 본문 ========== */
   return (
     <MainLayout>
       <div className="space-y-16">
@@ -319,11 +376,27 @@ export default function HomePage() {
 
         {/* 당신을 위한 청년정책 */}
         <section aria-labelledby="section-reco" ref={recoRef}>
-          <h2 id="section-reco" className="text-2xl font-bold mb-6">
+          <h2 id="section-reco" className="text-2xl font-bold mb-2">
             당신을 위한 청년정책
           </h2>
 
-          {/* 각 아이템 사이 얇은 구분선 */}
+          {!profile && (
+            <p className="text-gray-500 mb-4">
+              온보딩을 완료하면 나에게 맞는 정책 추천이 표시됩니다.
+            </p>
+          )}
+          {profile && isRecoLoading && (
+            <p className="text-gray-500 mb-4">추천 불러오는 중…</p>
+          )}
+          {profile && isRecoError && (
+            <p className="text-gray-500 mb-4">추천을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
+          )}
+          {profile && !isRecoLoading && !isRecoError && recommendedJoined.length === 0 && (
+            <p className="text-gray-500 mb-4">
+              아직 추천 점수가 높은 정책이 많지 않아, 최근 생성된 순서로 보여드리고 있어요.
+            </p>
+          )}
+
           <div className="divide-y divide-gray-200">
             {currentRecommendedPosts.length > 0 ? (
               currentRecommendedPosts.map((post) => (
@@ -334,7 +407,6 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* 페이지네이션 */}
           {totalPages > 1 && (
             <Pagination
               currentPage={currentPage}

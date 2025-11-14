@@ -81,6 +81,9 @@ app.include_router(thumbnails_auto.router, prefix="/api")
 from routes.blogs import router as blogs_router
 app.include_router(blogs_router, prefix="/api")
 
+# 추천 라우터 연결
+from routes import recommendations
+app.include_router(recommendations.router)
 
 # OpenAI Ping API
 @app.get("/openai/ping")
