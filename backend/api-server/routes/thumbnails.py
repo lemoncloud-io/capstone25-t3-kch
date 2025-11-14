@@ -166,40 +166,45 @@ def _maybe_upload_s3(png_bytes: bytes, key: str) -> Optional[str]:
         print("[WARN] S3 upload failed:", repr(e))
         return None
 
-# ========= 카테고리 매핑 =========
-CATEGORY_ALIAS = {
-    "일자리": "jobs",
-    "주거": "housing",
-    "복지": "welfare",
-    "교육": "education",
-    "jobs": "jobs",
-    "housing": "housing",
-    "welfare": "welfare",
-    "education": "education",
-}
+# ========= 카테고리 매핑 로직 개선 =========
+
+# preprocess.py의 상세 카테고리를 4대 카테고리로 매핑
+# 4대 카테고리: 일자리(취업 지원, 창업), 주거(주거), 교육(해외 기회, 교육·자격증), 복지(대출·금융, 생활비 지원, 문화·여가, 건강·상담, 청년 참여)
+def category_by_keyword(raw_category: str) -> str:
+    if not raw_category: return "welfare" # 기본값 복지
+    text = raw_category.strip().replace(" ", "").lower()
+    
+    if any(k in text for k in ["일자리", "취업 지원", "취업", "창업", "구직", "고용", "인턴"]):
+        return "jobs"
+        
+    if any(k in text for k in ["주거", "주택", "전세", "월세", "기숙사"]):
+        return "housing"
+   
+    if any(k in text for k in ["교육", "교육·자격증", "해외 기회", "자격증", "학습", "공부", "유학", "어학"]):
+        return "education"
+    return "welfare" # 기본값 '복지'
 
 BG_MAP = {
     "jobs":      BG_DIR / "bg_jobs.png",
     "housing":   BG_DIR / "bg_housing.png",
-    "welfare":   BG_DIR / "bg_welfare.png",
     "education": BG_DIR / "bg_education.png",
+    "welfare":   BG_DIR / "bg_welfare.png",
 }
 
 SAFE_RECT_PCT = {
     "jobs":      {"x": 0.10, "y": 0.18, "w": 0.80, "h": 0.52},
     "housing":   {"x": 0.10, "y": 0.22, "w": 0.80, "h": 0.54},
-    "welfare":   {"x": 0.10, "y": 0.25, "w": 0.80, "h": 0.50},
     "education": {"x": 0.12, "y": 0.20, "w": 0.76, "h": 0.54},
+    "welfare":   {"x": 0.10, "y": 0.25, "w": 0.80, "h": 0.50},
 }
 
 # ========= 엔드포인트 =========
 @router.post("/generate")
 def generate(req: Req):
-    # 카테고리 정규화 → 배경 선택
-    key = CATEGORY_ALIAS.get(req.category)
-    if not key:
-        raise HTTPException(status_code=400, detail=f"unknown category: {req.category}")
 
+    # 위 함수 바탕으로 카테고리 선택 후 배경 선택
+    key = category_by_keyword(req.category)
+    
     bg_path = BG_MAP[key]
     if not bg_path.exists():
         raise HTTPException(status_code=500, detail=f"background not found: {bg_path}")

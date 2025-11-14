@@ -15,74 +15,27 @@ router = APIRouter(tags=["blogs"])
 S3_BUCKET = os.getenv("S3_BUCKET", "youth-policy-thumbnails-kch")
 S3_REGION = os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "ap-northeast-2"))
 
-
-KEYWORDS_BY_CATEGORY = {
-    "일자리": {
-        "ko": ["일자리", "취업", "구직", "채용", "고용", "근로", "직무", "직업", "창업", "인턴", "도제", "근속", "훈련"],
-        "en": ["job", "employment", "work", "career", "startup", "entrepreneur"],
-        "codes": ["employment", "job"],
-    },
-    "주거": {
-        "ko": ["주거", "전세", "월세", "보증금", "임대", "이사", "주택", "청약", "전월세", "부동산"],
-        "en": ["housing", "rent", "lease"],
-        "codes": ["housing"],
-    },
-    "복지": {
-        "ko": ["복지", "건강", "상담", "문화", "생활", "생활비", "교통비", "의료", "검진", "정신", "바우처", "참여", "권리", "여가", "돌봄"],
-        "en": ["welfare", "health", "culture", "life"],
-        "codes": ["welfare", "culture"],
-    },
-    "교육": {
-        "ko": ["교육", "장학", "자격", "대학", "연수", "교환학생", "어학", "학자금", "스쿨", "교육·훈련", "학습", "캠프", "멘토"],
-        "en": ["education", "scholar", "training", "study", "learning", "academy"],
-        "codes": ["education", "training"],
-    },
-}
-
-
-def _match_category(text: str, candidates: List[str]) -> Optional[str]:
-    for key in candidates:
-        if key and key in text:
-            return key
-    return None
-
-
-def normalize_category(
-    raw_category: Optional[str],
-    auto_category: Optional[str] = None,
-    *texts: Optional[str]
-) -> str:
-    """제목/요약/본문 등 다양한 단서를 바탕으로 카테고리를 정규화"""
-
-    candidates: List[str] = []
-
-    for src in (raw_category, auto_category):
-        if not src:
-            continue
-        cleaned = str(src).strip()
-        if cleaned:
-            candidates.append(cleaned.lower())
-
-    for extra in texts:
-        if not extra:
-            continue
-        cleaned = str(extra).strip().lower()
-        if cleaned:
-            candidates.append(cleaned)
-
-    joined = " ".join(candidates)
-
-    for label, groups in KEYWORDS_BY_CATEGORY.items():
-        ko = [kw.lower() for kw in groups["ko"]]
-        if _match_category(joined, ko):
-            return label
-        if _match_category(joined, groups["en"]):
-            return label
-        if _match_category(joined, groups["codes"]):
-            return label
-
-    # 키워드 매칭 실패 시 기본값
-    return "교육"
+# 10개의 정책 카테고리를 4개의 블로그 카테고리로 표준화함.
+def normalize_to_standard(raw: str) -> str:
+    if not raw:
+        return "복지" # 값이 비어있으면 '복지'로 통일
+    text = str(raw).strip().replace(" ", "") # 공백 제거
+    
+    # 1. 일자리
+    # ('취업 지원', '창업')
+    if any(k in text for k in ["취업 지원", "창업", "일자리", "취업", "창업", "구직", "고용", "인턴"]):
+        return "일자리"
+    # 2. 주거
+    # ('주거')
+    if any(k in text for k in ["주거", "주택", "전세", "월세", "기숙사"]):
+        return "주거"
+    # 3. 교육
+    # ('교육·자격증', '해외 기회')
+    if any(k in text for k in ["교육·자격증", "해외 기회", "교육", "장학", "자격증", "학습", "학교", "공부", "어학"]):
+        return "교육"
+    # 4. 복지 (나머지 전부)
+    # ('대출·금융', '생활비 지원', '문화·여가', '건강·상담', '청년 참여')
+    return "복지"
 
 
 def s3_url_from_key(key: str) -> str:
@@ -155,7 +108,7 @@ def _build_select_fields(columns: set[str], include_content: bool = False) -> Li
 
 
 @router.get("/blogs")
-def list_blogs(limit: int = 40):
+def list_blogs(limit: int = 60):    #int 값 수정하면 프론트에서 불러오는 개수를 조절할 수 있습니다.
     conn = get_conn()
     columns = _get_blog_table_columns()
     rows: List[Dict] = []
@@ -216,11 +169,12 @@ def ensure_thumbnail_fields(conn, row: Dict, columns: set[str]):
     row.setdefault("thumbnail_key", None)
     row.setdefault("thumbnail_url", None)
 
-    # 카테고리 보정 없이 blog_posts.category 값을 바로 가져와서 
-    # thumbnail_categoty에 저장하도록 수정했기에 
-    # 해당 테이블에 category 값이 무조건 들어있어야 합니다.
-    # DB에 category 값이 없으면 경고를 남기고 썸네일 생성을 중단합니다.
-    thumbnail_category = row.get("category")
+    raw_category = row.get("category") # 기존 DB 카테고리 값
+    thumbnail_category = normalize_to_standard(raw_category) # 4대 카테고리로 정규화
+    
+    # row 데이터 정규화 (프론트엔드 전달용)
+    row["category"] = thumbnail_category
+    row["category_normalized"] = thumbnail_category
 
     has_key_col = "thumbnail_key" in columns
     has_url_col = "thumbnail_url" in columns
