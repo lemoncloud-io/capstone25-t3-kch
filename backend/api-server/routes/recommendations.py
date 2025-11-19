@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime
 import math
-import re  # ✅ 나이 범위 파싱용
+import re
 
 from jobs.ontong.storage_pg import get_session as get_db
 
@@ -116,7 +116,6 @@ def status_match_score(user_status: str, target_group_text: Optional[str]) -> fl
 
 
 # ---------- 나이대 매칭 ----------
-# 온보딩에서 들어오는 나이 구간을 실제 나이 범위로 변환
 AGE_BUCKET = {
     "19-24": (19, 24),
     "25-29": (25, 29),
@@ -139,24 +138,23 @@ def age_match_score(user_age_bucket: AgeRange, target_group_text: Optional[str])
 
     text = target_group_text
 
-    # 1) "19~34", "19-34", "19 ~ 34" 같은 패턴 먼저 찾기
+    # 1) "19~34", "19-34", "19 ~ 34" 등
     m = re.search(r"(\d{1,2})\s*[~\-∼−]\s*(\d{1,2})", text)
     if m:
         min_age = int(m.group(1))
         max_age = int(m.group(2))
     else:
-        # 2) "19세 이상 34세 이하" 형태 대충 지원 (둘 다 있는 경우)
+        # 2) "19세 이상 34세 이하" 형태
         m2 = re.search(r"(\d{1,2})\s*세\s*이상.*?(\d{1,2})\s*세\s*이하", text)
         if m2:
             min_age = int(m2.group(1))
             max_age = int(m2.group(2))
         else:
-            # 나이 숫자 범위를 못 찾으면 0점
             return 0.0
 
     u_min, u_max = AGE_BUCKET.get(user_age_bucket, (0, 150))
 
-    # 구간이 겹치면 1.0, 전혀 안 겹치면 0.0
+    # 구간이 겹치면 1.0
     if max_age < u_min or min_age > u_max:
         return 0.0
     return 1.0
@@ -213,36 +211,44 @@ def recommend(req: RecommendReq, db: Session = Depends(get_db)):
             tgroup = r["target_group"]
             updated = r["updated_at"]
 
-            # 관심사 점수
-            s_interest = 1.0 if (cat and cat in interest_cats) else 0.0
-
-            # 지역 점수 (전국 + 광역 정도만 대충 매칭)
+            # ---------------------------
+            # 1) 지역 필터: 서울/전국 등만 추천 후보로 사용
+            # ---------------------------
             norm_user = user_region
             norm_item = normalize_region(region)
 
+            is_region_match = False
             if is_nationwide(region):
-                s_region = 1.0
+                is_region_match = True
             elif norm_user and norm_item and norm_item.startswith(norm_user[:2]):
-                s_region = 1.0
-            else:
-                s_region = 0.0
+                is_region_match = True
+
+            # 지역이 안 맞으면 아예 추천 후보에서 제외
+            if not is_region_match:
+                continue
+
+            # 이 아래로 내려온 애들은 전부 "지역은 맞다"
+            s_region = 1.0
+
+            # 관심사 점수
+            s_interest = 1.0 if (cat and cat in interest_cats) else 0.0
 
             # 상태(학생/구직자) 점수
             s_status = status_match_score(req.userStatus, tgroup)
 
-            # 나이대 점수 ✅
+            # 나이대 점수
             s_age = age_match_score(req.userAge, tgroup)
 
             # 최신성 점수
             s_rec = recency_decay(updated)
 
-            s_views = 0.0  # 현재 없음
+            s_views = 0.0  # 현재 사용x
 
             score = (
                 W_INTEREST * s_interest
                 + W_REGION * s_region
                 + W_STATUS * s_status
-                + W_AGE * s_age           # ✅ 나이대 반영
+                + W_AGE * s_age
                 + W_RECENCY * s_rec
                 + W_VIEWS * s_views
             )
@@ -259,6 +265,7 @@ def recommend(req: RecommendReq, db: Session = Depends(get_db)):
                 )
             )
 
+        # 점수순 정렬
         items.sort(key=lambda x: x.score, reverse=True)
         return RecommendResp(items=items)
 
