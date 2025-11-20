@@ -8,8 +8,6 @@ import psycopg2
 import psycopg2.extras
 from fastapi import APIRouter, HTTPException
 
-from .thumbnails_auto import AutoReq, generate_from_policy
-
 router = APIRouter(tags=["blogs"])
 
 S3_BUCKET = os.getenv("S3_BUCKET", "youth-policy-thumbnails-kch")
@@ -19,15 +17,15 @@ S3_REGION = os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "ap-northeas
 def normalize_to_standard(raw: str) -> str:
     if not raw:
         return "복지" # 값이 비어있으면 '복지'로 통일
-    text = str(raw).strip().replace(" ", "") # 공백 제거
+    text = str(raw).strip().replace(" ", "") # 공백 제거, 그에 따라 아래 키워드에도 공백 없어야 함
     
     # 1. 교육
     # ('교육·자격증', '해외 기회')
-    if any(k in text for k in ["교육·자격증", "해외 기회", "교육", "장학", "자격증", "학습", "학교", "공부", "어학"]):
+    if any(k in text for k in ["교육·자격증", "해외", "해외기회", "교육", "장학", "자격증", "학습", "학교", "공부", "어학"]):
         return "교육"
     # 2. 일자리
     # ('취업 지원', '창업')
-    if any(k in text for k in ["취업 지원", "창업", "일자리", "취업", "창업", "구직", "고용", "인턴"]):
+    if any(k in text for k in ["취업지원", "창업", "일자리", "취업", "창업", "구직", "고용", "인턴"]):
         return "일자리"
     # 3. 주거
     # ('주거')
@@ -106,25 +104,47 @@ def _build_select_fields(columns: set[str], include_content: bool = False) -> Li
 
     return base
 
+# SQL 필터링을 위한 키워드 정의, normalize_to_standard와 로직 일치합니다.
+CATEGORY_KEYWORDS = {
+    "교육": ["교육·자격증", "해외 기회"],
+    "일자리": ["취업 지원", "창업"],
+    "주거": ["주거"],
+    "복지": ["대출·금융", "생활비 지원", "문화·여가", "건강·상담", "청년 참여"]
+}
 
 @router.get("/blogs")
-def list_blogs(limit: int = 60):    #int 값 수정하면 프론트에서 불러오는 개수를 조절할 수 있습니다.
+def list_blogs(limit: int = 60, category: Optional[str] = None):  # 블로그 목록 조회
     conn = get_conn()
     columns = _get_blog_table_columns()
     rows: List[Dict] = []
 
     try:
         select_fields = _build_select_fields(columns)
-        query = f"""
+        query_parts = [f"""
             SELECT {', '.join(select_fields)}
             FROM blog_posts
             WHERE generation_status = 'completed'
-            ORDER BY updated_at DESC
-            LIMIT %s
-        """
+        """]
+        params = []
+
+        # SQL쿼리로 필터링
+        if category and category in CATEGORY_KEYWORDS:
+            category_ten = CATEGORY_KEYWORDS[category]
+            
+            placeholders = ', '.join(['%s'] * len(category_ten))
+            
+            # category 컬럼이 10대 상세 카테고리(category_ten) 중 하나에 정확히 포함되는지 검사
+            query_parts.append(f"AND category IN ({placeholders})")
+            params.extend(category_ten)
+
+        # 정렬, 리밋 추가, 쿼리 합치고 실행
+        query_parts.append("ORDER BY updated_at DESC")
+        query_parts.append("LIMIT %s")
+        params.append(limit)
+        query = " ".join(query_parts)
 
         cur = conn.cursor()
-        cur.execute(query, (limit,))
+        cur.execute(query, tuple(params))
         fetched = cur.fetchall()
         cur.close()
 
@@ -165,11 +185,14 @@ def get_blog(plcy_no: str):
 
 
 def ensure_thumbnail_fields(conn, row: Dict, columns: set[str]):
+    
+    from .thumbnails_auto import AutoReq, generate_from_policy
+    
     """썸네일 키/URL이 비어있는 경우 자동 생성 및 보완"""
     row.setdefault("thumbnail_key", None)
     row.setdefault("thumbnail_url", None)
 
-    raw_category = row.get("category") # 기존 DB 카테고리 값
+    raw_category = row.get("category_auto") or row.get("category") # 기존 DB 카테고리 값
     thumbnail_category = normalize_to_standard(raw_category) # 4대 카테고리로 정규화
     
     # row 데이터 정규화 (프론트엔드 전달용)

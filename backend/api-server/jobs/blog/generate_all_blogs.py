@@ -32,15 +32,20 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 def _confirm_category_for_policy(policy: dict) -> str:
     """
     policy dict에서 최종 카테고리 라벨을 확정한다.
-    1) policy['category'] (이미 확정된 라벨)가 우선이다.
-    2) 라벨이 없으면 category_auto를 라벨로 사용한다.
-    3) 그래도 없으면 '기타'로 분류한다.
+    1) category_auto (자동/키워드 분류)가 가장 정확하므로 우선 사용
+    2) 없으면 원본 category 사용
+    3) 그래도 없으면 '기타'
     """
+    # 분류된 10개 카테고리(category_auto)를 최우선으로 변경
+    auto_ = (policy.get('category_auto') or '').strip()
+    if auto_:
+        return auto_
+
     label = (policy.get('category') or '').strip()
     if label:
         return label
-    auto_ = (policy.get('category_auto') or '').strip()
-    return auto_ or '기타'
+        
+    return '기타'
 
 def create_blog_table():
     """블로그 테이블 생성"""

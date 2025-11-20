@@ -34,6 +34,9 @@ except Exception as e:  # pragma: no cover
 # 기존 썸네일 생성 함수 재사용
 from .thumbnails import generate as generate_thumbnail, Req as ThumbReq
 
+# blogs.py의 normalize_to_standard 재사용해서 카테고리 로직 통일
+from .blogs import normalize_to_standard
+
 # 로거 설정
 from logging_config import get_logger
 logger = get_logger(__name__)
@@ -356,7 +359,7 @@ def generate_from_policy(req: AutoReq):
                     {"p": req.policy_id}
                 ).first()
                 if row and row[0]:
-                    confirmed_cat = row[0]
+                    confirmed_cat = normalize_to_standard(row[0])  # 4대 카테고리로 정규화
             except Exception:
                 confirmed_cat = None  # 실패해도 무시
 
