@@ -169,7 +169,7 @@ def _maybe_upload_s3(png_bytes: bytes, key: str) -> Optional[str]:
 # ========= 카테고리 매핑 로직 개선 =========
 
 # preprocess.py의 상세 카테고리를 4대 카테고리로 매핑
-# 4대 카테고리: 일자리(취업 지원, 창업), 주거(주거), 교육(해외 기회, 교육·자격증), 복지(대출·금융, 생활비 지원, 문화·여가, 건강·상담, 청년 참여)
+# 4대 카테고리: 일자리, 주거, 교육, 복지
 def category_by_keyword(raw_category: str) -> str:
     if not raw_category: return "welfare" # 기본값
     
@@ -186,24 +186,6 @@ def category_by_keyword(raw_category: str) -> str:
         return "welfare"
         
     return "welfare" # 기본값
-
-    # text = str(raw_category).strip().replace(" ", "")
-    
-#    # 1. 교육
-#     # ('교육·자격증', '해외 기회')
-#     if any(k in text for k in ["교육·자격증", "해외", "해외기회", "교육", "장학", "자격증", "학습", "학교", "공부", "어학"]):
-#         return "education"
-#     # 2. 일자리
-#     # ('취업 지원', '창업')
-#     if any(k in text for k in ["취업지원", "창업", "일자리", "취업", "창업", "구직", "고용", "인턴"]):
-#         return "jobs"
-#     # 3. 주거
-#     # ('주거')
-#     if any(k in text for k in ["주거", "주택", "전세", "월세", "기숙사"]):
-#         return "housing"
-#     # 4. 복지 (나머지 전부)
-#     # ('대출·금융', '생활비 지원', '문화·여가', '건강·상담', '청년 참여')
-#     return "welfare"
 
 BG_MAP = {
     "jobs":      BG_DIR / "bg_jobs.png",
