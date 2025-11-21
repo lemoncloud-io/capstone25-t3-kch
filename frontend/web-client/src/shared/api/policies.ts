@@ -6,6 +6,7 @@ export interface PolicyCleanOut {
     category: string
     region?: string
     summary?: string
+    period_end?: string
 }
 
 export const getPolicies = async (params?: { 

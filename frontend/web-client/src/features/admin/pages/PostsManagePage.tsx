@@ -14,21 +14,23 @@ export default function PostsManagePage() {
 
     const queryClient = useQueryClient()
     
-    // 디버깅용 - 브라우저 콘솔에서 사용 가능
+    // 개발 환경에서만 디버깅 헬퍼 함수 제공
     React.useEffect(() => {
-        (window as any).debugCache = () => {
-            console.log('🔍 현재 React Query 캐시 상태:')
-            console.log(queryClient.getQueryCache().getAll())
-        }
-        
-        (window as any).clearCache = () => {
-            console.log('🗑️ 모든 캐시 삭제')
-            queryClient.clear()
-        }
-        
-        (window as any).refetchPosts = () => {
-            console.log('🔄 포스트 데이터 강제 새로고침')
-            queryClient.refetchQueries({ queryKey: ['posts'] })
+        if (process.env.NODE_ENV === 'development') {
+            (window as any).debugCache = () => {
+                console.log('🔍 현재 React Query 캐시 상태:')
+                console.log(queryClient.getQueryCache().getAll())
+            }
+            
+            (window as any).clearCache = () => {
+                console.log('🗑️ 모든 캐시 삭제')
+                queryClient.clear()
+            }
+            
+            (window as any).refetchPosts = () => {
+                console.log('🔄 포스트 데이터 강제 새로고침')
+                queryClient.refetchQueries({ queryKey: ['posts'] })
+            }
         }
     }, [queryClient])
 
@@ -451,61 +453,28 @@ function EditPostForm({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         
-        console.log('🔄 === 수정 폼 제출 시작 ===')
-        console.log('📝 현재 값들:')
-        console.log('  - title:', title)
-        console.log('  - summary:', summary)
-        console.log('  - content:', content?.substring(0, 50) + '...')
-        console.log('  - category:', category)
-        console.log('📝 원본 값들:')
-        console.log('  - post.title:', post.title)
-        console.log('  - post.summary:', post.summary)
-        console.log('  - post.content:', post.content?.substring(0, 50) + '...')
-        console.log('  - post.category:', post.category)
-        
         // 변경된 필드만 전송 (빈 객체 방지)
         const updates: any = {}
         
         if (title !== post.title) {
             updates.title = title
-            console.log('✏️ 제목 변경됨:', post.title, '→', title)
         }
         if (summary !== post.summary) {
             updates.summary = summary
-            console.log('✏️ 요약 변경됨:', post.summary, '→', summary)
         }
         if (content !== post.content) {
             updates.content = content
-            console.log('✏️ 내용 변경됨')
         }
         if (category !== post.category) {
             updates.category = category
-            console.log('✏️ 카테고리 변경됨:', post.category, '→', category)
-            console.log('🔍 카테고리 상세 정보:')
-            console.log('  - 원본 카테고리 타입:', typeof post.category, '값:', JSON.stringify(post.category))
-            console.log('  - 새 카테고리 타입:', typeof category, '값:', JSON.stringify(category))
-            console.log('  - 비교 결과:', category === post.category, category !== post.category)
-            
-            // "교육" 특별 체크
-            if (category === '교육' || post.category === '교육') {
-                console.log('🎓 교육 카테고리 특별 체크:')
-                console.log('  - 새 값이 교육인가?', category === '교육')
-                console.log('  - 원본이 교육인가?', post.category === '교육')
-                console.log('  - 교육 문자열 길이:', category.length, post.category?.length)
-                console.log('  - 교육 문자 코드:', [...category].map(c => c.charCodeAt(0)))
-            }
         }
-        
-        console.log('📝 최종 수정 데이터:', updates)
         
         // 변경사항이 없으면 알림
         if (Object.keys(updates).length === 0) {
-            console.log('⚠️ 변경된 내용이 없음')
-            alert('변경된 내용이 없습니다.')
+            toast.error('변경된 내용이 없습니다.')
             return
         }
         
-        console.log('🚀 onSave 호출')
         onSave(updates)
     }
 
