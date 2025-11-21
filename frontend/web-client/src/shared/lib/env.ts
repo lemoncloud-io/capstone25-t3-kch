@@ -1,22 +1,6 @@
-interface ImportMetaEnv {
-    readonly VITE_APP_VERSION: string
-    readonly VITE_API_BASE_URL: string
-    readonly VITE_ENV: string
-    readonly VITE_USE_SERVER?: string
-    readonly VITE_S3_PUBLIC_BASE?: string
-}
-
-interface ImportMeta {
-    readonly env: ImportMetaEnv
-}
-
 export const env = {
-    APP_VERSION: import.meta.env.VITE_APP_VERSION || '1.0.0',
-    API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
-    ENV: import.meta.env.VITE_ENV || 'development',
-    USE_SERVER: (import.meta.env.VITE_USE_SERVER || 'false') === 'true',
-    S3_PUBLIC_BASE: import.meta.env.VITE_S3_PUBLIC_BASE as string | undefined,
-} as const
-
-export const isDev = import.meta.env.DEV
-export const isProd = import.meta.env.PROD
+    ENV: import.meta.env.MODE || 'development',
+    API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+    USE_SERVER: true, // 강제로 백엔드 연동 활성화
+    S3_PUBLIC_BASE: import.meta.env.VITE_S3_PUBLIC_BASE || 'https://youth-policy-thumbnails-kch.s3.ap-northeast-2.amazonaws.com/'
+}

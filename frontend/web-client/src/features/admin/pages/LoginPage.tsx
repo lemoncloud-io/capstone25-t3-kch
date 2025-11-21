@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '@/shared/store/authStore'
+import { useAuthStore } from '../../../shared/store/authStore'
 import { Lock } from 'lucide-react'
 
 export default function LoginPage() {

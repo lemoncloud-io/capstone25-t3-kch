@@ -2,10 +2,10 @@
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Home, BookOpen, Briefcase, Heart, Calendar, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
-import { getPosts, type Post } from '@/shared/api/posts'
+import { getPosts, type Post } from '../../../shared/api/posts'
 import MainLayout from '@/features/blog/components/layout/MainLayout'
 import { useMemo, useState, useRef, useEffect } from 'react'
-import { setDefaultOg } from '@/shared/lib/seo'
+import { setDefaultOg } from '../../../shared/lib/seo'
 
 /* =========================
    카테고리 정의

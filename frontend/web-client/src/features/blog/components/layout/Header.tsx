@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Search, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getPost } from '@/shared/api/posts'
+import { getPost } from '../../../../shared/api/posts'
 import logo from '@/assets/kch_blog.png'
 
 export default function Header() {

@@ -4,8 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Calendar, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
 import MainLayout from '@/features/blog/components/layout/MainLayout'
-import { getPosts, type Post } from '@/shared/api/posts'
-import { setDefaultOg } from '@/shared/lib/seo'
+import { getPosts, type Post } from '../../../shared/api/posts'
+import { setDefaultOg } from '../../../shared/lib/seo'
 
 /* ===== 유틸 ===== */
 const fmtDate = (iso: string) =>

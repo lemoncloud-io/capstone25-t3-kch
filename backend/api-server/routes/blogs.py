@@ -225,8 +225,14 @@ def ensure_thumbnail_fields(conn, row: Dict, columns: set[str]):
         row.get("blog_content"),
     )
     row.setdefault("category_original", original_category)
-    row["category_normalized"] = normalized_category
-    if not row.get("category"): #DB에 카테고리가 저장되어 있지 않은 경우에만 보정값으로 사용힌디.
+    
+    # 관리자가 수동으로 설정한 카테고리가 있으면 그것을 우선 사용
+    if row.get("category"):
+        # 수동 설정된 카테고리를 category_normalized에도 적용
+        row["category_normalized"] = row["category"]
+    else:
+        # DB에 카테고리가 없는 경우에만 자동 정규화 사용
+        row["category_normalized"] = normalized_category
         row["category"] = normalized_category
 
     has_key_col = "thumbnail_key" in columns
