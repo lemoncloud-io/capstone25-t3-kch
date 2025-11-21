@@ -8,81 +8,40 @@ import psycopg2
 import psycopg2.extras
 from fastapi import APIRouter, HTTPException
 
-from .thumbnails_auto import AutoReq, generate_from_policy
-
 router = APIRouter(tags=["blogs"])
 
 S3_BUCKET = os.getenv("S3_BUCKET", "youth-policy-thumbnails-kch")
 S3_REGION = os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "ap-northeast-2"))
 
-
-KEYWORDS_BY_CATEGORY = {
-    "일자리": {
-        "ko": ["일자리", "취업", "구직", "채용", "고용", "근로", "직무", "직업", "창업", "인턴", "도제", "근속", "훈련"],
-        "en": ["job", "employment", "work", "career", "startup", "entrepreneur"],
-        "codes": ["employment", "job"],
-    },
-    "주거": {
-        "ko": ["주거", "전세", "월세", "보증금", "임대", "이사", "주택", "청약", "전월세", "부동산"],
-        "en": ["housing", "rent", "lease"],
-        "codes": ["housing"],
-    },
-    "복지": {
-        "ko": ["복지", "건강", "상담", "문화", "생활", "생활비", "교통비", "의료", "검진", "정신", "바우처", "참여", "권리", "여가", "돌봄"],
-        "en": ["welfare", "health", "culture", "life"],
-        "codes": ["welfare", "culture"],
-    },
-    "교육": {
-        "ko": ["교육", "장학", "자격", "대학", "연수", "교환학생", "어학", "학자금", "스쿨", "교육·훈련", "학습", "캠프", "멘토"],
-        "en": ["education", "scholar", "training", "study", "learning", "academy"],
-        "codes": ["education", "training"],
-    },
-}
-
-
-def _match_category(text: str, candidates: List[str]) -> Optional[str]:
-    for key in candidates:
-        if key and key in text:
-            return key
-    return None
-
-
-def normalize_category(
-    raw_category: Optional[str],
-    auto_category: Optional[str] = None,
-    *texts: Optional[str]
-) -> str:
-    """제목/요약/본문 등 다양한 단서를 바탕으로 카테고리를 정규화"""
-
-    candidates: List[str] = []
-
-    for src in (raw_category, auto_category):
-        if not src:
-            continue
-        cleaned = str(src).strip()
-        if cleaned:
-            candidates.append(cleaned.lower())
-
-    for extra in texts:
-        if not extra:
-            continue
-        cleaned = str(extra).strip().lower()
-        if cleaned:
-            candidates.append(cleaned)
-
-    joined = " ".join(candidates)
-
-    for label, groups in KEYWORDS_BY_CATEGORY.items():
-        ko = [kw.lower() for kw in groups["ko"]]
-        if _match_category(joined, ko):
-            return label
-        if _match_category(joined, groups["en"]):
-            return label
-        if _match_category(joined, groups["codes"]):
-            return label
-
-    # 키워드 매칭 실패 시 기본값
-    return "교육"
+# 10개의 정책 카테고리를 4개의 블로그 카테고리로 표준화함.
+def normalize_to_standard(raw: str) -> str:
+    if not raw:
+        return "복지" # 값이 비어있으면 '복지'로 통일
+    text = str(raw).strip().replace(" ", "") # 공백 제거, 그에 따라 아래 키워드에도 공백 없어야 함
+    
+    # DB 카테고리 바탕으로, 쉼표로 인해 여러 카테고리가 붙어있는 경우를 우선 처리 (주요 문제 발생 지점!)
+    if "일자리,교육" in text:
+        return "일자리"
+    if any(k in text for k in ["참여권리,참여권리", "참여권리"]):
+        return "복지"
+    
+    # 1. 교육
+    # ('교육', '교육·자격증', '해외 기회')
+    if any(k in text for k in ["교육·자격증", "해외", "해외기회", "교육", "장학", "자격증", "학습", "학교", "공부", "어학"]):
+        return "교육"
+    # 2. 일자리
+    # ('일자리', '취업 지원', '창업')
+    if any(k in text for k in ["취업지원", "창업", "일자리", "취업", "구직", "고용", "인턴"]):
+        return "일자리"
+    # 3. 주거
+    # ('주거')
+    if any(k in text for k in ["주거", "주택", "전세", "월세", "기숙사"]):
+        return "주거"
+    # 4. 복지 (나머지 전부)
+    # ('복지문화', '대출·금융', '생활비 지원', '문화·여가', '건강·상담', '청년 참여')
+    if any(k in text for k in ["복지문화", "대출·금융", "생활비지원", "문화·여가", "건강·상담", "청년참여"]):
+        return "복지"
+    return "복지"
 
 
 def s3_url_from_key(key: str) -> str:
@@ -153,25 +112,47 @@ def _build_select_fields(columns: set[str], include_content: bool = False) -> Li
 
     return base
 
+# SQL 필터링을 위한 키워드 정의, normalize_to_standard와 로직 일치합니다.
+CATEGORY_KEYWORDS = {
+    "교육": ["교육", "교육·자격증", "해외 기회"],
+    "일자리": ["일자리", "일자리,교육", "취업 지원", "창업"],
+    "주거": ["주거"],
+    "복지": ["참여권리", "참여권리,참여권리", "복지문화", "대출·금융", "생활비 지원", "문화·여가", "건강·상담", "청년 참여"]
+}
 
 @router.get("/blogs")
-def list_blogs(limit: int = 40):
+def list_blogs(limit: int = 100, category: Optional[str] = None):  # 블로그 목록 조회
     conn = get_conn()
     columns = _get_blog_table_columns()
     rows: List[Dict] = []
 
     try:
         select_fields = _build_select_fields(columns)
-        query = f"""
+        query_parts = [f"""
             SELECT {', '.join(select_fields)}
             FROM blog_posts
             WHERE generation_status = 'completed'
-            ORDER BY updated_at DESC
-            LIMIT %s
-        """
+        """]
+        params = []
+
+        # SQL쿼리로 필터링
+        if category and category in CATEGORY_KEYWORDS:
+            category_ten = CATEGORY_KEYWORDS[category]
+            
+            placeholders = ', '.join(['%s'] * len(category_ten))
+            
+            # category 컬럼이 10대 상세 카테고리(category_ten) 중 하나에 정확히 포함되는지 검사
+            query_parts.append(f"AND category IN ({placeholders})")
+            params.extend(category_ten)
+
+        # 정렬, 리밋 추가, 쿼리 합치고 실행
+        query_parts.append("ORDER BY updated_at DESC")
+        query_parts.append("LIMIT %s")
+        params.append(limit)
+        query = " ".join(query_parts)
 
         cur = conn.cursor()
-        cur.execute(query, (limit,))
+        cur.execute(query, tuple(params))
         fetched = cur.fetchall()
         cur.close()
 
@@ -212,22 +193,19 @@ def get_blog(plcy_no: str):
 
 
 def ensure_thumbnail_fields(conn, row: Dict, columns: set[str]):
+    
+    from .thumbnails_auto import AutoReq, generate_from_policy
+    
     """썸네일 키/URL이 비어있는 경우 자동 생성 및 보완"""
     row.setdefault("thumbnail_key", None)
     row.setdefault("thumbnail_url", None)
 
-    original_category = row.get("category_original") or row.get("category")
-    normalized_category = normalize_category(
-        original_category,
-        row.get("category_auto"),
-        row.get("blog_title"),
-        row.get("blog_summary"),
-        row.get("blog_content"),
-    )
-    row.setdefault("category_original", original_category)
-    row["category_normalized"] = normalized_category
-    if not row.get("category"): #DB에 카테고리가 저장되어 있지 않은 경우에만 보정값으로 사용힌디.
-        row["category"] = normalized_category
+    raw_category = row.get("category_auto") or row.get("category") # 기존 DB 카테고리 값
+    thumbnail_category = normalize_to_standard(raw_category) # 4대 카테고리로 정규화
+    
+    # row 데이터 정규화 (프론트엔드 전달용)
+    row["category"] = thumbnail_category
+    row["category_normalized"] = thumbnail_category
 
     has_key_col = "thumbnail_key" in columns
     has_url_col = "thumbnail_url" in columns
@@ -238,11 +216,15 @@ def ensure_thumbnail_fields(conn, row: Dict, columns: set[str]):
     if row.get("thumbnail_key"):
         row["thumbnail_url"] = s3_url_from_key(row["thumbnail_key"])
         return
-
+    
+    if not thumbnail_category:
+        print(f"[WARN] 썸네일 생성 중단 (DB에 category 값이 없음): {row.get('plcy_no')}")
+        return
+    
     try:
         req = AutoReq(
             policy_id=row["plcy_no"],
-            category=normalized_category,
+            category=thumbnail_category,
             max_variants=2,
             allow_emoji=False,
         )
