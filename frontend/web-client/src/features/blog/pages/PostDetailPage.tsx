@@ -2,7 +2,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Calendar, Eye, ArrowLeft, Home, Share2, Link as LinkIcon } from 'lucide-react'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { setOgTags } from '@/shared/lib/seo'
 import ReactMarkdown from 'react-markdown'
@@ -11,6 +11,7 @@ import rehypeRaw from 'rehype-raw'
 import { getPost, type Post } from '@/shared/api/posts'
 import MainLayout from '@/features/blog/components/layout/MainLayout'
 import { toast } from 'sonner'
+import { trackPostClick, trackPostStay } from '@/shared/api/analytics'
 
 /* =========================
    유틸
@@ -41,13 +42,14 @@ const getRelativeTime = (iso: string) => {
 export default function PostDetailPage() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
-  
+
   const { data: post, isLoading } = useQuery<Post | undefined>({
     queryKey: ['post', slug],
     queryFn: () => getPost(slug!),
     enabled: !!slug,
   })
 
+  // OG 태그
   useEffect(() => {
     if (post) {
       setOgTags({
@@ -68,50 +70,75 @@ export default function PostDetailPage() {
     return { title, description, keywords, robots, ogImage }
   }, [post])
 
+  // 체류 시간 측정용
+  const stayEnterRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!post) return
+
+    const enterIso = new Date().toISOString()
+    stayEnterRef.current = enterIso
+
+    // 상세 페이지 진입 = 클릭 기록
+    trackPostClick(post.id, post.slug, 'post-detail')
+
+    const handleLeave = () => {
+      if (!stayEnterRef.current) return
+      const leaveIso = new Date().toISOString()
+      trackPostStay(post.id, post.slug, 'post-detail', stayEnterRef.current, leaveIso)
+      stayEnterRef.current = null
+    }
+
+    window.addEventListener('beforeunload', handleLeave)
+    window.addEventListener('pagehide', handleLeave)
+
+    return () => {
+      handleLeave()
+      window.removeEventListener('beforeunload', handleLeave)
+      window.removeEventListener('pagehide', handleLeave)
+    }
+  }, [post])
+
   const handleShare = async () => {
-    // 로딩 중이거나 post가 없으면 실행 안 함
     if (isLoading || !post) {
-      toast.error('게시글을 불러오는 중이에요.');
-      return;
+      toast.error('게시글을 불러오는 중이에요.')
+      return
     }
 
     const shareData = {
       title: post.title,
-      text: post.summary || '', 
+      text: post.summary || '',
       url: window.location.href,
-    };
+    }
 
     if (navigator.share) {
-      // 모바일 (Web Share API)
       try {
-        await navigator.share(shareData);
+        await navigator.share(shareData)
       } catch (error) {
-        // 사용자에게 오류 알림.
-        console.error('Share API 오류:', error);
-        toast.error('공유에 실패했습니다.');
+        console.error('Share API 오류:', error)
+        toast.error('공유에 실패했습니다.')
       }
     } else {
-      // 데스크톱 (클립보드 복사)
       try {
-        await navigator.clipboard.writeText(window.location.href);
-        toast.success('링크가 클립보드에 복사되었습니다.');
+        await navigator.clipboard.writeText(window.location.href)
+        toast.success('링크가 클립보드에 복사되었습니다.')
       } catch (err) {
-        console.error('클립보드 복사 오류:', err);
-        toast.error('링크 복사에 실패했습니다.');
+        console.error('클립보드 복사 오류:', err)
+        toast.error('링크 복사에 실패했습니다.')
       }
     }
-  };
+  }
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
-      toast.success('링크가 클립보드에 복사되었습니다.'); // alert 대신 toast 사용
+      await navigator.clipboard.writeText(window.location.href)
+      toast.success('링크가 클립보드에 복사되었습니다.')
     } catch (err) {
-      console.error('클립보드 복사 오류:', err);
-      toast.error('링크 복사에 실패했습니다.');
+      console.error('클립보드 복사 오류:', err)
+      toast.error('링크 복사에 실패했습니다.')
     }
-  };
-  
+  }
+
   /* ========== 로딩 ========== */
   if (isLoading) {
     return (
@@ -174,34 +201,29 @@ export default function PostDetailPage() {
       </Helmet>
 
       <article className="max-w-5xl mx-auto">
-        {/* 히어로 섹션 - 블러 배경 + 제목/메타 정보 */}
+        {/* 히어로 섹션 */}
         <div className="relative aspect-[21/9] rounded-2xl overflow-hidden mb-12 shadow-xl">
-          {/* 배경 이미지 (블러) */}
           {post.thumbnail ? (
-            <div 
+            <div
               className="absolute inset-0 bg-cover bg-center"
-              style={{ 
+              style={{
                 backgroundImage: `url(${post.thumbnail})`,
                 filter: 'blur(8px)',
-                transform: 'scale(1.1)'
+                transform: 'scale(1.1)',
               }}
             />
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-[#FEBC02] to-[#FDB913]" />
           )}
-          
-          {/* 오버레이 (어두운 그라데이션) */}
+
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/20" />
-          
-          {/* 컨텐츠 */}
+
           <div className="relative h-full flex flex-col justify-end p-8 md:p-12">
-            {/* 제목 + 메타 정보 */}
             <div className="space-y-4">
               <h1 className="text-3xl md:text-5xl font-extrabold text-white leading-tight drop-shadow-lg">
                 {post.title}
               </h1>
-              
-              {/* 메타 정보 */}
+
               <div className="flex flex-wrap items-center gap-4 text-white/90">
                 <span className="flex items-center gap-2">
                   <Calendar size={18} className="drop-shadow" />
@@ -227,14 +249,14 @@ export default function PostDetailPage() {
         <div className="max-w-4xl mx-auto mb-6">
           <div className="flex items-center justify-end gap-3">
             <button
-              onClick={handleShare} // '공유' 버튼
+              onClick={handleShare}
               className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
             >
               <Share2 className="w-4 h-4" />
               <span className="text-sm font-medium">공유</span>
             </button>
             <button
-              onClick={handleCopyLink} // '링크복사' 버튼
+              onClick={handleCopyLink}
               className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <LinkIcon className="w-4 h-4" />
@@ -243,7 +265,7 @@ export default function PostDetailPage() {
           </div>
         </div>
 
-        {/* 요약문 (선택적으로 유지) */}
+        {/* 요약문 */}
         {post.summary && (
           <div className="max-w-4xl mx-auto mb-8">
             <div className="bg-gradient-to-br from-[#FFF9E6] to-[#FFF3CC] rounded-xl p-6 border border-[#FEBC02]/20">
@@ -256,7 +278,8 @@ export default function PostDetailPage() {
 
         {/* 본문 */}
         <section className="max-w-4xl mx-auto bg-white rounded-xl p-6 md:p-10 shadow-sm border border-gray-200">
-          <div className="
+          <div
+            className="
             prose prose-lg prose-slate max-w-none
             prose-headings:font-bold prose-headings:text-gray-900
             prose-h1:text-2xl prose-h1:mb-4 prose-h1:mt-6
@@ -277,8 +300,9 @@ export default function PostDetailPage() {
             prose-tr:border-b prose-tr:border-gray-200
             [&>*:first-child]:mt-0
             [&>*:last-child]:mb-0
-          ">
-            <ReactMarkdown 
+          "
+          >
+            <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeRaw]}
               components={{

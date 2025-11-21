@@ -8,6 +8,7 @@ import { useMemo, useRef, useState, useEffect } from 'react'
 import { setDefaultOg } from '@/shared/lib/seo'
 import { readOnboarding } from '@/features/onboarding/readOnboarding'
 import { env } from '@/shared/lib/env'
+import { trackHomeStay, trackPostClick } from '@/shared/api/analytics'
 
 /* =========================
    추천 API 타입
@@ -75,10 +76,11 @@ const getRelativeTime = (iso: string) => {
 /* =========================
    카드형 포스트 (인기/최신)
    ========================= */
-function PostCard({ post }: { post: Post }) {
+function PostCard({ post, pageSource }: { post: Post; pageSource: string }) {
   return (
     <Link
       to={`/posts/${post.slug}`}
+      onClick={() => trackPostClick(post.id, post.slug, pageSource)}
       className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FEBC02] rounded-lg h-full max-w-md mx-auto md:max-w-none"
       aria-label={post.title}
     >
@@ -121,7 +123,7 @@ function PostCard({ post }: { post: Post }) {
 /* =========================
    추천(가로형) 포스트
    ========================= */
-function RecommendedPostItem({ post }: { post: Post }) {
+function RecommendedPostItem({ post, pageSource }: { post: Post; pageSource: string }) {
   const THUMB = 150
   const cat = post.category || '정책'
   const catClass = 'text-[#FEBC02]'
@@ -129,6 +131,7 @@ function RecommendedPostItem({ post }: { post: Post }) {
   return (
     <Link
       to={`/posts/${post.slug}`}
+      onClick={() => trackPostClick(post.id, post.slug, pageSource)}
       className="group grid grid-cols-[1fr_auto] items-start gap-6 py-6 md:gap-8 md:py-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FEBC02] max-w-md mx-auto md:max-w-none"
       aria-label={post.title}
     >
@@ -230,6 +233,30 @@ export default function HomePage() {
     setDefaultOg({ title: 'KCH Blog - 홈' })
   }, [])
 
+  // 홈 체류 시간 측정용
+  const homeEnterRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const nowIso = new Date().toISOString()
+    homeEnterRef.current = nowIso
+
+    const handleLeave = () => {
+      if (!homeEnterRef.current) return
+      const leaveIso = new Date().toISOString()
+      trackHomeStay(homeEnterRef.current, leaveIso)
+      homeEnterRef.current = null
+    }
+
+    window.addEventListener('beforeunload', handleLeave)
+    window.addEventListener('pagehide', handleLeave)
+
+    return () => {
+      handleLeave()
+      window.removeEventListener('beforeunload', handleLeave)
+      window.removeEventListener('pagehide', handleLeave)
+    }
+  }, [])
+
   const [currentPage, setCurrentPage] = useState(1)
   const ITEMS_PER_PAGE = 6
 
@@ -299,7 +326,7 @@ export default function HomePage() {
     return (
       <MainLayout>
         <div className="space-y-12">
-          {/* 스켈레톤은 기존 코드 그대로 유지 */}
+          {/* 스켈레톤 */}
           <section aria-labelledby="section-popular">
             <h2 id="section-popular" className="text-2xl font-bold mb-6">
               인기 포스트
@@ -353,7 +380,9 @@ export default function HomePage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
             {popularPosts.length > 0 ? (
-              popularPosts.map((post) => <PostCard key={post.id} post={post} />)
+              popularPosts.map((post) => (
+                <PostCard key={post.id} post={post} pageSource="home-popular" />
+              ))
             ) : (
               <p className="col-span-3 text-center text-gray-500 py-10">게시물이 없습니다.</p>
             )}
@@ -367,7 +396,9 @@ export default function HomePage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
             {latestPosts.length > 0 ? (
-              latestPosts.map((post) => <PostCard key={post.id} post={post} />)
+              latestPosts.map((post) => (
+                <PostCard key={post.id} post={post} pageSource="home-latest" />
+              ))
             ) : (
               <p className="col-span-3 text-center text-gray-500 py-10">게시물이 없습니다.</p>
             )}
@@ -389,7 +420,9 @@ export default function HomePage() {
             <p className="text-gray-500 mb-4">추천 불러오는 중…</p>
           )}
           {profile && isRecoError && (
-            <p className="text-gray-500 mb-4">추천을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
+            <p className="text-gray-500 mb-4">
+              추천을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
+            </p>
           )}
           {profile && !isRecoLoading && !isRecoError && recommendedJoined.length === 0 && (
             <p className="text-gray-500 mb-4">
@@ -400,7 +433,11 @@ export default function HomePage() {
           <div className="divide-y divide-gray-200">
             {currentRecommendedPosts.length > 0 ? (
               currentRecommendedPosts.map((post) => (
-                <RecommendedPostItem key={post.id} post={post} />
+                <RecommendedPostItem
+                  key={post.id}
+                  post={post}
+                  pageSource="home-recommend"
+                />
               ))
             ) : (
               <p className="text-center text-gray-500 py-10">추천 게시물이 없습니다.</p>

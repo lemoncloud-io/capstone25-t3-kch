@@ -85,6 +85,10 @@ app.include_router(blogs_router, prefix="/api")
 from routes import recommendations
 app.include_router(recommendations.router)
 
+# 애널리틱스 라우터 연결
+from routes.analytics import router as analytics_router
+app.include_router(analytics_router, prefix="/api")
+
 # OpenAI Ping API
 @app.get("/openai/ping")
 async def openai_ping():
