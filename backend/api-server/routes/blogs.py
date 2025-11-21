@@ -155,7 +155,7 @@ def _build_select_fields(columns: set[str], include_content: bool = False) -> Li
 
 
 @router.get("/blogs")
-def list_blogs(limit: int = 40):
+def list_blogs(limit: int = 100):
     conn = get_conn()
     columns = _get_blog_table_columns()
     rows: List[Dict] = []

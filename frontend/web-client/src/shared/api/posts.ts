@@ -530,7 +530,7 @@ function normCategory(raw?: string): CategoryLabel {
 
 // ============ API 함수들 ============
 
-export const getPosts = async (params?: { category?: string }): Promise<Post[]> => {
+export const getPosts = async (params?: { category?: string; limit?: number }): Promise<Post[]> => {
     console.log('🔍 getPosts 호출됨:', { 
         ENV: env.ENV, 
         USE_SERVER: env.USE_SERVER,
@@ -553,6 +553,9 @@ export const getPosts = async (params?: { category?: string }): Promise<Post[]> 
         const searchParams = new URLSearchParams()
         if (params?.category) {
             searchParams.set('category', params.category)
+        }
+        if (params?.limit) {
+            searchParams.set('limit', params.limit.toString())
         }
         
         const url = `${env.API_BASE_URL}/blogs${searchParams.toString() ? '?' + searchParams.toString() : ''}`

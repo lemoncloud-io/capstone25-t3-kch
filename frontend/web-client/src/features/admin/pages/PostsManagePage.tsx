@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Edit, Trash2, Eye, Plus, RefreshCw, X } from 'lucide-react'
+import { Edit, Trash2, Eye, Plus, RefreshCw, X, Search } from 'lucide-react'
 import { getPosts, getPost, createBlogPost, deleteBlogPost, updateBlogPost, type Post } from '../../../shared/api/posts'
 import { getPolicies, type PolicyCleanOut } from '../../../shared/api/policies'
 import { toast } from 'sonner'
@@ -10,6 +10,7 @@ export default function PostsManagePage() {
     const [showNewPostModal, setShowNewPostModal] = useState(false)
     const [showEditModal, setShowEditModal] = useState(false)
     const [editingPost, setEditingPost] = useState<Post | null>(null)
+    const [searchQuery, setSearchQuery] = useState('')
 
     const queryClient = useQueryClient()
     
@@ -36,10 +37,11 @@ export default function PostsManagePage() {
     }
 
     const handleViewPost = (post: Post) => {
-        window.open(`http://localhost:5173/posts/${post.slug}`, '_blank')
+        const baseUrl = window.location.origin
+        window.open(`${baseUrl}/posts/${post.slug}`, '_blank')
     }
 
-    // Mutations
+    // 새 포스트 생성
     const createPostMutation = useMutation({
         mutationFn: createBlogPost,
         onSuccess: () => {
@@ -52,36 +54,16 @@ export default function PostsManagePage() {
         }
     })
 
-    const deletePostMutation = useMutation({
-        mutationFn: deleteBlogPost,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['posts'] })
-            toast.success('포스트가 삭제되었습니다!')
-        },
-        onError: (error: any) => {
-            toast.error(`포스트 삭제 실패: ${error.message}`)
-        }
-    })
-
     const updatePostMutation = useMutation({
         mutationFn: ({ plcyNo, updates }: { plcyNo: string, updates: any }) => 
             updateBlogPost(plcyNo, updates),
         onSuccess: () => {
-            // 모든 관련 쿼리 캐시 무효화 (프론트엔드 카테고리 업데이트를 위해)
+            // 모든 관련 쿼리 캐시 무효화
             queryClient.invalidateQueries({ queryKey: ['posts'] })
-            queryClient.invalidateQueries({ queryKey: ['post'] }) // 개별 포스트 캐시
-            queryClient.invalidateQueries({ queryKey: ['blogs'] }) // 블로그 목록 캐시
+            queryClient.invalidateQueries({ queryKey: ['post'] })
+            queryClient.invalidateQueries({ queryKey: ['blogs'] })
             
-            // 강제로 모든 쿼리 다시 가져오기
-            queryClient.refetchQueries({ queryKey: ['posts'] })
-            
-            // 5초 후 페이지 새로고침 (캐시 문제 해결)
-            setTimeout(() => {
-                console.log('🔄 페이지 새로고침으로 캐시 문제 해결')
-                window.location.reload()
-            }, 2000)
-            
-            toast.success('포스트가 수정되었습니다! 잠시 후 페이지가 새로고침됩니다.')
+            toast.success('포스트가 수정되었습니다!')
             setShowEditModal(false)
             setEditingPost(null)
         },
@@ -94,33 +76,35 @@ export default function PostsManagePage() {
         try {
             // 상세 데이터 가져오기 (content 포함)
             const fullPost = await getPost(post.slug)
-            if (fullPost) {
-                setEditingPost(fullPost)
-                setShowEditModal(true)
-            } else {
-                toast.error('포스트 데이터를 불러올 수 없습니다')
-            }
+            setEditingPost(fullPost)
+            setShowEditModal(true)
         } catch (error) {
-            toast.error('포스트 데이터 로딩 실패')
-            console.error('포스트 로딩 실패:', error)
+            console.error('포스트 상세 정보 가져오기 실패:', error)
+            toast.error('포스트 정보를 가져올 수 없습니다.')
         }
     }
 
+    const deletePostMutation = useMutation({
+        mutationFn: deleteBlogPost,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['posts'] })
+            toast.success('포스트가 삭제되었습니다!')
+        },
+        onError: (error: any) => {
+            toast.error(`포스트 삭제 실패: ${error.message}`)
+        }
+    })
+
     const handleDeletePost = (post: Post) => {
-        if (window.confirm(`정말로 "${post.title}" 포스트를 삭제하시겠습니까?`)) {
+        if (confirm(`"${post.title}" 포스트를 삭제하시겠습니까?`)) {
             deletePostMutation.mutate(post.slug)
         }
     }
 
-    const handleRefreshPosts = () => {
-        queryClient.invalidateQueries({ queryKey: ['posts'] })
-        toast.success('포스트 목록을 새로고침했습니다')
-    }
-
-    // 모든 포스트 가져오기
-    const { data: allPosts, isLoading } = useQuery({
+    // 포스트 목록 가져오기
+    const { data: allPosts = [], isLoading, refetch } = useQuery({
         queryKey: ['posts'],
-        queryFn: () => getPosts(),
+        queryFn: () => getPosts({ limit: 100 }),
     })
 
     // 정책 목록 가져오기 (새 포스트 생성용)
@@ -133,47 +117,105 @@ export default function PostsManagePage() {
     // 카테고리 목록 생성
     const categories = ['all', ...new Set(allPosts?.map(post => post.category) || [])]
 
-    // 카테고리 필터링
-    const posts = selectedCategory === 'all' ? allPosts : allPosts?.filter(post => post.category === selectedCategory)
+    // 검색 및 필터링된 포스트
+    const filteredPosts = allPosts.filter(post => {
+        const matchesCategory = selectedCategory === 'all' || post.category === selectedCategory
+        const matchesSearch = searchQuery === '' || 
+            post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            post.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            post.category.toLowerCase().includes(searchQuery.toLowerCase())
+        
+        return matchesCategory && matchesSearch
+    })
 
     return (
-        <div>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
-                <h1 className="text-2xl font-bold mb-4 sm:mb-0">포스트 관리</h1>
-                <div className="flex gap-2">
+        <div className="space-y-6">
+            {/* 헤더 */}
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">포스트 관리</h1>
+                    <p className="text-gray-600 mt-1">블로그 포스트를 관리하고 편집할 수 있습니다.</p>
+                </div>
+                <div className="flex gap-3">
                     <button
-                        onClick={handleRefreshPosts}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+                        onClick={() => refetch()}
+                        className="flex items-center gap-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
                     >
-                        <RefreshCw size={20} />새로고침
+                        <RefreshCw size={16} />
+                        새로고침
                     </button>
                     <button
                         onClick={handleNewPost}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                     >
-                        <Plus size={20} />새 포스트
+                        <Plus size={16} />
+                        새 포스트
                     </button>
                 </div>
             </div>
 
-            {/* Category Filters */}
-            <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-                <div className="flex flex-wrap gap-2">
-                    {categories.map(category => (
-                        <button
-                            key={category}
-                            onClick={() => setSelectedCategory(category)}
-                            className={`px-4 py-2 rounded-lg transition ${
-                                selectedCategory === category
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                        >
-                            {category === 'all' ? '전체' : category}
-                        </button>
-                    ))}
+            {/* 검색 및 필터 */}
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                    {/* 검색창 */}
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                        <input
+                            type="text"
+                            placeholder="제목, 요약, 카테고리로 검색..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                                <X size={16} />
+                            </button>
+                        )}
+                    </div>
+
+                    {/* 카테고리 필터 */}
+                    <div className="flex gap-2 flex-wrap">
+                        {(categories as string[]).map((category: string) => (
+                            <button
+                                key={category}
+                                onClick={() => setSelectedCategory(category)}
+                                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                                    selectedCategory === category
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                            >
+                                {category === 'all' ? '전체' : category}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-                <div className="mt-2 text-sm text-gray-500">총 {posts?.length || 0}개의 포스트</div>
+                
+                {/* 검색 결과 정보 */}
+                <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+                    <div>
+                        {searchQuery && (
+                            <span>
+                                "<strong>{searchQuery}</strong>" 검색 결과: <strong>{filteredPosts.length}</strong>개
+                            </span>
+                        )}
+                        {!searchQuery && (
+                            <span>총 <strong>{filteredPosts.length}</strong>개의 포스트</span>
+                        )}
+                    </div>
+                    {searchQuery && (
+                        <button
+                            onClick={() => setSearchQuery('')}
+                            className="text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                            검색 초기화
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Posts Table */}
@@ -190,6 +232,23 @@ export default function PostsManagePage() {
                                     <div className="h-4 bg-gray-200 rounded w-1/6"></div>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                ) : filteredPosts.length === 0 ? (
+                    <div className="p-12 text-center">
+                        <div className="text-gray-400 mb-4">
+                            {searchQuery ? (
+                                <>
+                                    <Search size={48} className="mx-auto mb-4" />
+                                    <p className="text-lg font-medium">검색 결과가 없습니다</p>
+                                    <p className="text-sm">다른 키워드로 검색해보세요</p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-lg font-medium">포스트가 없습니다</p>
+                                    <p className="text-sm">새 포스트를 생성해보세요</p>
+                                </>
+                            )}
                         </div>
                     </div>
                 ) : (
@@ -214,49 +273,67 @@ export default function PostsManagePage() {
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {posts?.map(post => (
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {filteredPosts.map((post) => (
                                     <tr key={post.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4">
-                                            <div className="text-sm font-medium text-gray-900">{post.title}</div>
+                                            <div className="flex items-center">
+                                                <div className="flex-shrink-0 h-12 w-12">
+                                                    {post.thumbnail ? (
+                                                        <img
+                                                            className="h-12 w-12 rounded-lg object-cover"
+                                                            src={post.thumbnail}
+                                                            alt={post.title}
+                                                        />
+                                                    ) : (
+                                                        <div className="h-12 w-12 rounded-lg bg-gray-200 flex items-center justify-center">
+                                                            <span className="text-gray-400 text-xs">No Image</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="ml-4">
+                                                    <div className="text-sm font-medium text-gray-900 line-clamp-2">
+                                                        {post.title}
+                                                    </div>
+                                                    <div className="text-sm text-gray-500 line-clamp-1 mt-1">
+                                                        {post.summary}
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                                 {post.category}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="text-sm text-gray-600">
-                                                {post.viewCount.toLocaleString()}
-                                            </span>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {post.viewCount.toLocaleString()}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="text-sm text-gray-600">
-                                                {new Date(post.createdAt).toLocaleDateString()}
-                                            </span>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {new Date(post.createdAt).toLocaleDateString('ko-KR')}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-2">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <div className="flex space-x-2">
                                                 <button
                                                     onClick={() => handleViewPost(post)}
-                                                    className="text-blue-600 hover:text-blue-800"
-                                                    title="보기"
+                                                    className="text-blue-600 hover:text-blue-900"
+                                                    title="미리보기"
                                                 >
-                                                    <Eye size={18} />
+                                                    <Eye size={16} />
                                                 </button>
                                                 <button
                                                     onClick={() => handleEditPost(post)}
-                                                    className="text-green-600 hover:text-green-800"
-                                                    title="수정"
+                                                    className="text-green-600 hover:text-green-900"
+                                                    title="편집"
                                                 >
-                                                    <Edit size={18} />
+                                                    <Edit size={16} />
                                                 </button>
                                                 <button
                                                     onClick={() => handleDeletePost(post)}
-                                                    className="text-red-600 hover:text-red-800"
+                                                    className="text-red-600 hover:text-red-900"
                                                     title="삭제"
                                                 >
-                                                    <Trash2 size={18} />
+                                                    <Trash2 size={16} />
                                                 </button>
                                             </div>
                                         </td>
@@ -319,7 +396,7 @@ export default function PostsManagePage() {
             {/* 포스트 편집 모달 */}
             {showEditModal && editingPost && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 w-full max-w-4xl mx-4 max-h-[80vh] overflow-y-auto">
+                    <div className="bg-white rounded-xl p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-bold">포스트 편집</h2>
                             <button
@@ -475,13 +552,13 @@ function EditPostForm({
                 <textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    rows={10}
+                    rows={12}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                 />
             </div>
             
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex justify-end space-x-3 pt-4">
                 <button
                     type="button"
                     onClick={onCancel}

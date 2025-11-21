@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../../shared/store/authStore'
+import { env } from '../../../shared/lib/env'
 import { Lock } from 'lucide-react'
 
 export default function LoginPage() {
@@ -12,7 +13,7 @@ export default function LoginPage() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
 
-        if (password === 'admin') {
+        if (password === env.ADMIN_PASSWORD) {
             login()
             navigate('/admin/dashboard')
         } else {
@@ -55,7 +56,9 @@ export default function LoginPage() {
                         로그인
                     </button>
 
-                    <p className="text-center text-sm text-gray-500 mt-4">데모: 비밀번호는 'admin' 입니다</p>
+                    <p className="text-center text-sm text-gray-500 mt-4">
+                        데모: 비밀번호는 '{env.ADMIN_PASSWORD}' 입니다
+                    </p>
                 </form>
             </div>
         </div>

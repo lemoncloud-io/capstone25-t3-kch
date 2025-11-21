@@ -1,12 +1,19 @@
 import React from 'react'
 import { FileText, Users, TrendingUp, Activity } from 'lucide-react'
-import { mockPosts } from '../../../shared/api/posts'
+import { useQuery } from '@tanstack/react-query'
+import { getPosts } from '../../../shared/api/posts'
 
 export default function DashboardPage() {
-    // mockPosts 기반 통계 계산
-    const totalPosts = mockPosts.length
-    const totalViews = mockPosts.reduce((sum, post) => sum + post.viewCount, 0)
-    const publishedPosts = mockPosts.length // 모든 mockPosts는 게시됨 상태로 가정
+    // 실제 API 데이터 가져오기
+    const { data: posts = [], isLoading } = useQuery({
+        queryKey: ['posts'],
+        queryFn: () => getPosts({ limit: 100 }),
+    })
+
+    // 실제 데이터 기반 통계 계산
+    const totalPosts = posts.length
+    const totalViews = posts.reduce((sum, post) => sum + post.viewCount, 0)
+    const publishedPosts = posts.length
 
     const stats = [
         {
@@ -33,14 +40,23 @@ export default function DashboardPage() {
         },
         {
             label: '카테고리',
-            value: [...new Set(mockPosts.map(post => post.category))].length.toString(),
+            value: [...new Set(posts.map(post => post.category))].length.toString(),
             icon: Activity,
             bgColor: 'bg-orange-100',
             iconColor: 'text-orange-600',
         },
     ]
 
-    const recentPosts = mockPosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    const recentPosts = posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-2">데이터를 불러오는 중...</span>
+            </div>
+        )
+    }
 
     return (
         <div>
