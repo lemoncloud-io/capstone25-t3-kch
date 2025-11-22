@@ -203,9 +203,13 @@ def ensure_thumbnail_fields(conn, row: Dict, columns: set[str]):
     raw_category = row.get("category_auto") or row.get("category") # 기존 DB 카테고리 값
     thumbnail_category = normalize_to_standard(raw_category) # 4대 카테고리로 정규화
     
-    # row 데이터 정규화 (프론트엔드 전달용)
-    row["category"] = thumbnail_category
-    row["category_normalized"] = thumbnail_category
+    # 관리자가 수동으로 설정한 카테고리가 있으면 그것을 우선 사용
+    if row.get("category"):
+        row["category_normalized"] = row["category"]
+    else:
+        # DB에 카테고리가 없는 경우에만 자동 정규화 사용
+        row["category"] = thumbnail_category
+        row["category_normalized"] = thumbnail_category
 
     has_key_col = "thumbnail_key" in columns
     has_url_col = "thumbnail_url" in columns

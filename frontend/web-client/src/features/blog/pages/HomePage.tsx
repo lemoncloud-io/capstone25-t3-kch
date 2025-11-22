@@ -1,11 +1,11 @@
 // src/features/blog/pages/HomePage.tsx
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { getPosts, type Post } from '@/shared/api/posts'
+import { getPosts, type Post } from '../../../shared/api/posts'
 import MainLayout from '../components/layout/MainLayout'
 import { Calendar, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useRef, useState, useEffect } from 'react'
-import { setDefaultOg } from '@/shared/lib/seo'
+import { setDefaultOg } from '../../../shared/lib/seo'
 
 /* =========================
    유틸: 날짜/숫자 포맷

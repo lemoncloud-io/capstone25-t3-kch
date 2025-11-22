@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuthStore } from '@/shared/store/authStore'
+import { useAuthStore } from '../../shared/store/authStore'
 import AdminLayout from './components/AdminLayout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'

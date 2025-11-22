@@ -81,6 +81,10 @@ app.include_router(thumbnails_auto.router, prefix="/api")
 from routes.blogs import router as blogs_router
 app.include_router(blogs_router, prefix="/api")
 
+# 블로그 CRUD 라우터 연결 (관리자용)
+from routes.blogs_crud import router as blogs_crud_router
+app.include_router(blogs_crud_router, prefix="/api")
+
 
 # OpenAI Ping API
 @app.get("/openai/ping")

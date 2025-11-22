@@ -1,8 +1,8 @@
 import { type ReactNode, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { getPosts, type Post } from '@/shared/api/posts'
-import { getPolicies, type PolicyCleanOut } from '@/shared/api/policies'
+import { getPosts, type Post } from '../../../../shared/api/posts'
+import { getPolicies, type PolicyCleanOut } from '../../../../shared/api/policies'
 import { Calendar, Flame, Clock, Eye } from 'lucide-react'
 
 interface MainLayoutProps {

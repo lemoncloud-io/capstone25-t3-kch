@@ -1,4 +1,4 @@
-import { env } from '@/shared/lib/env'
+import { env } from '../lib/env'
 
 const S3_PUBLIC_BASE =
   env.S3_PUBLIC_BASE ??
@@ -19,7 +19,7 @@ export interface Post {
     title: string
     slug: string
     summary: string
-    category: CategoryLabel
+    category: string  // CategoryLabel에서 string으로 변경
     thumbnail: string
     author: string
     viewCount: number
@@ -488,8 +488,15 @@ function resolveThumbnail(b: any): string {
 
 // ============ API 함수들 ============
 
-export const getPosts = async (params?: { category?: string }): Promise<Post[]> => {
+export const getPosts = async (params?: { category?: string; limit?: number }): Promise<Post[]> => {
+    console.log('🔍 getPosts 호출됨:', { 
+        ENV: env.ENV, 
+        USE_SERVER: env.USE_SERVER,
+        condition: env.ENV === 'development' && !env.USE_SERVER 
+    })
+    
     if (env.ENV === 'development' && !env.USE_SERVER) {
+        console.log('📦 Mock 데이터 사용')
         await new Promise(resolve => setTimeout(resolve, 500))
         // category 필터링
         if (params?.category) {
@@ -499,16 +506,30 @@ export const getPosts = async (params?: { category?: string }): Promise<Post[]> 
         return mockPosts
     }
 
-    // prod: 백엔드 블로그 엔드포인트와 연동
+    // 백엔드 블로그 엔드포인트와 연동
     try {
-        const response = await fetch(`${env.API_BASE_URL}/blogs`)
+        const searchParams = new URLSearchParams()
+        if (params?.category) {
+            searchParams.set('category', params.category)
+        }
+        if (params?.limit) {
+            searchParams.set('limit', params.limit.toString())
+        }
+        
+        const url = `${env.API_BASE_URL}/blogs${searchParams.toString() ? '?' + searchParams.toString() : ''}`
+        console.log('🌐 실제 API 호출:', url)
+        
+        const response = await fetch(url)
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`)
         }
         const data = await response.json() as { items: any[] }
-        const items = Array.isArray((data as any).items) ? (data as any).items : data
+        const items = Array.isArray(data.items) ? data.items : []
         
-        // 목록 매핑 - 헬퍼 함수 적용
+        console.log('API 응답:', items.length, '개 항목')
+        console.log('첫 번째 아이템 샘플:', items[0]) // 실제 데이터 구조 확인
+        
+        // 목록 매핑 - 백엔드 응답 형식에 맞게 수정
         const mapped: Post[] = items.map((b: any) => {
 
             // 카테고리 : 백엔드가 표준화한 값을 그대로 믿고 사용
@@ -518,6 +539,7 @@ export const getPosts = async (params?: { category?: string }): Promise<Post[]> 
                 : '복지'; // 기본값 '복지'   
 
             return {
+
             id: String(b.plcy_no ?? b.id ?? Math.random().toString(36).slice(2)),
             title: b.blog_title ?? b.title ?? '제목 없음',
             slug: String(b.plcy_no ?? b.slug ?? Math.random().toString(36).slice(2)),
@@ -537,6 +559,7 @@ export const getPosts = async (params?: { category?: string }): Promise<Post[]> 
         return mapped
     } catch (error) {
         console.error('API 호출 실패:', error)
+        console.log('Mock 데이터로 폴백')
         return mockPosts
     }
 }
@@ -565,19 +588,111 @@ export const generatePolicyContent = async (
     }
 }
 
+// 새 블로그 포스트 생성
+export const createBlogPost = async (plcyNo: string): Promise<any> => {
+    try {
+        console.log('🆕 새 블로그 포스트 생성:', plcyNo)
+        
+        // 1. LLM으로 블로그 콘텐츠 생성
+        const content = await generatePolicyContent(plcyNo, 'full')
+        
+        // 2. 블로그 DB에 저장 (백엔드에서 자동 처리됨)
+        console.log('✅ 블로그 생성 완료:', content)
+        
+        return content
+    } catch (error) {
+        console.error('블로그 생성 실패:', error)
+        throw error
+    }
+}
+
+// 블로그 포스트 삭제
+export const deleteBlogPost = async (plcyNo: string): Promise<void> => {
+    try {
+        console.log('🗑️ 블로그 포스트 삭제 시도:', plcyNo)
+        
+        const response = await fetch(`${env.API_BASE_URL}/blogs/${plcyNo}`, {
+            method: 'DELETE',
+        })
+        
+        console.log('📡 삭제 응답 상태:', response.status, response.statusText)
+        
+        if (!response.ok) {
+            const errorText = await response.text()
+            console.error('❌ 삭제 응답 에러:', errorText)
+            throw new Error(`HTTP ${response.status}: ${errorText}`)
+        }
+        
+        const result = await response.json()
+        console.log('✅ 블로그 삭제 완료:', result)
+    } catch (error) {
+        console.error('❌ 블로그 삭제 실패:', error)
+        throw error
+    }
+}
+
+// 블로그 포스트 수정
+export const updateBlogPost = async (plcyNo: string, updates: {
+    title?: string
+    summary?: string
+    content?: string
+    category?: string
+}): Promise<any> => {
+    try {
+        console.log('🔄 === 블로그 포스트 수정 시작 ===')
+        console.log('📝 plcyNo:', plcyNo)
+        console.log('📝 updates:', JSON.stringify(updates, null, 2))
+        console.log('🌐 API URL:', `${env.API_BASE_URL}/blogs/${plcyNo}`)
+        
+        const response = await fetch(`${env.API_BASE_URL}/blogs/${plcyNo}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updates),
+        })
+        
+        console.log('📡 응답 상태:', response.status, response.statusText)
+        console.log('📡 응답 헤더:', Object.fromEntries(response.headers.entries()))
+        
+        if (!response.ok) {
+            const errorText = await response.text()
+            console.error('❌ 응답 에러:', errorText)
+            throw new Error(`HTTP ${response.status}: ${errorText}`)
+        }
+        
+        const result = await response.json()
+        console.log('✅ 블로그 수정 완료:', JSON.stringify(result, null, 2))
+        console.log('🔄 === 블로그 포스트 수정 완료 ===')
+        
+        return result
+    } catch (error) {
+        console.error('❌ 블로그 수정 실패:', error)
+        throw error
+    }
+}
+
 export const getPost = async (slug: string): Promise<Post | undefined> => {
     if (env.ENV === 'development' && !env.USE_SERVER) {
         await new Promise(resolve => setTimeout(resolve, 300))
         return mockPosts.find(post => post.slug === slug)
     }
 
-    // prod: 블로그 상세 연동 (slug는 plcy_no로 간주)
+    // 블로그 상세 연동 (slug는 plcy_no로 간주)
     try {
-        const response = await fetch(`${env.API_BASE_URL}/blogs/${slug}`)
+        const url = `${env.API_BASE_URL}/blogs/${slug}`
+        console.log('API 호출:', url) // 디버깅용
+        
+        const response = await fetch(url)
         if (!response.ok) {
+            if (response.status === 404) {
+                console.log('블로그 포스트를 찾을 수 없음:', slug)
+                return undefined
+            }
             throw new Error(`HTTP error! status: ${response.status}`)
         }
         const b = await response.json()
+
 
         const categoryFromApi = b.category // 백엔드가 표준화한 값을 그대로 믿고 사용
         const safeCategory = CATEGORY_LABELS.includes(categoryFromApi as CategoryLabel) 
@@ -589,10 +704,11 @@ export const getPost = async (slug: string): Promise<Post | undefined> => {
             title: b.blog_title ?? '제목 없음',
             slug: String(b.plcy_no ?? slug),
             summary: b.blog_summary ?? '',
+
             category: safeCategory,
             thumbnail: resolveThumbnail(b), // URL 복원
             author: '정책관리팀',
-            viewCount: Number(b.view_count ?? 0),
+            viewCount: Math.floor(Math.random() * 1000), // 임시: 백엔드에 view_count 필드 없음
             createdAt: b.updated_at ?? new Date().toISOString(),
             content: b.blog_content ?? '',
             meta: b.meta ?? undefined,
@@ -600,6 +716,7 @@ export const getPost = async (slug: string): Promise<Post | undefined> => {
         return mapped
     } catch (error) {
         console.error('API 호출 실패:', error)
+        console.log('Mock 데이터로 폴백')
         return mockPosts.find(post => post.slug === slug)
     }
 }
