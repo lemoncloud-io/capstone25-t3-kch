@@ -245,7 +245,7 @@ export default function CategoryPage() {
   // 데이터 로드
   const { data = [], isLoading } = useQuery<Post[], Error>({
     queryKey: ['posts', 'category', category],
-    queryFn: () => getPosts(),
+    queryFn: () => getPosts({ category: info.name }),
     enabled: !!info,
   })
 

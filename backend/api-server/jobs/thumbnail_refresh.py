@@ -45,103 +45,10 @@ from routes.thumbnails_auto import (  # type: ignore
 )
 from settings import get_settings
 
+## ======== blogs.py의 normalize_to_standard 재사용해서 카테고리 로직 통일 ========
+from routes.blogs import normalize_to_standard
 
 settings = get_settings()
-
-
-CATEGORY_KEYWORDS = {
-    "일자리": [
-        "일자리",
-        "취업",
-        "구직",
-        "채용",
-        "고용",
-        "근로",
-        "직무",
-        "직업",
-        "창업",
-        "인턴",
-        "도제",
-        "근속",
-        "훈련",
-        "일경험",
-    ],
-    "주거": [
-        "주거",
-        "전세",
-        "월세",
-        "보증금",
-        "임대",
-        "이사",
-        "주택",
-        "청약",
-        "전월세",
-        "공공임대",
-    ],
-    "복지": [
-        "복지",
-        "건강",
-        "상담",
-        "문화",
-        "생활",
-        "생활비",
-        "교통비",
-        "의료",
-        "검진",
-        "정신",
-        "바우처",
-        "참여",
-        "권리",
-        "여가",
-        "돌봄",
-        "치료",
-    ],
-    "교육": [
-        "교육",
-        "장학",
-        "자격",
-        "대학",
-        "연수",
-        "교환학생",
-        "어학",
-        "학자금",
-        "스쿨",
-        "훈련",
-        "학습",
-        "캠프",
-        "멘토",
-        "강좌",
-        "강의",
-    ],
-}
-
-CATEGORY_KEYWORDS_EN = {
-    "일자리": ["job", "employment", "work", "career", "startup", "entrepreneur", "labor"],
-    "주거": ["housing", "rent", "lease", "residence", "home"],
-    "복지": ["welfare", "health", "culture", "life", "benefit", "support"],
-    "교육": ["education", "scholar", "training", "study", "learning", "academy", "school"],
-}
-
-
-def normalize_category_label(*sources: Optional[str]) -> str:
-    texts: List[str] = []
-    for src in sources:
-        if not src:
-            continue
-        cleaned = str(src).strip()
-        if cleaned:
-            texts.append(cleaned.lower())
-
-    joined = " ".join(texts)
-
-    for label, keywords in CATEGORY_KEYWORDS.items():
-        if any(kw.lower() in joined for kw in keywords):
-            return label
-        if any(kw in joined for kw in CATEGORY_KEYWORDS_EN[label]):
-            return label
-
-    return "교육"
-
 
 # ======== 설정 & 로깅 ========
 LOG_FORMAT = "[%(asctime)s] [%(levelname)s] %(message)s"
@@ -193,16 +100,10 @@ def fetch_pending_posts(engine: Engine) -> List[BlogPostRow]:
 
     results: List[BlogPostRow] = []
     for row in rows:
-        normalized = normalize_category_label(
-            row.get("category"),
-            row.get("blog_title"),
-            row.get("blog_summary"),
-            row.get("blog_content"),
-        )
         results.append(
             BlogPostRow(
                 plcy_no=row["plcy_no"],
-                category=normalized,
+                category=row["category"], # DB 값 그대로 전달
                 blog_title=row.get("blog_title"),
                 blog_summary=row.get("blog_summary"),
                 blog_content=row.get("blog_content"),
@@ -225,7 +126,7 @@ def fetch_policy_info(engine: Engine, plcy_no: str, fallback_category: str) -> P
         row = conn.execute(query, {"plcy_no": plcy_no}).mappings().first()
 
     if not row:
-        normalized = normalize_category_label(fallback_category)
+        normalized = normalize_to_standard(fallback_category)
         return PolicyInfo(
             policy_id=plcy_no,
             title=None,
@@ -253,10 +154,8 @@ def fetch_policy_info(engine: Engine, plcy_no: str, fallback_category: str) -> P
     benefit_amount = content_data.get("benefit_amount") or content_data.get("benefitRange")
     target = content_data.get("target") or content_data.get("target_group")
 
-    normalized_category = normalize_category_label(
-        row.get("category_auto"),
-        row.get("category"),
-        fallback_category,
+    normalized_category = normalize_to_standard( #blogs.py와 동일한 로직 사용
+        row.get("category_auto") or row.get("category") or fallback_category
     )
 
     return PolicyInfo(
@@ -356,11 +255,11 @@ def update_thumbnail_fields(
 
 # ======== 메인 로직 ========
 def process_post(engine: Engine, post: BlogPostRow, dry_run: bool = False) -> bool:
-    policy_info = fetch_policy_info(engine, post.plcy_no, post.category)
-    policy_payload = build_policy_payload(post, policy_info)
+    policy_info = fetch_policy_info(engine, post.plcy_no, post.category) #post.category는 DB 값 그대로 전달
+    policy_payload = build_policy_payload(post, policy_info) #policy_info.category는 정규화된 값 전달
     caption = select_caption(policy_payload)
 
-    req = ThumbnailReq(policy_id=post.plcy_no, category=policy_info.category, caption=caption)
+    req = ThumbnailReq(policy_id=post.plcy_no, category=policy_info.category, caption=caption) #그래서 category는 정규화된 값 전달
     result = generate_thumbnail(req)
 
     storage = result.get("storage", "local")
@@ -376,7 +275,7 @@ def process_post(engine: Engine, post: BlogPostRow, dry_run: bool = False) -> bo
     logger.info(
         "썸네일 생성 완료 (plcy_no=%s, category=%s, storage=%s, url=%s)",
         post.plcy_no,
-        policy_info.category,
+        policy_info.category, #정규화된 카테고리 값 전달
         storage,
         url,
     )

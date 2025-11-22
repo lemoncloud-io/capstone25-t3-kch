@@ -486,48 +486,6 @@ function resolveThumbnail(b: any): string {
   return "";
 }
 
-const CATEGORY_KEYWORDS: Record<CategoryLabel, string[]> = {
-  일자리: ['일자리', '취업', '채용', '고용', '근로', '직무', '직업', '창업', '인턴', '도제', '근속', '훈련', '구직', '일경험'],
-  주거: ['주거', '전세', '월세', '보증금', '임대', '이사', '주택', '청약', '전월세', '공공임대'],
-  복지: ['복지', '건강', '상담', '문화', '생활', '생활비', '교통비', '의료', '검진', '정신', '바우처', '참여', '권리', '여가', '돌봄', '치료', '바우쳐'],
-  교육: ['교육', '장학', '자격', '대학', '연수', '교환학생', '어학', '학자금', '스쿨', '훈련', '학습', '캠프', '멘토', '강좌', '강의'],
-}
-
-const CATEGORY_KEYWORDS_EN: Record<CategoryLabel, string[]> = {
-  일자리: ['job', 'employment', 'work', 'career', 'startup', 'entrepreneur', 'labor'],
-  주거: ['housing', 'rent', 'lease', 'residence', 'home'],
-  복지: ['welfare', 'health', 'culture', 'life', 'benefit', 'support'],
-  교육: ['education', 'scholar', 'training', 'study', 'learning', 'academy', 'school'],
-}
-
-/** 
- * 카테고리를 네 가지 표준 라벨(일자리/주거/복지/교육)로 정규화
- * @param raw - 백엔드에서 온 카테고리명
- * @returns 정규화된 카테고리명
- */
-function normCategory(raw?: string): CategoryLabel {
-  const original = (raw ?? '').trim();
-  if (CATEGORY_LABELS.includes(original as CategoryLabel)) {
-    return original as CategoryLabel;
-  }
-
-  const lower = original.toLowerCase();
-
-  for (const label of CATEGORY_LABELS) {
-    const keywords = CATEGORY_KEYWORDS[label];
-    if (keywords.some((kw) => kw && lower.includes(kw))) {
-      return label;
-    }
-    const enKeywords = CATEGORY_KEYWORDS_EN[label];
-    if (enKeywords.some((kw) => kw && lower.includes(kw))) {
-      return label;
-    }
-  }
-
-  // 기본값: 교육
-  return '교육';
-}
-
 // ============ API 함수들 ============
 
 export const getPosts = async (params?: { category?: string; limit?: number }): Promise<Post[]> => {
@@ -573,21 +531,31 @@ export const getPosts = async (params?: { category?: string; limit?: number }): 
         
         // 목록 매핑 - 백엔드 응답 형식에 맞게 수정
         const mapped: Post[] = items.map((b: any) => {
-            const rawCategory = b.category_normalized ?? b.category ?? b.category_original ?? ''
+
+            // 카테고리 : 백엔드가 표준화한 값을 그대로 믿고 사용
+            const categoryFromApi = b.category
+            const safeCategory = CATEGORY_LABELS.includes(categoryFromApi as CategoryLabel) 
+                ? categoryFromApi as CategoryLabel 
+                : '복지'; // 기본값 '복지'   
+
             return {
-                id: String(b.plcy_no ?? Math.random().toString(36).slice(2)),
-                title: b.blog_title ?? '제목 없음',
-                slug: String(b.plcy_no ?? Math.random().toString(36).slice(2)),
-                summary: b.blog_summary ?? '',
-                category: normCategory(rawCategory),
-                thumbnail: resolveThumbnail(b),
-                author: '정책관리팀',
-                viewCount: Math.floor(Math.random() * 1000), // 임시: 백엔드에 view_count 필드 없음
-                createdAt: b.generated_at || b.updated_at || '2024-01-01T00:00:00Z',
-                content: b.blog_content ?? '',
-                meta: b.meta ?? undefined,
-            }
+
+            id: String(b.plcy_no ?? b.id ?? Math.random().toString(36).slice(2)),
+            title: b.blog_title ?? b.title ?? '제목 없음',
+            slug: String(b.plcy_no ?? b.slug ?? Math.random().toString(36).slice(2)),
+            summary: b.blog_summary ?? b.summary ?? '',
+            category: safeCategory,
+            thumbnail: resolveThumbnail(b),                // ✅ URL 복원
+            author: '정책관리팀',
+            viewCount: Number(b.view_count ?? b.viewCount ?? 0),
+            createdAt: b.updated_at ?? new Date().toISOString(),
+            content: b.blog_content ?? b.content ?? '',
+            meta: b.meta ?? undefined,
+        }
         })
+        if (params?.category) {
+            return mapped.filter(post => post.category === params.category)
+        }
         return mapped
     } catch (error) {
         console.error('API 호출 실패:', error)
@@ -725,17 +693,20 @@ export const getPost = async (slug: string): Promise<Post | undefined> => {
         }
         const b = await response.json()
 
-        console.log('API 응답:', b) // 디버깅용
 
-        // 단건 매핑 - 백엔드 응답 형식에 맞게 수정
-        const rawCategory = b.category_normalized ?? b.category ?? b.category_original ?? ''
+        const categoryFromApi = b.category // 백엔드가 표준화한 값을 그대로 믿고 사용
+        const safeCategory = CATEGORY_LABELS.includes(categoryFromApi as CategoryLabel) 
+            ? categoryFromApi as CategoryLabel 
+            : '복지'; // 기본값 '복지'
+
         const mapped: Post = {
             id: String(b.plcy_no ?? slug),
             title: b.blog_title ?? '제목 없음',
             slug: String(b.plcy_no ?? slug),
             summary: b.blog_summary ?? '',
-            category: normCategory(rawCategory),
-            thumbnail: resolveThumbnail(b),
+
+            category: safeCategory,
+            thumbnail: resolveThumbnail(b), // URL 복원
             author: '정책관리팀',
             viewCount: Math.floor(Math.random() * 1000), // 임시: 백엔드에 view_count 필드 없음
             createdAt: b.updated_at ?? new Date().toISOString(),
