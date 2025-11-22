@@ -342,17 +342,20 @@ def generate_from_policy(req: AutoReq):
         "allow_emoji": req.allow_emoji
     })
     
+    # 변수 초기화 (USE_DB가 False일 때도 사용되므로 미리 초기화)
+    confirmed_cat = None
+    pol = None
+    
     # 1) 정책 로드
     if USE_DB:
         if not (get_session and PolicyClean and Session):
             logger.error("DB 모듈이 준비되지 않았습니다")
             raise HTTPException(status_code=500, detail="DB 모듈이 준비되지 않았습니다.")
         with get_session() as ses:  # type: ignore
-            pol: PolicyClean | None = ses.query(PolicyClean).filter_by(plcy_no=req.policy_id).first()  # type: ignore
+            pol = ses.query(PolicyClean).filter_by(plcy_no=req.policy_id).first()  # type: ignore
             if not pol:
                 logger.error("DB에서 정책 못 찾음", extra={"policy_id": req.policy_id})
                 raise HTTPException(status_code=404, detail=f"policy not found: {req.policy_id}")
-            confirmed_cat = None
             try:
                 row = ses.execute(
                     text("SELECT category FROM blog_posts WHERE plcy_no = :p"),

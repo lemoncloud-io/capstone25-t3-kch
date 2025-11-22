@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Calendar, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
 import MainLayout from '@/features/blog/components/layout/MainLayout'
-import { getPosts, type Post } from '../../../shared/api/posts'
+import { getPosts, getPostsWithCount, type Post } from '../../../shared/api/posts'
 import { setDefaultOg } from '../../../shared/lib/seo'
 
 /* ===== 유틸 ===== */
@@ -184,10 +184,13 @@ export default function AllPostsPage() {
     setCurrentPage(1)
   }, [sortKey, viewMode])
 
-  const { data = [], isLoading } = useQuery<Post[], Error>({
+  const { data: postsData, isLoading } = useQuery<{ posts: Post[], totalCount?: number }, Error>({
     queryKey: ['posts', 'all'],
-    queryFn: () => getPosts(), // 전체 가져오기 (dev: mock, prod: API)
+    queryFn: () => getPostsWithCount(), // 전체 가져오기 (dev: mock, prod: API)
   })
+  
+  const data = postsData?.posts ?? []
+  const totalCount = postsData?.totalCount
 
   useEffect(() => {
     setDefaultOg({ title: query ? `KCH Blog - 검색: ${params.get('q')}` : 'KCH Blog - 전체보기' })
@@ -232,7 +235,7 @@ export default function AllPostsPage() {
             </div>
             {!isLoading && (
               <div className="text-center">
-                <div className="text-5xl font-extrabold text-[#FEBC02]">{sorted.length}</div>
+                <div className="text-5xl font-extrabold text-[#FEBC02]">{totalCount ?? sorted.length}</div>
                 <div className="text-sm text-gray-600 mt-1">개의 포스트</div>
               </div>
             )}
@@ -243,7 +246,7 @@ export default function AllPostsPage() {
         {!isLoading && sorted.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3 text-sm text-gray-600">
-              총 <span className="font-bold text-gray-900">{sorted.length}</span>개
+              총 <span className="font-bold text-gray-900">{totalCount ?? sorted.length}</span>개
               <span className="mx-3 h-4 w-px bg-gray-300" />
               <button
                 onClick={() => setSortKey('latest')}
