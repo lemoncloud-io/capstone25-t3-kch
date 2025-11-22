@@ -206,8 +206,8 @@ export default function HomePage() {
 
   // 데이터 로드
   const { data = [], isLoading } = useQuery<Post[], Error>({
-    queryKey: ['posts', 'all'],
-    queryFn: () => getPosts(),
+    queryKey: ['posts'],
+    queryFn: () => getPosts(), // 전체 게시글 가져오기 (limit 없음)
   })
 
   // 파생 데이터
