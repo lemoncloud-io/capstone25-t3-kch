@@ -17,8 +17,8 @@ function StatusPage() {
     return (
         <div className="w-screen h-screen bg-white flex flex-col items-center justify-center relative overflow-hidden animate-fadeIn">
             {/* 제목 */}
-            <h1 className="text-[30px] font-semibold text-black mb-16" style={{ width: '370px', height: '36px', lineHeight: '36px', textAlign: 'center' }}>
-                현재 당신의 상태는 어떤가요?
+            <h1 className="text-[30px] md:text-[32px] font-semibold text-black mb-16 text-center px-4 whitespace-nowrap leading-tight">
+            현재 당신의 상태는 어떤가요?
             </h1>
 
             {/* 카드 컨테이너 */}

@@ -89,6 +89,11 @@ app.include_router(recommendations.router)
 from routes.analytics import router as analytics_router
 app.include_router(analytics_router, prefix="/api")
 
+# 블로그 CRUD 라우터 연결 (관리자용)
+from routes.blogs_crud import router as blogs_crud_router
+app.include_router(blogs_crud_router, prefix="/api")
+
+
 # OpenAI Ping API
 @app.get("/openai/ping")
 async def openai_ping():

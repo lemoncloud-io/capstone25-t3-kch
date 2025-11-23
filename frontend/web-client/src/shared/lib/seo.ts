@@ -1,63 +1,56 @@
-// 간단한 OG/Twitter 메타 태그 업데이트 유틸 (SPA용 클라이언트 사이드)
-
-export interface OgOptions {
-  title?: string
-  description?: string
-  image?: string
-  url?: string
+export interface OgTags {
+    title?: string
+    description?: string
+    image?: string
+    url?: string
 }
 
-function upsertMeta(attr: 'name' | 'property', key: string, content: string) {
-  if (!content) return
-  let el = document.head.querySelector(`meta[${attr}="${key}"]`) as HTMLMetaElement | null
-  if (!el) {
-    el = document.createElement('meta')
-    el.setAttribute(attr, key)
-    document.head.appendChild(el)
-  }
-  el.setAttribute('content', content)
+export function setOgTags(tags: OgTags) {
+    // 기본 메타 태그 설정
+    if (tags.title) {
+        document.title = tags.title
+        setMetaTag('og:title', tags.title)
+        setMetaTag('twitter:title', tags.title)
+    }
+    
+    if (tags.description) {
+        setMetaTag('description', tags.description)
+        setMetaTag('og:description', tags.description)
+        setMetaTag('twitter:description', tags.description)
+    }
+    
+    if (tags.image) {
+        setMetaTag('og:image', tags.image)
+        setMetaTag('twitter:image', tags.image)
+    }
+    
+    if (tags.url) {
+        setMetaTag('og:url', tags.url)
+    }
 }
 
-export function setOgTags(opts: OgOptions) {
-  const url = opts.url || window.location.href
-  const title = opts.title || document.title
-  const description = opts.description || ''
-  const image = opts.image || ''
-
-  upsertMeta('property', 'og:type', 'article')
-  upsertMeta('property', 'og:url', url)
-  upsertMeta('property', 'og:title', title)
-  upsertMeta('property', 'og:description', description)
-  if (image) upsertMeta('property', 'og:image', absoluteUrl(image))
-
-  upsertMeta('name', 'twitter:card', 'summary_large_image')
-  upsertMeta('name', 'twitter:title', title)
-  upsertMeta('name', 'twitter:description', description)
-  if (image) upsertMeta('name', 'twitter:image', absoluteUrl(image))
+export function setDefaultOg(tags: Partial<OgTags>) {
+    const defaultTags: OgTags = {
+        title: 'KCH Blog - 청년 정책 정보',
+        description: '청년을 위한 정책과 혜택 정보를 쉽고 빠르게 확인하세요.',
+        ...tags
+    }
+    setOgTags(defaultTags)
 }
 
-export function setDefaultOg(opts?: Partial<OgOptions>) {
-  const origin = window.location.origin
-  const logo = opts?.image || `${origin}/KCodingHansung_logo.png`
-  setOgTags({
-    title: opts?.title || 'KCH Blog',
-    description: opts?.description || '청년정책 블로그',
-    image: logo,
-    url: opts?.url || window.location.href,
-  })
+function setMetaTag(property: string, content: string) {
+    let meta = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement
+    if (!meta) {
+        meta = document.querySelector(`meta[name="${property}"]`) as HTMLMetaElement
+    }
+    if (!meta) {
+        meta = document.createElement('meta')
+        if (property.startsWith('og:') || property.startsWith('twitter:')) {
+            meta.setAttribute('property', property)
+        } else {
+            meta.setAttribute('name', property)
+        }
+        document.head.appendChild(meta)
+    }
+    meta.setAttribute('content', content)
 }
-
-function absoluteUrl(url: string) {
-  if (!url) return url
-  try {
-    // 이미 절대경로면 그대로 반환
-    const u = new URL(url)
-    return u.href
-  } catch {
-    // 상대경로면 origin 붙여서 반환
-    return `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`
-  }
-}
-
-
-

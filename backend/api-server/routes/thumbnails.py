@@ -166,17 +166,26 @@ def _maybe_upload_s3(png_bytes: bytes, key: str) -> Optional[str]:
         print("[WARN] S3 upload failed:", repr(e))
         return None
 
-# ========= 카테고리 매핑 =========
-CATEGORY_ALIAS = {
-    "일자리": "jobs",
-    "주거": "housing",
-    "복지": "welfare",
-    "교육": "education",
-    "jobs": "jobs",
-    "housing": "housing",
-    "welfare": "welfare",
-    "education": "education",
-}
+# ========= 카테고리 매핑 로직 개선 =========
+
+# preprocess.py의 상세 카테고리를 4대 카테고리로 매핑
+# 4대 카테고리: 일자리, 주거, 교육, 복지
+def category_by_keyword(raw_category: str) -> str:
+    if not raw_category: return "welfare" # 기본값
+    
+    # 입력값 정리
+    text = str(raw_category).strip() 
+    
+    if text == "일자리":
+        return "jobs"
+    if text == "주거":
+        return "housing"
+    if text == "교육":
+        return "education"
+    if text == "복지":
+        return "welfare"
+        
+    return "welfare" # 기본값
 
 BG_MAP = {
     "jobs":      BG_DIR / "bg_jobs.png",
@@ -195,11 +204,10 @@ SAFE_RECT_PCT = {
 # ========= 엔드포인트 =========
 @router.post("/generate")
 def generate(req: Req):
-    # 카테고리 정규화 → 배경 선택
-    key = CATEGORY_ALIAS.get(req.category)
-    if not key:
-        raise HTTPException(status_code=400, detail=f"unknown category: {req.category}")
 
+    # 위 함수 바탕으로 카테고리 선택 후 배경 선택
+    key = category_by_keyword(req.category)
+    
     bg_path = BG_MAP[key]
     if not bg_path.exists():
         raise HTTPException(status_code=500, detail=f"background not found: {bg_path}")

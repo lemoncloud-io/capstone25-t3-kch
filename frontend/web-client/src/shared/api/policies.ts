@@ -1,44 +1,46 @@
-import { env } from '@/shared/lib/env'
+import { env } from '../lib/env'
 
 export interface PolicyCleanOut {
-  plcy_no: string
-  title?: string
-  category?: string
-  category_auto?: string
-  region?: string
-  amount_min?: number
-  amount_max?: number
-  period_start?: string | null
-  period_end?: string | null
-  provider?: string
-  summary?: string
-  content_data?: unknown
+    plcy_no: string
+    title: string
+    category: string
+    region?: string
+    summary?: string
+    period_end?: string
 }
 
-export async function getPolicies(params?: {
-  q?: string
-  category?: string
-  category_auto?: string
-  region?: string
-  limit?: number
-  offset?: number
-}): Promise<PolicyCleanOut[]> {
-  const url = new URL(`${env.API_BASE_URL}/policies`)
-  const searchParams = new URLSearchParams()
-  if (params?.q) searchParams.set('q', params.q)
-  if (params?.category) searchParams.set('category', params.category)
-  if (params?.category_auto) searchParams.set('category_auto', params.category_auto)
-  if (params?.region) searchParams.set('region', params.region)
-  searchParams.set('limit', String(params?.limit ?? 50))
-  searchParams.set('offset', String(params?.offset ?? 0))
-  url.search = searchParams.toString()
+export const getPolicies = async (params?: { 
+    category?: string
+    region?: string 
+    limit?: number 
+}): Promise<PolicyCleanOut[]> => {
+    if (env.ENV === 'development' && !env.USE_SERVER) {
+        // Mock 데이터 반환
+        await new Promise(resolve => setTimeout(resolve, 300))
+        return []
+    }
 
-  const res = await fetch(url.toString())
-  if (!res.ok) {
-    throw new Error(`Failed to fetch policies: ${res.status}`)
-  }
-  return await res.json()
+    try {
+        const searchParams = new URLSearchParams()
+        if (params?.category) searchParams.set('category', params.category)
+        if (params?.region) searchParams.set('region', params.region)
+        if (params?.limit) searchParams.set('limit', params.limit.toString())
+
+        console.log('🔍 정책 목록 조회:', `${env.API_BASE_URL}/policies?${searchParams}`)
+        
+        const response = await fetch(`${env.API_BASE_URL}/policies?${searchParams}`)
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        const policies = Array.isArray(data) ? data : (data.items || [])
+        
+        console.log('📋 정책 목록 응답:', policies.length, '개')
+        
+        return policies
+    } catch (error) {
+        console.error('정책 API 호출 실패:', error)
+        return []
+    }
 }
-
-
-
