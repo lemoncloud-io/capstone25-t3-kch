@@ -11,7 +11,7 @@ import rehypeRaw from 'rehype-raw'
 import { getPost, type Post } from '../../../shared/api/posts'
 import MainLayout from '@/features/blog/components/layout/MainLayout'
 import { toast } from 'sonner'
-import { trackPostClick, trackPostStay } from '@/shared/api/analytics'
+import { trackPostClick, trackPostStay, trackShare } from '@/shared/api/analytics'
 
 /* =========================
    유틸
@@ -115,14 +115,21 @@ export default function PostDetailPage() {
     if (navigator.share) {
       try {
         await navigator.share(shareData)
+        // 공유 성공 시 추적
+        await trackShare(post.id, post.slug, 'native', 'post-detail')
       } catch (error) {
-        console.error('Share API 오류:', error)
-        toast.error('공유에 실패했습니다.')
+        // 사용자가 공유를 취소한 경우는 에러로 처리하지 않음
+        if ((error as Error).name !== 'AbortError') {
+          console.error('Share API 오류:', error)
+          toast.error('공유에 실패했습니다.')
+        }
       }
     } else {
       try {
         await navigator.clipboard.writeText(window.location.href)
         toast.success('링크가 클립보드에 복사되었습니다.')
+        // 링크 복사 성공 시 추적
+        await trackShare(post.id, post.slug, 'clipboard', 'post-detail')
       } catch (err) {
         console.error('클립보드 복사 오류:', err)
         toast.error('링크 복사에 실패했습니다.')
@@ -131,9 +138,13 @@ export default function PostDetailPage() {
   }
 
   const handleCopyLink = async () => {
+    if (!post) return
+    
     try {
       await navigator.clipboard.writeText(window.location.href)
       toast.success('링크가 클립보드에 복사되었습니다.')
+      // 링크 복사 성공 시 추적
+      await trackShare(post.id, post.slug, 'clipboard', 'post-detail')
     } catch (err) {
       console.error('클립보드 복사 오류:', err)
       toast.error('링크 복사에 실패했습니다.')

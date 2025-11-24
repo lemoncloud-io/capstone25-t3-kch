@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Edit, Trash2, Eye, Plus, RefreshCw, X, Search } from 'lucide-react'
 import { getPosts, getPost, createBlogPost, deleteBlogPost, updateBlogPost, type Post } from '../../../shared/api/posts'
@@ -119,16 +119,39 @@ export default function PostsManagePage() {
     // 카테고리 목록 생성
     const categories = ['all', ...new Set(allPosts?.map(post => post.category) || [])]
 
-    // 검색 및 필터링된 포스트
-    const filteredPosts = allPosts.filter(post => {
-        const matchesCategory = selectedCategory === 'all' || post.category === selectedCategory
-        const matchesSearch = searchQuery === '' || 
-            post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            post.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            post.category.toLowerCase().includes(searchQuery.toLowerCase())
-        
-        return matchesCategory && matchesSearch
-    })
+    // 검색 및 필터링된 포스트 (문자열 기반, 본문 검색 포함, 띄어쓰기 무시)
+    const filteredPosts = useMemo(() => {
+        // 카테고리 필터링
+        let filtered = allPosts.filter(post => 
+            selectedCategory === 'all' || post.category === selectedCategory
+        )
+
+        // 검색어가 있으면 문자열 기반 검색 (본문 포함, 띄어쓰기 무시)
+        if (searchQuery.trim()) {
+            const lowerQuery = searchQuery.toLowerCase()
+            const normalizedQuery = lowerQuery.replace(/\s+/g, '') // 공백 제거
+            
+            // 검색 헬퍼 함수: 띄어쓰기 무시하고 검색
+            const matches = (text: string, searchQuery: string, normalizedQuery: string): boolean => {
+                const lowerText = text.toLowerCase()
+                if (lowerText.includes(searchQuery)) return true
+                const normalizedText = lowerText.replace(/\s+/g, '')
+                if (normalizedText.includes(normalizedQuery)) return true
+                return false
+            }
+            
+            filtered = filtered.filter(post => {
+                const titleMatch = matches(post.title, lowerQuery, normalizedQuery)
+                const summaryMatch = matches(post.summary || '', lowerQuery, normalizedQuery)
+                const contentMatch = matches(post.content || '', lowerQuery, normalizedQuery)
+                const categoryMatch = matches(post.category || '', lowerQuery, normalizedQuery)
+                
+                return titleMatch || summaryMatch || contentMatch || categoryMatch
+            })
+        }
+
+        return filtered
+    }, [allPosts, selectedCategory, searchQuery])
 
     return (
         <div className="space-y-6">

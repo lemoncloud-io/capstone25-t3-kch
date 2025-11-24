@@ -149,3 +149,30 @@ export async function trackHomeStay(
 
   await postAnalytics('home-stay', payload)
 }
+
+/**
+ * 포스트 공유 이벤트 기록
+ *
+ * 호출 형식:
+ *   trackShare(post.id, post.slug, 'native' | 'clipboard', 'post-detail')
+ *
+ * shareType:
+ *   - "native": Web Share API 사용 (navigator.share)
+ *   - "clipboard": 링크 복사 (클립보드)
+ */
+export async function trackShare(
+  postId: number | string | undefined,
+  slug: string,
+  shareType: 'native' | 'clipboard',
+  page?: string,
+): Promise<void> {
+  const payload = {
+    postId: postId != null ? String(postId) : undefined,
+    slug,
+    shareType,
+    page,
+    ts: new Date().toISOString(),
+  }
+
+  await postAnalytics('share', payload)
+}

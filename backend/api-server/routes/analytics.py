@@ -54,6 +54,20 @@ CREATE TABLE IF NOT EXISTS blog_analytics_home_stay (
 );
 """
 
+DDL_SHARE = """
+CREATE TABLE IF NOT EXISTS blog_analytics_shares (
+  id SERIAL PRIMARY KEY,
+  plcy_no TEXT,
+  slug TEXT,
+  share_type TEXT,
+  page TEXT,
+  ts TIMESTAMPTZ DEFAULT NOW(),
+  user_agent TEXT,
+  referrer TEXT,
+  client_ip TEXT
+);
+"""
+
 
 def init_analytics_tables() -> None:
   """서버 기동 시 한 번만 테이블 생성"""
@@ -63,6 +77,7 @@ def init_analytics_tables() -> None:
     cur.execute(DDL_CLICK)
     cur.execute(DDL_POST_STAY)
     cur.execute(DDL_HOME_STAY)
+    cur.execute(DDL_SHARE)
     conn.commit()
     cur.close()
   finally:
@@ -94,6 +109,14 @@ class PostStayEvent(BaseModel):
 
 class HomeStayEvent(BaseModel):
   durationSec: int
+  ts: Optional[datetime] = None
+
+
+class ShareEvent(BaseModel):
+  postId: Optional[str] = Field(default=None)
+  slug: str
+  shareType: str  # "native" (Web Share API) 또는 "clipboard" (링크 복사)
+  page: Optional[str] = None
   ts: Optional[datetime] = None
 
 
@@ -245,6 +268,85 @@ async def track_home_stay(event: HomeStayEvent, request: Request):
     )
     conn.commit()
     cur.close()
+  finally:
+    conn.close()
+
+  return {"ok": True}
+
+
+@router.post("/share")
+async def track_share(event: ShareEvent, request: Request):
+  """포스트 공유 이벤트 기록 및 공유 수 증가"""
+  ua, ref, ip = _common_meta(request)
+
+  conn = get_conn()
+  try:
+    cur = conn.cursor()
+    
+    # 1) Analytics 공유 이벤트 저장
+    cur.execute(
+      """
+      INSERT INTO blog_analytics_shares
+        (plcy_no, slug, share_type, page, ts, user_agent, referrer, client_ip)
+      VALUES
+        (%s, %s, %s, %s, COALESCE(%s, NOW()), %s, %s, %s)
+      """,
+      (
+        event.postId,
+        event.slug,
+        event.shareType,
+        event.page,
+        event.ts,
+        ua,
+        ref,
+        ip,
+      ),
+    )
+    
+    # 2) blog_posts 테이블의 share_count 증가
+    # postId 또는 slug 중 하나를 plcy_no로 사용
+    plcy_no = event.postId or event.slug
+    
+    if plcy_no:
+      # share_count 컬럼이 없으면 자동 생성 시도
+      try:
+        cur.execute("""
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'share_count'
+        """)
+        if not cur.fetchone():
+          # 컬럼이 없으면 추가
+          cur.execute("ALTER TABLE blog_posts ADD COLUMN share_count INTEGER DEFAULT 0 NOT NULL")
+          conn.commit()
+      except Exception as e:
+        # 컬럼이 이미 있거나 다른 에러는 무시
+        conn.rollback()
+        pass
+      
+      # 공유 수 증가 (plcy_no로 매칭)
+      cur.execute(
+        """
+        UPDATE blog_posts
+        SET share_count = COALESCE(share_count, 0) + 1
+        WHERE plcy_no = %s
+        """,
+        (plcy_no,),
+      )
+      
+      # 업데이트된 행 수 확인 (디버깅용)
+      updated_rows = cur.rowcount
+      if updated_rows == 0:
+        # 해당 plcy_no의 블로그가 없을 수 있음 (정상적인 경우일 수 있음)
+        print(f"[analytics] 공유 수 증가 실패: plcy_no={plcy_no} (블로그 포스트가 없을 수 있음)")
+      else:
+        print(f"[analytics] 공유 수 증가 성공: plcy_no={plcy_no}, 업데이트된 행={updated_rows}")
+    
+    conn.commit()
+    cur.close()
+  except Exception as e:
+    print(f"[analytics] 공유 수 증가 중 에러: {e}")
+    conn.rollback()
   finally:
     conn.close()
 

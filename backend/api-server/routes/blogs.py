@@ -160,13 +160,13 @@ CATEGORY_KEYWORDS = {
 }
 
 @router.get("/blogs")
-def list_blogs(limit: int = 100, category: Optional[str] = None):  # 블로그 목록 조회
+def list_blogs(limit: int = 100, category: Optional[str] = None, include_content: bool = True):  # 블로그 목록 조회
     conn = get_conn()
     columns = _get_blog_table_columns()
     rows: List[Dict] = []
 
     try:
-        select_fields = _build_select_fields(columns)
+        select_fields = _build_select_fields(columns, include_content=include_content)
         query_parts = [f"""
             SELECT {', '.join(select_fields)}
             FROM blog_posts
