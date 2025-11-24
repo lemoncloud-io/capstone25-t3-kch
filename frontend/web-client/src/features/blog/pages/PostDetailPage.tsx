@@ -80,6 +80,7 @@ export default function PostDetailPage() {
     stayEnterRef.current = enterIso
 
     // 상세 페이지 진입 = 클릭 기록
+    console.log('[PostDetail] 조회수 추적 시작:', { id: post.id, slug: post.slug })
     trackPostClick(post.id, post.slug, 'post-detail')
 
     const handleLeave = () => {

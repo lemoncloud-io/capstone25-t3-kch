@@ -31,6 +31,7 @@ class RecommendItem(BaseModel):
     category: Optional[str] = None
     region: Optional[str] = None
     score: float
+    reasons: List[str] = Field(default_factory=list)  # 추천 이유
 
 
 class RecommendResp(BaseModel):
@@ -44,7 +45,7 @@ W_AGE = 2.0
 W_REGION = 3.0
 W_INTEREST = 3.0
 W_RECENCY = 1.5
-W_VIEWS = 0.0
+W_VIEWS = 1.0  # 조회수 가중치
 
 
 # ---------- 관심사 id -> 카테고리 이름 매핑 ----------
@@ -172,6 +173,23 @@ def recency_decay(ts: Optional[datetime]) -> float:
     return math.exp(-diff_days / 30.0)
 
 
+# ---------- 조회수 정규화 ----------
+def normalize_view_count(view_count: Optional[int], max_views: int) -> float:
+    """
+    조회수를 0~1 사이로 정규화
+    로그 스케일 사용하여 조회수 차이를 완화
+    """
+    if not view_count or view_count <= 0:
+        return 0.0
+    if max_views <= 0:
+        return 0.0
+    
+    # 로그 스케일 정규화 (1 + log10(1 + view_count) / log10(1 + max_views))
+    # 최소값 0.1 보장 (조회수가 있으면 최소한의 점수)
+    normalized = (1 + math.log10(1 + view_count)) / (1 + math.log10(1 + max_views))
+    return max(0.1, min(1.0, normalized))
+
+
 # ---------- 메인 라우트 ----------
 @router.post("/recommendations", response_model=RecommendResp)
 def recommend(req: RecommendReq, db: Session = Depends(get_db)):
@@ -181,17 +199,19 @@ def recommend(req: RecommendReq, db: Session = Depends(get_db)):
                 text(
                     """
                     SELECT
-                        id,
-                        plcy_no,
-                        title,
-                        summary,
-                        category_auto AS category,
-                        region,
-                        target_group,
-                        updated_at
-                    FROM policy_clean
-                    WHERE title IS NOT NULL
-                    ORDER BY updated_at DESC NULLS LAST
+                        pc.id,
+                        pc.plcy_no,
+                        pc.title,
+                        pc.summary,
+                        pc.category_auto AS category,
+                        pc.region,
+                        pc.target_group,
+                        pc.updated_at,
+                        COALESCE(bp.view_count, 0) AS view_count
+                    FROM policy_clean pc
+                    LEFT JOIN blog_posts bp ON pc.plcy_no = bp.plcy_no
+                    WHERE pc.title IS NOT NULL
+                    ORDER BY pc.updated_at DESC NULLS LAST
                     LIMIT 200
                     """
                 )
@@ -199,6 +219,9 @@ def recommend(req: RecommendReq, db: Session = Depends(get_db)):
             .mappings()
             .all()
         )
+        
+        # 최대 조회수 계산 (정규화용)
+        max_views = max((r.get("view_count") or 0 for r in rows), default=1)
 
         user_region = normalize_region(req.userRegion)
         interest_cats = {INTEREST_ID_TO_CAT.get(i, i) for i in req.userInterests}
@@ -210,6 +233,7 @@ def recommend(req: RecommendReq, db: Session = Depends(get_db)):
             region = r["region"]
             tgroup = r["target_group"]
             updated = r["updated_at"]
+            view_count = r.get("view_count") or 0
 
             # ---------------------------
             # 1) 지역 필터: 서울/전국 등만 추천 후보로 사용
@@ -242,7 +266,8 @@ def recommend(req: RecommendReq, db: Session = Depends(get_db)):
             # 최신성 점수
             s_rec = recency_decay(updated)
 
-            s_views = 0.0  # 현재 사용x
+            # 조회수 점수 (정규화)
+            s_views = normalize_view_count(view_count, max_views)
 
             score = (
                 W_INTEREST * s_interest
@@ -253,6 +278,21 @@ def recommend(req: RecommendReq, db: Session = Depends(get_db)):
                 + W_VIEWS * s_views
             )
 
+            # 추천 이유 생성
+            reasons = []
+            if s_interest > 0:
+                reasons.append("관심 카테고리와 일치")
+            if s_region > 0:
+                reasons.append("지역 조건 부합")
+            if s_status > 0:
+                reasons.append("상태(학생/구직자) 조건 부합")
+            if s_age > 0:
+                reasons.append("나이대 조건 부합")
+            if s_rec > 0.5:
+                reasons.append("최신 정책")
+            if s_views > 0.3:  # 조회수가 어느 정도 있으면
+                reasons.append("인기 정책")
+
             items.append(
                 RecommendItem(
                     id=int(r["id"]),
@@ -262,6 +302,7 @@ def recommend(req: RecommendReq, db: Session = Depends(get_db)):
                     category=cat,
                     region=region,
                     score=float(score),
+                    reasons=reasons,
                 )
             )
 

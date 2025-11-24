@@ -110,12 +110,14 @@ def _common_meta(request: Request) -> tuple[Optional[str], Optional[str], Option
 
 @router.post("/click")
 async def track_click(event: PostClickEvent, request: Request):
-  """포스트 클릭(상세 진입) 기록"""
+  """포스트 클릭(상세 진입) 기록 및 조회수 증가"""
   ua, ref, ip = _common_meta(request)
 
   conn = get_conn()
   try:
     cur = conn.cursor()
+    
+    # 1) Analytics 클릭 이벤트 저장
     cur.execute(
       """
       INSERT INTO blog_analytics_clicks
@@ -133,8 +135,51 @@ async def track_click(event: PostClickEvent, request: Request):
         ip,
       ),
     )
+    
+    # 2) blog_posts 테이블의 view_count 증가
+    # postId 또는 slug 중 하나를 plcy_no로 사용
+    plcy_no = event.postId or event.slug
+    
+    if plcy_no:
+      # view_count 컬럼이 없으면 자동 생성 시도
+      try:
+        cur.execute("""
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'view_count'
+        """)
+        if not cur.fetchone():
+          # 컬럼이 없으면 추가
+          cur.execute("ALTER TABLE blog_posts ADD COLUMN view_count INTEGER DEFAULT 0 NOT NULL")
+          conn.commit()
+      except Exception as e:
+        # 컬럼이 이미 있거나 다른 에러는 무시
+        conn.rollback()
+        pass
+      
+      # 조회수 증가 (plcy_no로 매칭)
+      cur.execute(
+        """
+        UPDATE blog_posts
+        SET view_count = COALESCE(view_count, 0) + 1
+        WHERE plcy_no = %s
+        """,
+        (plcy_no,),
+      )
+      
+      # 업데이트된 행 수 확인 (디버깅용)
+      updated_rows = cur.rowcount
+      if updated_rows == 0:
+        # 해당 plcy_no의 블로그가 없을 수 있음 (정상적인 경우일 수 있음)
+        print(f"[analytics] 조회수 증가 실패: plcy_no={plcy_no} (블로그 포스트가 없을 수 있음)")
+      else:
+        print(f"[analytics] 조회수 증가 성공: plcy_no={plcy_no}, 업데이트된 행={updated_rows}")
+    
     conn.commit()
     cur.close()
+  except Exception as e:
+    print(f"[analytics] 조회수 증가 중 에러: {e}")
+    conn.rollback()
   finally:
     conn.close()
 
