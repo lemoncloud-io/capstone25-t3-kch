@@ -106,7 +106,7 @@ export default function PostsManagePage() {
     // 포스트 목록 가져오기
     const { data: allPosts = [], isLoading, refetch } = useQuery({
         queryKey: ['posts'],
-        queryFn: () => getPosts({ limit: 100 }),
+        queryFn: () => getPosts(), // 전체 게시글 가져오기 (limit 없음)
     })
 
     // 정책 목록 가져오기 (새 포스트 생성용)
