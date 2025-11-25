@@ -127,6 +127,22 @@ export async function trackShare(
 // =========================================================
 
 /**
+ * 추천 콘텐츠 노출(임프레션) 기록
+ * (HomePage 등에서 추천 영역이 화면에 보일 때 호출)
+ */
+export async function trackRecommendationImpression(
+  sourcePostId?: number | string, // 현재 보고 있던 게시글 ID (옵션, 홈페이지면 undefined)
+): Promise<void> {
+  const payload = {
+    sourcePostId: sourcePostId != null ? String(sourcePostId) : undefined,
+    ts: new Date().toISOString(),
+  }
+
+  // backend url: /analytics/recommendation/impression
+  await postAnalytics('recommendation/impression', payload)
+}
+
+/**
  * 추천 콘텐츠 클릭 기록
  * (PostDetailPage 등의 하단 추천 리스트에서 클릭 시 호출)
  */

@@ -7,11 +7,11 @@ import {
   Home,
   Share2,
   Activity,
+  ArrowUpRight,
+  ArrowDownRight,
 } from 'lucide-react'
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
   BarChart,
   Bar,
   CartesianGrid,
@@ -19,6 +19,8 @@ import {
   YAxis,
   Tooltip,
   Legend,
+  Area,
+  AreaChart,
 } from 'recharts'
 
 import type {
@@ -38,27 +40,143 @@ type StatCardProps = {
   title: string
   value: string | number
   icon: LucideIcon
+  subtitle?: string
+  trend?: {
+    value: number
+    label: string
+    isPositive?: boolean
+  }
+  gradient: string
+  iconGradient: string
 }
 
-function StatCard({ title, value, icon: Icon }: StatCardProps) {
+function StatCard({
+  title,
+  value,
+  icon: Icon,
+  subtitle,
+  trend,
+  gradient,
+  iconGradient,
+}: StatCardProps) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-6 py-4 flex items-center gap-4">
-      <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
-        <Icon size={20} className="text-blue-500" />
+    <div className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100 transition-all duration-300 hover:shadow-xl hover:ring-gray-200">
+      {/* 그라데이션 배경 */}
+      <div
+        className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 transition-opacity duration-300 group-hover:opacity-[0.03]`}
+      />
+      
+      <div className="relative">
+        {/* 헤더 */}
+        <div className="mb-4 flex items-start justify-between">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-gray-600">{title}</p>
+          </div>
+          <div
+            className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${iconGradient} shadow-lg transition-transform duration-300 group-hover:scale-110`}
+          >
+            <Icon size={22} className="text-white" />
+          </div>
+        </div>
+
+        {/* 값 */}
+        <div className="mb-2">
+          <p className="text-3xl font-bold tracking-tight text-gray-900">
+            {value}
+          </p>
+        </div>
+
+        {/* 서브타이틀 및 트렌드 */}
+        <div className="flex items-center justify-between">
+          {subtitle && (
+            <p className="text-xs text-gray-500">{subtitle}</p>
+          )}
+          {trend && (
+            <div
+              className={`flex items-center gap-1 text-xs font-medium ${
+                trend.isPositive ? 'text-emerald-600' : 'text-red-600'
+              }`}
+            >
+              {trend.isPositive ? (
+                <ArrowUpRight size={14} />
+              ) : (
+                <ArrowDownRight size={14} />
+              )}
+              <span>{trend.label}</span>
+            </div>
+          )}
+        </div>
       </div>
-      <div className="flex flex-col">
-        <p className="text-xs text-gray-500">{title}</p>
-        <p className="text-xl font-semibold text-gray-900 mt-1">{value}</p>
+    </div>
+  )
+}
+
+function ChartCard({
+  title,
+  description,
+  children,
+  className = '',
+}: {
+  title: string
+  description?: string
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div
+      className={`rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100 transition-shadow duration-300 hover:shadow-md ${className}`}
+    >
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        {description && (
+          <p className="mt-1 text-sm text-gray-500">{description}</p>
+        )}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-8 pb-8">
+      {/* 헤더 스켈레톤 */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <div className="h-9 w-64 animate-pulse rounded-lg bg-gray-200" />
+          <div className="h-5 w-96 animate-pulse rounded-lg bg-gray-200" />
+        </div>
+      </div>
+
+      {/* 카드 스켈레톤 */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        {[...Array(5)].map((_, i) => (
+          <div
+            key={i}
+            className="h-32 animate-pulse rounded-2xl bg-gray-100"
+          />
+        ))}
+      </div>
+
+      {/* 차트 스켈레톤 */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {[...Array(3)].map((_, i) => (
+          <div
+            key={i}
+            className="h-80 animate-pulse rounded-2xl bg-gray-100"
+          />
+        ))}
       </div>
     </div>
   )
 }
 
 function formatDateLabel(isoDate: string) {
-  // "YYYY-MM-DD" -> "MM-DD"
   const d = isoDate.split('-')
   if (d.length !== 3) return isoDate
-  return `${d[1]}-${d[2]}`
+  const month = parseInt(d[1], 10)
+  const day = parseInt(d[2], 10)
+  return `${month}/${day}`
 }
 
 /* =========================
@@ -123,6 +241,16 @@ export default function AdminDashboardPage() {
     return sum / reco.length
   }, [reco])
 
+  // 추천 CTR 관련 총합 (데이터 적을 때 참고용)
+  const totalRecoClicks7d = useMemo(
+    () => reco.reduce((sum, r) => sum + (r.clicks ?? 0), 0),
+    [reco],
+  )
+  const totalRecoImpressions7d = useMemo(
+    () => reco.reduce((sum, r) => sum + (r.impressions ?? 0), 0),
+    [reco],
+  )
+
   /* ---- 차트용 데이터 ---- */
   const clickShareChartData = useMemo(
     () =>
@@ -138,8 +266,8 @@ export default function AdminDashboardPage() {
     () =>
       daily.map((d) => ({
         date: formatDateLabel(d.date),
-        postStay: d.postStayAvgSec ?? 0,
-        homeStay: d.homeStayAvgSec ?? 0,
+        postStay: Number((d.postStayAvgSec ?? 0).toFixed(2)),
+        homeStay: Number((d.homeStayAvgSec ?? 0).toFixed(2)),
       })),
     [daily],
   )
@@ -149,142 +277,392 @@ export default function AdminDashboardPage() {
       reco.map((r) => ({
         date: formatDateLabel(r.date),
         ctr: r.ctr ?? 0,
+        clicks: r.clicks ?? 0,
+        impressions: r.impressions ?? 0,
       })),
     [reco],
   )
 
-  return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">
-        성과 지표 대시보드
-      </h1>
+  // 체류 시간 포맷팅 헬퍼
+  const formatStayTime = (seconds: number) => {
+    if (seconds < 60) return `${seconds.toFixed(1)}초`
+    const minutes = Math.floor(seconds / 60)
+    const secs = (seconds % 60).toFixed(1)
+    return `${minutes}분 ${secs}초`
+  }
 
-      {/* 요약 카드 5개 한 줄 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-4">
+  if (loading) {
+    return <LoadingSkeleton />
+  }
+
+  return (
+    <div className="space-y-8 pb-8">
+      {/* 헤더 섹션 */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            대시보드
+          </h1>
+          <p className="mt-2 text-sm text-gray-600">
+            최근 7일간의 사용자 행동 데이터와 성과 지표를 확인하세요
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 shadow-sm ring-1 ring-gray-200">
+            <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+            <span className="text-sm font-medium text-gray-700">
+              실시간 업데이트
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 요약 카드 그리드 */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard
-          title="최근 7일 게시물 클릭 수"
+          title="게시물 클릭 수"
           value={totalClicks7d.toLocaleString()}
           icon={MousePointerClick}
+          subtitle="최근 7일간"
+          gradient="from-blue-500 via-blue-600 to-blue-700"
+          iconGradient="from-blue-500 to-blue-600"
         />
         <StatCard
-          title="최근 7일 평균 게시물 체류 시간(초)"
-          value={avgPostStay7d.toFixed(1)}
+          title="평균 게시물 체류 시간"
+          value={formatStayTime(avgPostStay7d)}
           icon={Clock}
+          subtitle="최근 7일간 평균"
+          gradient="from-purple-500 via-purple-600 to-purple-700"
+          iconGradient="from-purple-500 to-purple-600"
         />
         <StatCard
-          title="최근 7일 평균 홈 체류 시간(초)"
-          value={avgHomeStay7d.toFixed(1)}
+          title="평균 홈 체류 시간"
+          value={formatStayTime(avgHomeStay7d)}
           icon={Home}
+          subtitle="최근 7일간 평균"
+          gradient="from-indigo-500 via-indigo-600 to-indigo-700"
+          iconGradient="from-indigo-500 to-indigo-600"
         />
         <StatCard
-          title="최근 7일 공유 수"
+          title="공유 수"
           value={totalShare7d.toLocaleString()}
           icon={Share2}
+          subtitle="최근 7일간"
+          gradient="from-amber-500 via-amber-600 to-amber-700"
+          iconGradient="from-amber-500 to-amber-600"
         />
         <StatCard
-          title="최근 7일 평균 추천 CTR(%)"
-          value={avgCtr7d.toFixed(2)}
+          title="평균 추천 CTR"
+          value={`${avgCtr7d.toFixed(2)}%`}
           icon={Activity}
+          subtitle={
+            totalRecoImpressions7d > 0
+              ? `클릭 ${totalRecoClicks7d.toLocaleString()}회 / 노출 ${totalRecoImpressions7d.toLocaleString()}회`
+              : '데이터 수집 중'
+          }
+          gradient="from-emerald-500 via-emerald-600 to-emerald-700"
+          iconGradient="from-emerald-500 to-emerald-600"
         />
       </div>
 
-      {/* 일별 클릭 수 / 공유 수 */}
-      <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-sm font-semibold text-gray-800 mb-4">
-          일별 게시물 클릭 수 / 공유 수
-        </h2>
-        <div className="w-full h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={clickShareChartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="clicks"
-                name="게시물 클릭 수"
-                stroke="#2563eb"
-                dot={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="shares"
-                name="공유 수"
-                stroke="#f97316"
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      {/* 일별 평균 체류 시간 비교 */}
-      <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-sm font-semibold text-gray-800 mb-4">
-          일별 평균 체류 시간(초) 비교
-        </h2>
-        <div className="w-full h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={stayChartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar
-                dataKey="postStay"
-                name="게시물 체류 시간(평균, 초)"
-                fill="#111827"
-              />
-              <Bar
-                dataKey="homeStay"
-                name="홈 체류 시간(평균, 초)"
-                fill="#4b5563"
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      {/* 일별 추천 CTR 추이 */}
-      <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
-        <h2 className="text-sm font-semibold text-gray-800 mb-4">
-          일별 추천 CTR(%) 추이
-        </h2>
-        {ctrChartData.length === 0 ? (
-          <p className="text-sm text-gray-500">
-            추천 CTR 데이터가 아직 없습니다. 추천 영역에서 노출 및 클릭이
-            발생하면 이곳에 그래프가 표시됩니다.
-          </p>
-        ) : (
-          <div className="w-full h-64">
+      {/* 차트 섹션 */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* 일별 클릭 수 / 공유 수 */}
+        <ChartCard
+          title="일별 클릭 수 / 공유 수"
+          description="일별 게시물 클릭 수와 공유 수의 추이를 확인합니다"
+          className="lg:col-span-2"
+        >
+          <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={ctrChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="ctr"
-                  name="추천 CTR(%)"
-                  stroke="#22c55e"
-                  dot
+              <AreaChart
+                data={clickShareChartData}
+                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="clicksGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05} />
+                  </linearGradient>
+                  <linearGradient id="sharesGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#e5e7eb"
+                  vertical={false}
                 />
-              </LineChart>
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                  axisLine={{ stroke: '#e5e7eb' }}
+                  tickLine={{ stroke: '#e5e7eb' }}
+                />
+                <YAxis
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                  axisLine={{ stroke: '#e5e7eb' }}
+                  tickLine={{ stroke: '#e5e7eb' }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    padding: '12px 16px',
+                  }}
+                  labelStyle={{
+                    fontWeight: 600,
+                    color: '#111827',
+                    marginBottom: '8px',
+                    fontSize: '13px',
+                  }}
+                  itemStyle={{
+                    padding: '4px 0',
+                    fontSize: '13px',
+                  }}
+                />
+                <Legend
+                  wrapperStyle={{ paddingTop: '24px' }}
+                  iconType="circle"
+                  formatter={(value) => (
+                    <span style={{ color: '#374151', fontSize: '13px' }}>
+                      {value}
+                    </span>
+                  )}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="clicks"
+                  name="게시물 클릭 수"
+                  stroke="#3b82f6"
+                  strokeWidth={2.5}
+                  fill="url(#clicksGradient)"
+                  dot={{ fill: '#3b82f6', r: 4, strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="shares"
+                  name="공유 수"
+                  stroke="#f59e0b"
+                  strokeWidth={2.5}
+                  fill="url(#sharesGradient)"
+                  dot={{ fill: '#f59e0b', r: 4, strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }}
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
-        )}
-      </section>
+        </ChartCard>
 
-      {loading && (
-        <p className="text-xs text-gray-400">
-          지표 불러오는 중… (데이터 양에 따라 시간이 조금 걸릴 수 있습니다)
-        </p>
-      )}
+        {/* 일별 평균 체류 시간 비교 */}
+        <ChartCard
+          title="체류 시간 비교"
+          description="게시물과 홈 페이지의 평균 체류 시간"
+        >
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={stayChartData}
+                margin={{ top: 20, right: 30, left: 20, bottom: 10 }}
+                barCategoryGap="25%"
+                barGap={12}
+              >
+                <defs>
+                  <linearGradient id="postStayGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#6366f1" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.8} />
+                  </linearGradient>
+                  <linearGradient id="homeStayGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f59e0b" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#d97706" stopOpacity={0.8} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#e5e7eb"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                  axisLine={{ stroke: '#e5e7eb' }}
+                  tickLine={{ stroke: '#e5e7eb' }}
+                />
+                <YAxis
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                  axisLine={{ stroke: '#e5e7eb' }}
+                  tickLine={{ stroke: '#e5e7eb' }}
+                />
+                <Tooltip
+                  formatter={(value: number, name: string) => {
+                    const seconds = Number(value).toFixed(2)
+                    const minutes = Math.floor(Number(value) / 60)
+                    const secs = (Number(value) % 60).toFixed(2)
+                    const display =
+                      Number(value) >= 60
+                        ? `${minutes}분 ${secs}초 (${seconds}초)`
+                        : `${seconds}초`
+                    return [display, name]
+                  }}
+                  contentStyle={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    padding: '12px 16px',
+                  }}
+                  labelStyle={{
+                    fontWeight: 600,
+                    color: '#111827',
+                    marginBottom: '8px',
+                    fontSize: '13px',
+                  }}
+                  itemStyle={{
+                    padding: '4px 0',
+                    fontSize: '13px',
+                  }}
+                />
+                <Legend
+                  wrapperStyle={{ paddingTop: '24px' }}
+                  iconType="square"
+                  formatter={(value) => (
+                    <span style={{ color: '#374151', fontSize: '13px' }}>
+                      {value}
+                    </span>
+                  )}
+                />
+                <Bar
+                  dataKey="postStay"
+                  name="게시물 체류 시간"
+                  fill="url(#postStayGradient)"
+                  radius={[10, 10, 0, 0] as any}
+                  activeBar={{
+                    fill: 'rgba(99, 102, 241, 0.5)',
+                    stroke: '#6366f1',
+                    strokeWidth: 2,
+                    radius: [10, 10, 0, 0] as any,
+                  }}
+                />
+                <Bar
+                  dataKey="homeStay"
+                  name="홈 체류 시간"
+                  fill="url(#homeStayGradient)"
+                  radius={[10, 10, 0, 0] as any}
+                  activeBar={{
+                    fill: 'rgba(245, 158, 11, 0.5)',
+                    stroke: '#f59e0b',
+                    strokeWidth: 2,
+                    radius: [10, 10, 0, 0] as any,
+                  }}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+
+        {/* 일별 추천 CTR 추이 */}
+        <ChartCard
+          title="추천 CTR 추이"
+          description="추천 콘텐츠의 클릭률 변화 추이"
+        >
+          {ctrChartData.length === 0 ? (
+            <div className="flex h-80 flex-col items-center justify-center text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+                <Activity className="h-8 w-8 text-gray-400" />
+              </div>
+              <p className="mb-1 text-sm font-semibold text-gray-700">
+                데이터가 없습니다
+              </p>
+              <p className="text-xs text-gray-500">
+                추천 영역에서 노출 및 클릭이 발생하면 그래프가 표시됩니다
+              </p>
+            </div>
+          ) : (
+            <div className="h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={ctrChartData}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="ctrGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.05} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#e5e7eb"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    axisLine={{ stroke: '#e5e7eb' }}
+                    tickLine={{ stroke: '#e5e7eb' }}
+                  />
+                  <YAxis
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    axisLine={{ stroke: '#e5e7eb' }}
+                    tickLine={{ stroke: '#e5e7eb' }}
+                  />
+                  <Tooltip
+                    formatter={(value: number, name: string, props: any) => {
+                      if (name === '추천 CTR(%)') {
+                        return [
+                          `${value}% (클릭: ${props.payload.clicks.toLocaleString()}회, 노출: ${props.payload.impressions.toLocaleString()}회)`,
+                          name,
+                        ]
+                      }
+                      return [value, name]
+                    }}
+                    contentStyle={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '12px',
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                      padding: '12px 16px',
+                    }}
+                    labelStyle={{
+                      fontWeight: 600,
+                      color: '#111827',
+                      marginBottom: '8px',
+                      fontSize: '13px',
+                    }}
+                    itemStyle={{
+                      padding: '4px 0',
+                      fontSize: '13px',
+                    }}
+                  />
+                  <Legend
+                    wrapperStyle={{ paddingTop: '24px' }}
+                    iconType="circle"
+                    formatter={(value) => (
+                      <span style={{ color: '#374151', fontSize: '13px' }}>
+                        {value}
+                      </span>
+                    )}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="ctr"
+                    name="추천 CTR(%)"
+                    stroke="#10b981"
+                    strokeWidth={2.5}
+                    fill="url(#ctrGradient)"
+                    dot={{ fill: '#10b981', r: 5, strokeWidth: 2, stroke: '#fff' }}
+                    activeDot={{ r: 7, strokeWidth: 2, stroke: '#fff' }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </ChartCard>
+      </div>
     </div>
   )
 }

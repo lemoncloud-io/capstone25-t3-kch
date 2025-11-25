@@ -64,21 +64,19 @@ export default function AdminLayout() {
 
       {/* Mobile Sidebar */}
       {isMobileMenuOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-          <aside className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg z-50 lg:hidden">
+        <aside className="fixed inset-y-0 left-0 w-64 bg-white shadow-2xl z-50 lg:hidden transform transition-transform">
             <div className="h-full flex flex-col">
               <div className="h-16 flex items-center justify-between px-6 border-b">
                 <h1 className="text-xl font-bold text-gray-800">관리자페이지</h1>
-                <button onClick={() => setIsMobileMenuOpen(false)}>
+                <button 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-1 hover:bg-gray-100 rounded"
+                >
                   <X size={24} />
                 </button>
               </div>
 
-              <nav className="flex-1 px-4 py-6">
+              <nav className="flex-1 px-4 py-6 overflow-y-auto">
                 {menuItems.map(item => {
                   const Icon = item.icon
                   return (
@@ -112,11 +110,10 @@ export default function AdminLayout() {
               </div>
             </div>
           </aside>
-        </>
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col bg-gray-50">
         {/* Top Header */}
         <header className="h-16 bg-white shadow-sm px-4 lg:px-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -138,7 +135,7 @@ export default function AdminLayout() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 p-6 overflow-auto bg-gray-50">
           <Outlet />
         </main>
       </div>

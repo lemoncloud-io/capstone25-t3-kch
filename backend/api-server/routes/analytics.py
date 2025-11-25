@@ -1,6 +1,6 @@
 # backend/api-server/routes/analytics.py
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Request
@@ -379,29 +379,31 @@ async def get_recommendation_metrics():
     try:
         cur = conn.cursor()
 
-        today = datetime.now().date()
+        # 한국 시간대(KST, UTC+9) 기준으로 오늘 날짜 계산
+        kst = timezone(timedelta(hours=9))
+        today = datetime.now(kst).date()
         start_date = today - timedelta(days=6)
 
-        # 추천 클릭 수
+        # 추천 클릭 수 (한국 시간대 기준으로 날짜 계산)
         cur.execute(
             """
-            SELECT DATE(ts) AS d, COUNT(*) AS cnt
+            SELECT DATE(ts AT TIME ZONE 'Asia/Seoul') AS d, COUNT(*) AS cnt
             FROM blog_analytics_recommendations
             WHERE ts >= %s
-            GROUP BY DATE(ts)
+            GROUP BY DATE(ts AT TIME ZONE 'Asia/Seoul')
             """,
             (start_date,),
         )
         click_rows = cur.fetchall()
         click_map = {row["d"]: row["cnt"] for row in click_rows}
 
-        # 추천 노출 수
+        # 추천 노출 수 (한국 시간대 기준으로 날짜 계산)
         cur.execute(
             """
-            SELECT DATE(ts) AS d, COUNT(*) AS cnt
+            SELECT DATE(ts AT TIME ZONE 'Asia/Seoul') AS d, COUNT(*) AS cnt
             FROM blog_analytics_reco_impressions
             WHERE ts >= %s
-            GROUP BY DATE(ts)
+            GROUP BY DATE(ts AT TIME ZONE 'Asia/Seoul')
             """,
             (start_date,),
         )
@@ -438,19 +440,21 @@ async def get_daily_metrics(days: int = 7):
                                         postStayCount, homeStayAvgSec,
                                         homeStayCount, shareCount }, ... ] }
     """
-    end_date = datetime.utcnow().date()
+    # 한국 시간대(KST, UTC+9) 기준으로 날짜 계산
+    kst = timezone(timedelta(hours=9))
+    end_date = datetime.now(kst).date()
     start_date = end_date - timedelta(days=days - 1)
 
     with get_conn() as conn:
         cur = conn.cursor()
 
-        # 1) 게시물 클릭 수
+        # 1) 게시물 클릭 수 (한국 시간대 기준으로 날짜 계산)
         cur.execute(
             """
-            SELECT DATE(ts) AS date, COUNT(*)::int AS cnt
+            SELECT DATE(ts AT TIME ZONE 'Asia/Seoul') AS date, COUNT(*)::int AS cnt
             FROM blog_analytics_clicks
             WHERE ts >= %s AND ts < %s + interval '1 day'
-            GROUP BY DATE(ts)
+            GROUP BY DATE(ts AT TIME ZONE 'Asia/Seoul')
             """,
             (start_date, end_date),
         )
@@ -465,15 +469,15 @@ async def get_daily_metrics(days: int = 7):
                 d, c = row[0], row[1]
             click_map[str(d)] = int(c)
 
-        # 2) 게시물 체류 시간
+        # 2) 게시물 체류 시간 (한국 시간대 기준으로 날짜 계산)
         cur.execute(
             """
-            SELECT DATE(ts) AS date,
+            SELECT DATE(ts AT TIME ZONE 'Asia/Seoul') AS date,
                    AVG(duration_sec)::float AS avg_duration,
                    COUNT(*)::int AS cnt
             FROM blog_analytics_post_stay
             WHERE ts >= %s AND ts < %s + interval '1 day'
-            GROUP BY DATE(ts)
+            GROUP BY DATE(ts AT TIME ZONE 'Asia/Seoul')
             """,
             (start_date, end_date),
         )
@@ -488,15 +492,15 @@ async def get_daily_metrics(days: int = 7):
                 d, avg_d, c = row[0], row[1] or 0, row[2]
             post_stay_map[str(d)] = (float(avg_d), int(c))
 
-        # 3) 홈 체류 시간
+        # 3) 홈 체류 시간 (한국 시간대 기준으로 날짜 계산)
         cur.execute(
             """
-            SELECT DATE(ts) AS date,
+            SELECT DATE(ts AT TIME ZONE 'Asia/Seoul') AS date,
                    AVG(duration_sec)::float AS avg_duration,
                    COUNT(*)::int AS cnt
             FROM blog_analytics_home_stay
             WHERE ts >= %s AND ts < %s + interval '1 day'
-            GROUP BY DATE(ts)
+            GROUP BY DATE(ts AT TIME ZONE 'Asia/Seoul')
             """,
             (start_date, end_date),
         )
@@ -511,13 +515,13 @@ async def get_daily_metrics(days: int = 7):
                 d, avg_d, c = row[0], row[1] or 0, row[2]
             home_stay_map[str(d)] = (float(avg_d), int(c))
 
-        # 4) 공유 수
+        # 4) 공유 수 (한국 시간대 기준으로 날짜 계산)
         cur.execute(
             """
-            SELECT DATE(ts) AS date, COUNT(*)::int AS cnt
+            SELECT DATE(ts AT TIME ZONE 'Asia/Seoul') AS date, COUNT(*)::int AS cnt
             FROM blog_analytics_shares
             WHERE ts >= %s AND ts < %s + interval '1 day'
-            GROUP BY DATE(ts)
+            GROUP BY DATE(ts AT TIME ZONE 'Asia/Seoul')
             """,
             (start_date, end_date),
         )

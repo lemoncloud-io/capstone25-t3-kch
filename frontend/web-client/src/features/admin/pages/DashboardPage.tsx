@@ -1,7 +1,83 @@
 import React from 'react'
-import { FileText, Users, TrendingUp, Activity } from 'lucide-react'
+import { FileText, Users, TrendingUp, Activity, Eye, ExternalLink } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { getPosts } from '../../../shared/api/posts'
+import { getPosts, type Post } from '../../../shared/api/posts'
+import { Link } from 'react-router-dom'
+
+function RecentPostCard({ post }: { post: Post }) {
+    const categoryColors: Record<string, string> = {
+        일자리: 'bg-blue-100 text-blue-700',
+        주거: 'bg-purple-100 text-purple-700',
+        복지: 'bg-orange-100 text-orange-700',
+        교육: 'bg-emerald-100 text-emerald-700',
+    }
+
+    const categoryColor = categoryColors[post.category] || 'bg-gray-100 text-gray-700'
+
+    const formatDate = (isoDate: string) => {
+        const date = new Date(isoDate)
+        const now = new Date()
+        const diffMs = now.getTime() - date.getTime()
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+        if (diffDays === 0) return '오늘'
+        if (diffDays === 1) return '어제'
+        if (diffDays < 7) return `${diffDays}일 전`
+        if (diffDays < 30) return `${Math.floor(diffDays / 7)}주 전`
+        if (diffDays < 365) return `${Math.floor(diffDays / 30)}개월 전`
+        return `${Math.floor(diffDays / 365)}년 전`
+    }
+
+    return (
+        <Link
+            to={`/posts/${post.slug}`}
+            className="group flex flex-col gap-3 rounded-xl bg-white p-4 ring-1 ring-gray-100 transition-all duration-200 hover:shadow-md hover:ring-gray-200"
+        >
+            {/* 썸네일 */}
+            <div className="relative w-full aspect-square overflow-hidden rounded-lg bg-gray-100">
+                {post.thumbnail ? (
+                    <img
+                        src={post.thumbnail}
+                        alt={post.title}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                        onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                        }}
+                    />
+                ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
+                        이미지 없음
+                    </div>
+                )}
+            </div>
+
+            {/* 내용 */}
+            <div className="flex-1 space-y-2">
+                <div className="flex items-center gap-2">
+                    <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${categoryColor}`}>
+                        {post.category}
+                    </span>
+                    <span className="text-xs text-gray-500">{formatDate(post.createdAt)}</span>
+                </div>
+                <h3 className="line-clamp-2 text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                    {post.title}
+                </h3>
+                <p className="line-clamp-2 text-xs text-gray-500">{post.summary}</p>
+                <div className="flex items-center gap-4 text-xs text-gray-400">
+                    <span className="flex items-center gap-1">
+                        <Eye size={12} />
+                        {post.viewCount.toLocaleString()}
+                    </span>
+                    <span className="flex items-center gap-1 text-blue-600 opacity-0 transition-opacity group-hover:opacity-100">
+                        <ExternalLink size={12} />
+                        보기
+                    </span>
+                </div>
+            </div>
+        </Link>
+    )
+}
 
 export default function DashboardPage() {
     // 실제 API 데이터 가져오기
@@ -47,7 +123,9 @@ export default function DashboardPage() {
         },
     ]
 
-    const recentPosts = posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    const recentPosts = posts
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 6) // 최근 6개만 표시
 
     if (isLoading) {
         return (
@@ -82,45 +160,25 @@ export default function DashboardPage() {
                 })}
             </div>
 
-            {/* Recent Posts */}
+            {/* Recent Posts with Thumbnails */}
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200">
                     <h2 className="text-lg font-semibold text-gray-900">최근 포스트</h2>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    제목
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    상태
-                                </th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    조회수
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                <div className="p-6">
+                    {recentPosts.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <FileText className="h-12 w-12 text-gray-300 mb-4" />
+                            <p className="text-sm font-medium text-gray-500 mb-1">포스트가 없습니다</p>
+                            <p className="text-xs text-gray-400">새로운 포스트를 작성하면 여기에 표시됩니다</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {recentPosts.map(post => (
-                                <tr key={post.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm font-medium text-gray-900">{post.title}</div>
-                                        <div className="text-xs text-gray-500">{post.category}</div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                            게시됨
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                                        {post.viewCount.toLocaleString()}
-                                    </td>
-                                </tr>
+                                <RecentPostCard key={post.id} post={post} />
                             ))}
-                        </tbody>
-                    </table>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

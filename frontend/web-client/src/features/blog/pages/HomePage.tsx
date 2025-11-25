@@ -8,7 +8,7 @@ import { useMemo, useRef, useState, useEffect } from 'react'
 import { setDefaultOg } from '../../../shared/lib/seo'
 import { readOnboarding } from '@/features/onboarding/readOnboarding'
 import { env } from '@/shared/lib/env'
-import { trackHomeStay, trackPostClick } from '@/shared/api/analytics'
+import { trackHomeStay, trackPostClick, trackRecommendationImpression, trackRecommendationClick } from '@/shared/api/analytics'
 
 /* =========================
    추천 API 타입
@@ -131,7 +131,12 @@ function RecommendedPostItem({ post, pageSource }: { post: Post; pageSource: str
   return (
     <Link
       to={`/posts/${post.slug}`}
-      onClick={() => trackPostClick(post.id, post.slug, pageSource)}
+      onClick={() => {
+        // 일반 클릭 추적
+        trackPostClick(post.id, post.slug, pageSource)
+        // 추천 클릭 추적 (홈페이지에서 추천 영역 클릭이므로 sourcePostId는 undefined)
+        trackRecommendationClick(post.id, undefined)
+      }}
       className="group grid grid-cols-[1fr_auto] items-start gap-6 py-6 md:gap-8 md:py-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FEBC02] max-w-md mx-auto md:max-w-none"
       aria-label={post.title}
     >
@@ -313,6 +318,15 @@ export default function HomePage() {
     setCurrentPage(page)
     recoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+
+  // 추천 영역 노출 추적 (추천 게시글이 렌더링될 때)
+  useEffect(() => {
+    if (currentRecommendedPosts.length > 0 && !isRecoLoading && !isRecoError) {
+      // 홈페이지에서 추천 영역이 보일 때 노출 추적
+      // sourcePostId는 undefined (홈페이지이므로)
+      trackRecommendationImpression(undefined)
+    }
+  }, [currentRecommendedPosts.length, isRecoLoading, isRecoError])
 
   if (isLoading) {
     return (
