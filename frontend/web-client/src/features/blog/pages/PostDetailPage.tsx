@@ -11,10 +11,11 @@ import rehypeRaw from 'rehype-raw'
 import { getPost, type Post } from '@/shared/api/posts'
 import MainLayout from '@/features/blog/components/layout/MainLayout'
 import { toast } from 'sonner'
-import { 
-  trackPostClick, 
-  trackPostStay, 
-  trackRecommendationClick // [추가됨] 추천 클릭 추적 함수 임포트
+import {
+  trackPostClick,
+  trackPostStay,
+  trackRecommendationClick,
+  trackShare, // 공유 추적 함수 임포트
 } from '@/shared/api/analytics'
 
 /* =========================
@@ -43,10 +44,20 @@ const getRelativeTime = (iso: string) => {
   return `${diffMonths}달 전`
 }
 
-// [추가됨] 테스트용 더미 추천 데이터 (실제로는 API로 받아와야 함)
+// 테스트용 더미 추천 데이터 (실제로는 API로 받아와야 함)
 const MOCK_RECOMMENDATIONS = [
-  { id: '101', slug: 'react-query-tips', title: 'React Query 효과적으로 사용하는 방법', summary: '서버 상태 관리의 혁명, React Query의 핵심 기능을 알아봅니다.' },
-  { id: '102', slug: 'nextjs-intro', title: 'Next.js 14, 무엇이 바뀌었나?', summary: 'App Router부터 Server Actions까지 새로운 기능 총정리' },
+  {
+    id: '101',
+    slug: 'react-query-tips',
+    title: 'React Query 효과적으로 사용하는 방법',
+    summary: '서버 상태 관리의 혁명, React Query의 핵심 기능을 알아봅니다.',
+  },
+  {
+    id: '102',
+    slug: 'nextjs-intro',
+    title: 'Next.js 14, 무엇이 바뀌었나?',
+    summary: 'App Router부터 Server Actions까지 새로운 기능 총정리',
+  },
 ]
 
 export default function PostDetailPage() {
@@ -86,26 +97,18 @@ export default function PostDetailPage() {
   useEffect(() => {
     if (!post) return
 
-    const enterIso = new Date().toISOString()
-    stayEnterRef.current = enterIso
+    // 상세 페이지 진입 시각 기록
+    stayEnterRef.current = new Date().toISOString()
 
     // 상세 페이지 진입 = 클릭 기록
     trackPostClick(post.id, post.slug, 'post-detail')
 
-    const handleLeave = () => {
+    // 언마운트 시 한 번만 체류 시간 전송
+    return () => {
       if (!stayEnterRef.current) return
       const leaveIso = new Date().toISOString()
       trackPostStay(post.id, post.slug, 'post-detail', stayEnterRef.current, leaveIso)
       stayEnterRef.current = null
-    }
-
-    window.addEventListener('beforeunload', handleLeave)
-    window.addEventListener('pagehide', handleLeave)
-
-    return () => {
-      handleLeave()
-      window.removeEventListener('beforeunload', handleLeave)
-      window.removeEventListener('pagehide', handleLeave)
     }
   }, [post])
 
@@ -122,16 +125,22 @@ export default function PostDetailPage() {
     }
 
     if (navigator.share) {
+      // Web Share API 사용
       try {
         await navigator.share(shareData)
+        // native 공유 성공 시 공유 이벤트 기록
+        await trackShare(post.id, post.slug, 'post-detail', 'native')
       } catch (error) {
         console.error('Share API 오류:', error)
         toast.error('공유에 실패했습니다.')
       }
     } else {
+      // Web Share 미지원 → 링크 복사로 대체
       try {
         await navigator.clipboard.writeText(window.location.href)
         toast.success('링크가 클립보드에 복사되었습니다.')
+        // clipboard 공유로 기록
+        await trackShare(post.id, post.slug, 'post-detail', 'clipboard')
       } catch (err) {
         console.error('클립보드 복사 오류:', err)
         toast.error('링크 복사에 실패했습니다.')
@@ -140,18 +149,24 @@ export default function PostDetailPage() {
   }
 
   const handleCopyLink = async () => {
+    if (!post) {
+      toast.error('게시글을 불러오는 중이에요.')
+      return
+    }
+
     try {
       await navigator.clipboard.writeText(window.location.href)
       toast.success('링크가 클립보드에 복사되었습니다.')
+      // 별도 "링크복사" 버튼도 clipboard 공유로 기록
+      await trackShare(post.id, post.slug, 'post-detail', 'clipboard')
     } catch (err) {
       console.error('클립보드 복사 오류:', err)
       toast.error('링크 복사에 실패했습니다.')
     }
   }
 
-  // [추가] 추천 콘텐츠 클릭 핸들러
+  // 추천 콘텐츠 클릭 핸들러
   const onRecommendationClick = (targetPostId: string | number) => {
-    // 현재 보고 있는 글(post.id)에서 추천 글(targetPostId)로 이동했음을 기록
     if (post?.id) {
       trackRecommendationClick(targetPostId, post.id)
     }
@@ -185,12 +200,8 @@ export default function PostDetailPage() {
           <div className="inline-flex p-8 rounded-full bg-gray-100 mb-6">
             <Home size={48} className="text-gray-400" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">
-            포스트를 찾을 수 없습니다
-          </h2>
-          <p className="text-gray-600 mb-8">
-            요청하신 포스트가 존재하지 않거나 삭제되었습니다.
-          </p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">포스트를 찾을 수 없습니다</h2>
+          <p className="text-gray-600 mb-8">요청하신 포스트가 존재하지 않거나 삭제되었습니다.</p>
           <Link
             to="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-[#FEBC02] text-white rounded-lg font-semibold hover:bg-[#FDB913] transition-colors"
@@ -334,7 +345,7 @@ export default function PostDetailPage() {
           </div>
         </section>
 
-        {/* [추가됨] 추천 콘텐츠 (함께 읽으면 좋은 글) 섹션 */}
+        {/* 추천 콘텐츠 섹션 */}
         <section className="max-w-4xl mx-auto mt-12 mb-8">
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="text-[#FEBC02]" />
@@ -344,16 +355,14 @@ export default function PostDetailPage() {
             {MOCK_RECOMMENDATIONS.map((item) => (
               <Link
                 key={item.id}
-                to={`/posts/${item.slug}`} // 실제 라우팅 경로에 맞게 수정
+                to={`/posts/${item.slug}`}
                 onClick={() => onRecommendationClick(item.id)}
                 className="group block p-5 rounded-xl border border-gray-200 bg-white hover:border-[#FEBC02] hover:shadow-md transition-all"
               >
                 <h4 className="font-bold text-lg text-gray-900 group-hover:text-[#FEBC02] transition-colors mb-2 line-clamp-1">
                   {item.title}
                 </h4>
-                <p className="text-gray-600 text-sm line-clamp-2">
-                  {item.summary}
-                </p>
+                <p className="text-gray-600 text-sm line-clamp-2">{item.summary}</p>
               </Link>
             ))}
           </div>

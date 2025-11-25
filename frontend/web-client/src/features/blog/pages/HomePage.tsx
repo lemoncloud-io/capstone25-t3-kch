@@ -237,23 +237,15 @@ export default function HomePage() {
   const homeEnterRef = useRef<string | null>(null)
 
   useEffect(() => {
-    const nowIso = new Date().toISOString()
-    homeEnterRef.current = nowIso
+    // 페이지 진입 시각 기록
+    homeEnterRef.current = new Date().toISOString()
 
-    const handleLeave = () => {
+    // 언마운트(다른 페이지로 이동/탭 닫힘 등) 시 한 번만 전송
+    return () => {
       if (!homeEnterRef.current) return
       const leaveIso = new Date().toISOString()
       trackHomeStay(homeEnterRef.current, leaveIso)
       homeEnterRef.current = null
-    }
-
-    window.addEventListener('beforeunload', handleLeave)
-    window.addEventListener('pagehide', handleLeave)
-
-    return () => {
-      handleLeave()
-      window.removeEventListener('beforeunload', handleLeave)
-      window.removeEventListener('pagehide', handleLeave)
     }
   }, [])
 

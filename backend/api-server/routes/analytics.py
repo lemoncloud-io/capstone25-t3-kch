@@ -1,4 +1,5 @@
-# routes/analytics.py
+# backend/api-server/routes/analytics.py
+
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -53,16 +54,40 @@ CREATE TABLE IF NOT EXISTS blog_analytics_home_stay (
   client_ip TEXT
 );
 """
+
+# 포스트 공유 이벤트
 DDL_SHARE = """
 CREATE TABLE IF NOT EXISTS blog_analytics_shares (
   id SERIAL PRIMARY KEY,
   plcy_no TEXT,
   slug TEXT,
-  page TEXT,
   share_type TEXT,
   ts TIMESTAMPTZ DEFAULT NOW(),
   user_agent TEXT,
   referrer TEXT,
+  client_ip TEXT
+);
+"""
+
+# 추천 클릭 이벤트
+DDL_RECO_CLICK = """
+CREATE TABLE IF NOT EXISTS blog_analytics_recommendations (
+  id SERIAL PRIMARY KEY,
+  source_post_id TEXT,
+  target_post_id TEXT,
+  ts TIMESTAMPTZ DEFAULT NOW(),
+  user_agent TEXT,
+  client_ip TEXT
+);
+"""
+
+# 추천 영역 노출(임프레션) 이벤트
+DDL_RECO_IMPRESSION = """
+CREATE TABLE IF NOT EXISTS blog_analytics_reco_impressions (
+  id SERIAL PRIMARY KEY,
+  source_post_id TEXT,
+  ts TIMESTAMPTZ DEFAULT NOW(),
+  user_agent TEXT,
   client_ip TEXT
 );
 """
@@ -77,6 +102,8 @@ def init_analytics_tables() -> None:
     cur.execute(DDL_POST_STAY)
     cur.execute(DDL_HOME_STAY)
     cur.execute(DDL_SHARE)
+    cur.execute(DDL_RECO_CLICK)
+    cur.execute(DDL_RECO_IMPRESSION)
     conn.commit()
     cur.close()
   finally:
@@ -110,20 +137,22 @@ class HomeStayEvent(BaseModel):
   durationSec: int
   ts: Optional[datetime] = None
 
+
 class ShareEvent(BaseModel):
   postId: Optional[str] = Field(default=None)
   slug: str
-  page: Optional[str] = None
-  shareType: Optional[str] = None  # 예: 'native', 'clipboard'
+  shareType: Optional[str] = None  # 'native' | 'clipboard' 등
   ts: Optional[datetime] = None
 
 
 class RecommendationClickEvent(BaseModel):
-  # 추천을 노출한 원본 글 ID (없으면 None)
   sourcePostId: Optional[str] = Field(default=None)
-  # 실제로 클릭된 추천 글 ID
-  targetPostId: Optional[str] = Field(default=None)
-  # 프론트에서 타임스탬프 보내면 사용, 없으면 DB에서 NOW()
+  targetPostId: str
+  ts: Optional[datetime] = None
+
+
+class RecommendationImpressionEvent(BaseModel):
+  sourcePostId: Optional[str] = Field(default=None)
   ts: Optional[datetime] = None
 
 
@@ -135,7 +164,7 @@ def _common_meta(request: Request) -> tuple[Optional[str], Optional[str], Option
 
 
 # =========================
-# 엔드포인트들
+# 엔드포인트들 (수집)
 # =========================
 
 @router.post("/click")
@@ -247,14 +276,13 @@ async def track_share(event: ShareEvent, request: Request):
     cur.execute(
       """
       INSERT INTO blog_analytics_shares
-        (plcy_no, slug, page, share_type, ts, user_agent, referrer, client_ip)
+        (plcy_no, slug, share_type, ts, user_agent, referrer, client_ip)
       VALUES
-        (%s, %s, %s, %s, COALESCE(%s, NOW()), %s, %s, %s)
+        (%s, %s, %s, COALESCE(%s, NOW()), %s, %s, %s)
       """,
       (
         event.postId,
         event.slug,
-        event.page,
         event.shareType,
         event.ts,
         ua,
@@ -270,7 +298,6 @@ async def track_share(event: ShareEvent, request: Request):
   return {"ok": True}
 
 
-# 추천 콘텐츠 클릭 기록 엔드포인트
 @router.post("/recommendation/click")
 async def track_recommendation_click(event: RecommendationClickEvent, request: Request):
   """추천 게시글 클릭 이벤트 기록"""
@@ -302,103 +329,228 @@ async def track_recommendation_click(event: RecommendationClickEvent, request: R
   return {"ok": True}
 
 
-# [추가] 대시보드용 일일 성과 지표 조회 엔드포인트
-@router.get("/daily-metrics")
-async def get_daily_metrics():
-  """
-  최근 7일간 일일 성과 지표 집계:
-  - postClicks: 게시물 상세 진입(클릭) 수
-  - postStayAvgSec: 게시물 체류 시간(초) 평균
-  - postStayCount: 게시물 체류 샘플 수
-  - homeStayAvgSec: 홈 체류 시간(초) 평균
-  - homeStayCount: 홈 체류 샘플 수
-  """
-  end_date = datetime.now().date()
-  start_date = end_date - timedelta(days=6)
+@router.post("/recommendation/impression")
+async def track_recommendation_impression(
+  event: RecommendationImpressionEvent,
+  request: Request,
+):
+  """추천 영역 노출(임프레션) 기록"""
+  ua, ref, ip = _common_meta(request)
 
-  # 기본 결과(에러 나도 이 형식으로 리턴)
-  empty_result = []
-  for i in range(7):
-    d = start_date + timedelta(days=i)
-    empty_result.append({
-      "date": d.strftime("%Y-%m-%d"),
-      "postClicks": 0,
-      "postStayAvgSec": 0.0,
-      "postStayCount": 0,
-      "homeStayAvgSec": 0.0,
-      "homeStayCount": 0,
-    })
-
-  conn = None
+  conn = get_conn()
   try:
-    conn = get_conn()
     cur = conn.cursor()
-
-    # 1) 게시물 클릭 수
-    cur.execute("""
-        SELECT DATE(ts) AS d, COUNT(*) AS cnt
-        FROM blog_analytics_clicks
-        WHERE ts >= %s
-        GROUP BY DATE(ts)
-    """, (start_date,))
-    click_rows = cur.fetchall()
-    clicks_map = {row[0]: row[1] for row in click_rows}
-
-    # 2) 게시물 체류 시간
-    cur.execute("""
-        SELECT DATE(ts) AS d,
-               AVG(duration_sec) AS avg_stay,
-               COUNT(*) AS cnt
-        FROM blog_analytics_post_stay
-        WHERE ts >= %s
-        GROUP BY DATE(ts)
-    """, (start_date,))
-    post_rows = cur.fetchall()
-    post_avg_map = {row[0]: float(row[1]) for row in post_rows}
-    post_cnt_map = {row[0]: row[2] for row in post_rows}
-
-    # 3) 홈 체류 시간
-    cur.execute("""
-        SELECT DATE(ts) AS d,
-               AVG(duration_sec) AS avg_stay,
-               COUNT(*) AS cnt
-        FROM blog_analytics_home_stay
-        WHERE ts >= %s
-        GROUP BY DATE(ts)
-    """, (start_date,))
-    home_rows = cur.fetchall()
-    home_avg_map = {row[0]: float(row[1]) for row in home_rows}
-    home_cnt_map = {row[0]: row[2] for row in home_rows}
-
+    cur.execute(
+      """
+      INSERT INTO blog_analytics_reco_impressions
+        (source_post_id, ts, user_agent, client_ip)
+      VALUES
+        (%s, COALESCE(%s, NOW()), %s, %s)
+      """,
+      (
+        event.sourcePostId,
+        event.ts,
+        ua,
+        ip,
+      ),
+    )
+    conn.commit()
     cur.close()
-  except Exception as e:
-    # 여기에서 실제 에러 원인을 백엔드 터미널에서 확인할 수 있음
-    print("[/analytics/daily-metrics] ERROR:", e)
-    # 에러가 나도 200 + 기본값 구조로 응답
-    return {"status": "error", "data": empty_result}
   finally:
-    if conn is not None:
-      conn.close()
+    conn.close()
 
-  # DB 쿼리가 성공했으면, empty_result를 실제 값으로 덮어쓰기
-  result = []
-  for i in range(7):
-    current_date = start_date + timedelta(days=i)
-    date_str = current_date.strftime("%Y-%m-%d")
+  return {"ok": True}
 
-    post_clicks = clicks_map.get(current_date, 0)
-    post_stay_avg = round(post_avg_map.get(current_date, 0.0), 2)
-    home_stay_avg = round(home_avg_map.get(current_date, 0.0), 2)
-    post_stay_cnt = post_cnt_map.get(current_date, 0)
-    home_stay_cnt = home_cnt_map.get(current_date, 0)
 
-    result.append({
-      "date": date_str,
-      "postClicks": post_clicks,
-      "postStayAvgSec": post_stay_avg,
-      "postStayCount": post_stay_cnt,
-      "homeStayAvgSec": home_stay_avg,
-      "homeStayCount": home_stay_cnt,
-    })
+# =========================
+# 대시보드용 집계 API들
+# =========================
 
-  return {"status": "success", "data": result}
+@router.get("/recommendation-metrics")
+async def get_recommendation_metrics():
+    """
+    최근 7일간 추천 콘텐츠 지표 집계
+    - date: 날짜 (YYYY-MM-DD)
+    - clicks: 추천 클릭 수
+    - impressions: 추천 영역 노출 수
+    - ctr: 클릭률(%) = clicks / impressions * 100
+    """
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+
+        today = datetime.now().date()
+        start_date = today - timedelta(days=6)
+
+        # 추천 클릭 수
+        cur.execute(
+            """
+            SELECT DATE(ts) AS d, COUNT(*) AS cnt
+            FROM blog_analytics_recommendations
+            WHERE ts >= %s
+            GROUP BY DATE(ts)
+            """,
+            (start_date,),
+        )
+        click_rows = cur.fetchall()
+        click_map = {row["d"]: row["cnt"] for row in click_rows}
+
+        # 추천 노출 수
+        cur.execute(
+            """
+            SELECT DATE(ts) AS d, COUNT(*) AS cnt
+            FROM blog_analytics_reco_impressions
+            WHERE ts >= %s
+            GROUP BY DATE(ts)
+            """,
+            (start_date,),
+        )
+        imp_rows = cur.fetchall()
+        imp_map = {row["d"]: row["cnt"] for row in imp_rows}
+
+        cur.close()
+    finally:
+        conn.close()
+
+    result = []
+    for i in range(7):
+        d = start_date + timedelta(days=i)
+        clicks = click_map.get(d, 0)
+        imps = imp_map.get(d, 0)
+        ctr = round((clicks / imps * 100), 2) if imps > 0 else 0.0
+
+        result.append(
+            {
+                "date": d.strftime("%Y-%m-%d"),
+                "clicks": clicks,
+                "impressions": imps,
+                "ctr": ctr,
+            }
+        )
+
+    return {"status": "success", "data": result}
+
+@router.get("/daily-metrics")
+async def get_daily_metrics(days: int = 7):
+    """
+    최근 N일(기본 7일) 동안의 일일 성과 지표를 반환
+    응답 형식: { status: "success", data: [ { date, postClicks, postStayAvgSec,
+                                        postStayCount, homeStayAvgSec,
+                                        homeStayCount, shareCount }, ... ] }
+    """
+    end_date = datetime.utcnow().date()
+    start_date = end_date - timedelta(days=days - 1)
+
+    with get_conn() as conn:
+        cur = conn.cursor()
+
+        # 1) 게시물 클릭 수
+        cur.execute(
+            """
+            SELECT DATE(ts) AS date, COUNT(*)::int AS cnt
+            FROM blog_analytics_clicks
+            WHERE ts >= %s AND ts < %s + interval '1 day'
+            GROUP BY DATE(ts)
+            """,
+            (start_date, end_date),
+        )
+        click_rows = cur.fetchall()
+        # RealDictCursor일 수도 있으므로 key / index 둘 다 처리
+        click_map = {}
+        for row in click_rows:
+            if isinstance(row, dict):
+                d = row["date"]
+                c = row["cnt"]
+            else:
+                d, c = row[0], row[1]
+            click_map[str(d)] = int(c)
+
+        # 2) 게시물 체류 시간
+        cur.execute(
+            """
+            SELECT DATE(ts) AS date,
+                   AVG(duration_sec)::float AS avg_duration,
+                   COUNT(*)::int AS cnt
+            FROM blog_analytics_post_stay
+            WHERE ts >= %s AND ts < %s + interval '1 day'
+            GROUP BY DATE(ts)
+            """,
+            (start_date, end_date),
+        )
+        stay_rows = cur.fetchall()
+        post_stay_map = {}
+        for row in stay_rows:
+            if isinstance(row, dict):
+                d = row["date"]
+                avg_d = row["avg_duration"] or 0
+                c = row["cnt"]
+            else:
+                d, avg_d, c = row[0], row[1] or 0, row[2]
+            post_stay_map[str(d)] = (float(avg_d), int(c))
+
+        # 3) 홈 체류 시간
+        cur.execute(
+            """
+            SELECT DATE(ts) AS date,
+                   AVG(duration_sec)::float AS avg_duration,
+                   COUNT(*)::int AS cnt
+            FROM blog_analytics_home_stay
+            WHERE ts >= %s AND ts < %s + interval '1 day'
+            GROUP BY DATE(ts)
+            """,
+            (start_date, end_date),
+        )
+        home_rows = cur.fetchall()
+        home_stay_map = {}
+        for row in home_rows:
+            if isinstance(row, dict):
+                d = row["date"]
+                avg_d = row["avg_duration"] or 0
+                c = row["cnt"]
+            else:
+                d, avg_d, c = row[0], row[1] or 0, row[2]
+            home_stay_map[str(d)] = (float(avg_d), int(c))
+
+        # 4) 공유 수
+        cur.execute(
+            """
+            SELECT DATE(ts) AS date, COUNT(*)::int AS cnt
+            FROM blog_analytics_shares
+            WHERE ts >= %s AND ts < %s + interval '1 day'
+            GROUP BY DATE(ts)
+            """,
+            (start_date, end_date),
+        )
+        share_rows = cur.fetchall()
+        share_map = {}
+        for row in share_rows:
+            if isinstance(row, dict):
+                d = row["date"]
+                c = row["cnt"]
+            else:
+                d, c = row[0], row[1]
+            share_map[str(d)] = int(c)
+
+    # 날짜 배열 만들기 (누락된 날짜는 0으로 채움)
+    dates = [start_date + timedelta(days=i) for i in range(days)]
+    data = []
+    for d in dates:
+        key = str(d)
+        post_clicks = click_map.get(key, 0)
+        post_avg, post_cnt = post_stay_map.get(key, (0.0, 0))
+        home_avg, home_cnt = home_stay_map.get(key, (0.0, 0))
+        share_cnt = share_map.get(key, 0)
+
+        data.append(
+            {
+                "date": key,
+                "postClicks": post_clicks,
+                "postStayAvgSec": post_avg,
+                "postStayCount": post_cnt,
+                "homeStayAvgSec": home_avg,
+                "homeStayCount": home_cnt,
+                "shareCount": share_cnt,
+            }
+        )
+
+    return {"status": "success", "data": data}
