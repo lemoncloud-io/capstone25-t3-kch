@@ -3,61 +3,19 @@ import { env } from '@/shared/lib/env'
 
 const BASE = env.API_BASE_URL // 예: http://127.0.0.1:8000/api
 
+// 공통 POST 헬퍼
 async function postAnalytics(path: string, body: unknown) {
   try {
-    const res = await fetch(`${BASE}/analytics/${path}`, {
+    await fetch(`${BASE}/analytics/${path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
     })
-    if (!res.ok) {
-      console.error(`[analytics] HTTP ${res.status}:`, await res.text())
-    } else {
-      console.log(`[analytics] 성공: ${path}`, body)
-    }
   } catch (e) {
-    // 분석용이라 에러는 콘솔만 찍고 무시
+    // 분석용이므로 에러는 콘솔만 찍고 무시
     console.error('[analytics] failed:', e)
-  }
-}
-
-/**
- * 세션 스토리지에서 조회한 포스트 목록 관리
- * 같은 탭에서 새로고침 시 중복 카운트 방지
- */
-const SESSION_STORAGE_KEY = 'viewed_posts'
-
-function getViewedPosts(): Set<string> {
-  try {
-    const stored = sessionStorage.getItem(SESSION_STORAGE_KEY)
-    if (!stored) return new Set()
-    const ids = JSON.parse(stored) as string[]
-    return new Set(ids)
-  } catch {
-    return new Set()
-  }
-}
-
-function addViewedPost(postId: string | undefined, slug: string): boolean {
-  // postId 또는 slug를 키로 사용
-  const key = postId || slug
-  if (!key) return false
-
-  const viewed = getViewedPosts()
-  if (viewed.has(key)) {
-    // 이미 조회한 포스트
-    return false
-  }
-
-  // 새 포스트면 추가
-  viewed.add(key)
-  try {
-    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(Array.from(viewed)))
-    return true
-  } catch {
-    return false
   }
 }
 
@@ -68,28 +26,14 @@ function addViewedPost(postId: string | undefined, slug: string): boolean {
  *   - 인기/최신/추천 카드 클릭 시 호출
  * PostDetailPage:
  *   - 상세 페이지 진입 시 한 번 더 호출
- *
- * 중복 방지:
- *   - 같은 탭에서 새로고침 시 카운트 안 함 (세션 스토리지 사용)
- *   - 탭 닫으면 리셋 (세션 스토리지 특성)
- *   - 새 탭으로 열면 카운트 (세션 스토리지 비어있음)
  */
 export async function trackPostClick(
   postId: number | string | undefined,
   slug: string,
   page?: string,
 ): Promise<void> {
-  const postIdStr = postId != null ? String(postId) : undefined
-  
-  // 세션 스토리지 확인: 이미 조회한 포스트면 카운트 안 함
-  const isNewView = addViewedPost(postIdStr, slug)
-  if (!isNewView) {
-    console.log('[analytics] 중복 조회 방지:', { postId: postIdStr, slug })
-    return
-  }
-
   const payload = {
-    postId: postIdStr,
+    postId: postId != null ? String(postId) : undefined,
     slug,
     page,
     ts: new Date().toISOString(),
@@ -101,7 +45,7 @@ export async function trackPostClick(
 /**
  * 포스트 상세 페이지 체류 시간 기록
  *
- * 호출 형식:
+ * 호출 예:
  *   trackPostStay(post.id, post.slug, 'post-detail', enterIso, leaveIso)
  */
 export async function trackPostStay(
@@ -130,7 +74,7 @@ export async function trackPostStay(
 /**
  * 홈(메인) 페이지 체류 시간 기록
  *
- * 호출 형식:
+ * 호출 예:
  *   trackHomeStay(enterIso, leaveIso)
  */
 export async function trackHomeStay(
@@ -153,26 +97,85 @@ export async function trackHomeStay(
 /**
  * 포스트 공유 이벤트 기록
  *
- * 호출 형식:
- *   trackShare(post.id, post.slug, 'native' | 'clipboard', 'post-detail')
- *
- * shareType:
- *   - "native": Web Share API 사용 (navigator.share)
- *   - "clipboard": 링크 복사 (클립보드)
+ * 예: trackShare(post.id, post.slug, 'post-detail', 'native')
  */
 export async function trackShare(
   postId: number | string | undefined,
   slug: string,
-  shareType: 'native' | 'clipboard',
-  page?: string,
+  page: string,
+  shareType: 'native' | 'clipboard' | string,
 ): Promise<void> {
   const payload = {
     postId: postId != null ? String(postId) : undefined,
     slug,
-    shareType,
     page,
+    shareType,
     ts: new Date().toISOString(),
   }
 
   await postAnalytics('share', payload)
+}
+
+
+// =========================================================
+// 추천 콘텐츠 클릭 및 대시보드 데이터 조회
+// =========================================================
+
+/**
+ * 추천 콘텐츠 클릭 기록
+ * (PostDetailPage 등의 하단 추천 리스트에서 클릭 시 호출)
+ */
+export async function trackRecommendationClick(
+  targetPostId: number | string, // 클릭한 추천 게시글 ID
+  sourcePostId?: number | string, // 현재 보고 있던 게시글 ID (옵션)
+): Promise<void> {
+  const payload = {
+    sourcePostId: sourcePostId != null ? String(sourcePostId) : undefined,
+    targetPostId: String(targetPostId),
+    ts: new Date().toISOString(),
+  }
+
+  // backend url: /analytics/recommendation/click
+  await postAnalytics('recommendation/click', payload)
+}
+
+/**
+ * 대시보드용 일일 성과 지표 타입
+ *  - /analytics/daily-metrics 응답 구조와 일치
+ */
+export interface DailyMetric {
+  date: string
+  postClicks: number
+  postStayAvgSec: number
+  postStayCount: number
+  homeStayAvgSec: number
+  homeStayCount: number
+  shareCount: number
+}
+
+/**
+ * 관리자 대시보드용 일일 성과 지표 조회
+ * GET /analytics/daily-metrics
+ *
+ * 백엔드 응답: { status: "success", data: DailyMetric[] }
+ */
+export async function fetchDailyMetrics(): Promise<DailyMetric[]> {
+  try {
+    const res = await fetch(`${BASE}/analytics/daily-metrics`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!res.ok) {
+      throw new Error(`Status: ${res.status}`)
+    }
+
+    const json = await res.json()
+    return (json.data ?? []) as DailyMetric[]
+  } catch (e) {
+    console.error('[analytics] fetch daily metrics failed:', e)
+    return []
+  }
 }

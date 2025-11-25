@@ -1,17 +1,21 @@
 // src/pages/PostDetailPage.tsx
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Calendar, Eye, ArrowLeft, Home, Share2, Link as LinkIcon } from 'lucide-react'
+import { Calendar, Eye, ArrowLeft, Home, Share2, Link as LinkIcon, Sparkles } from 'lucide-react'
 import { useEffect, useMemo, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { setOgTags } from '../../../shared/lib/seo'
+import { setOgTags } from '@/shared/lib/seo'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
-import { getPost, type Post } from '../../../shared/api/posts'
+import { getPost, type Post } from '@/shared/api/posts'
 import MainLayout from '@/features/blog/components/layout/MainLayout'
 import { toast } from 'sonner'
-import { trackPostClick, trackPostStay, trackShare } from '@/shared/api/analytics'
+import { 
+  trackPostClick, 
+  trackPostStay, 
+  trackRecommendationClick // [추가됨] 추천 클릭 추적 함수 임포트
+} from '@/shared/api/analytics'
 
 /* =========================
    유틸
@@ -38,6 +42,12 @@ const getRelativeTime = (iso: string) => {
   if (diffYears >= 1) return `${diffYears}년 전`
   return `${diffMonths}달 전`
 }
+
+// [추가됨] 테스트용 더미 추천 데이터 (실제로는 API로 받아와야 함)
+const MOCK_RECOMMENDATIONS = [
+  { id: '101', slug: 'react-query-tips', title: 'React Query 효과적으로 사용하는 방법', summary: '서버 상태 관리의 혁명, React Query의 핵심 기능을 알아봅니다.' },
+  { id: '102', slug: 'nextjs-intro', title: 'Next.js 14, 무엇이 바뀌었나?', summary: 'App Router부터 Server Actions까지 새로운 기능 총정리' },
+]
 
 export default function PostDetailPage() {
   const { slug } = useParams<{ slug: string }>()
@@ -80,7 +90,6 @@ export default function PostDetailPage() {
     stayEnterRef.current = enterIso
 
     // 상세 페이지 진입 = 클릭 기록
-    console.log('[PostDetail] 조회수 추적 시작:', { id: post.id, slug: post.slug })
     trackPostClick(post.id, post.slug, 'post-detail')
 
     const handleLeave = () => {
@@ -115,21 +124,14 @@ export default function PostDetailPage() {
     if (navigator.share) {
       try {
         await navigator.share(shareData)
-        // 공유 성공 시 추적
-        await trackShare(post.id, post.slug, 'native', 'post-detail')
       } catch (error) {
-        // 사용자가 공유를 취소한 경우는 에러로 처리하지 않음
-        if ((error as Error).name !== 'AbortError') {
-          console.error('Share API 오류:', error)
-          toast.error('공유에 실패했습니다.')
-        }
+        console.error('Share API 오류:', error)
+        toast.error('공유에 실패했습니다.')
       }
     } else {
       try {
         await navigator.clipboard.writeText(window.location.href)
         toast.success('링크가 클립보드에 복사되었습니다.')
-        // 링크 복사 성공 시 추적
-        await trackShare(post.id, post.slug, 'clipboard', 'post-detail')
       } catch (err) {
         console.error('클립보드 복사 오류:', err)
         toast.error('링크 복사에 실패했습니다.')
@@ -138,16 +140,20 @@ export default function PostDetailPage() {
   }
 
   const handleCopyLink = async () => {
-    if (!post) return
-    
     try {
       await navigator.clipboard.writeText(window.location.href)
       toast.success('링크가 클립보드에 복사되었습니다.')
-      // 링크 복사 성공 시 추적
-      await trackShare(post.id, post.slug, 'clipboard', 'post-detail')
     } catch (err) {
       console.error('클립보드 복사 오류:', err)
       toast.error('링크 복사에 실패했습니다.')
+    }
+  }
+
+  // [추가] 추천 콘텐츠 클릭 핸들러
+  const onRecommendationClick = (targetPostId: string | number) => {
+    // 현재 보고 있는 글(post.id)에서 추천 글(targetPostId)로 이동했음을 기록
+    if (post?.id) {
+      trackRecommendationClick(targetPostId, post.id)
     }
   }
 
@@ -325,6 +331,31 @@ export default function PostDetailPage() {
             >
               {post.content}
             </ReactMarkdown>
+          </div>
+        </section>
+
+        {/* [추가됨] 추천 콘텐츠 (함께 읽으면 좋은 글) 섹션 */}
+        <section className="max-w-4xl mx-auto mt-12 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="text-[#FEBC02]" />
+            <h3 className="text-xl font-bold text-gray-900">함께 읽으면 좋은 글</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {MOCK_RECOMMENDATIONS.map((item) => (
+              <Link
+                key={item.id}
+                to={`/posts/${item.slug}`} // 실제 라우팅 경로에 맞게 수정
+                onClick={() => onRecommendationClick(item.id)}
+                className="group block p-5 rounded-xl border border-gray-200 bg-white hover:border-[#FEBC02] hover:shadow-md transition-all"
+              >
+                <h4 className="font-bold text-lg text-gray-900 group-hover:text-[#FEBC02] transition-colors mb-2 line-clamp-1">
+                  {item.title}
+                </h4>
+                <p className="text-gray-600 text-sm line-clamp-2">
+                  {item.summary}
+                </p>
+              </Link>
+            ))}
           </div>
         </section>
 

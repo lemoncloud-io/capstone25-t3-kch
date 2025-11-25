@@ -94,6 +94,7 @@ from routes.blogs_crud import router as blogs_crud_router
 app.include_router(blogs_crud_router, prefix="/api")
 
 
+
 # OpenAI Ping API
 @app.get("/openai/ping")
 async def openai_ping():
