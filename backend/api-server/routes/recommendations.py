@@ -238,14 +238,22 @@ def recommend(req: RecommendReq, db: Session = Depends(get_db)):
             # ---------------------------
             # 1) 지역 필터: 서울/전국 등만 추천 후보로 사용
             # ---------------------------
-            norm_user = user_region
+            norm_user = normalize_region(user_region)
             norm_item = normalize_region(region)
 
             is_region_match = False
             if is_nationwide(region):
                 is_region_match = True
-            elif norm_user and norm_item and norm_item.startswith(norm_user[:2]):
-                is_region_match = True
+            elif norm_user and norm_item:
+                # 정확한 지역 매칭: 완전 일치 또는 사용자 지역이 정책 지역의 시작 부분과 일치
+                # 예: "경기도"와 "경기도 수원시" -> 매칭
+                # 예: "경기도"와 "경상북도" -> 매칭 안됨
+                if norm_item == norm_user:
+                    is_region_match = True
+                elif norm_item.startswith(norm_user) and len(norm_user) >= 2:
+                    # 사용자 지역이 정책 지역의 시작 부분과 일치하는 경우
+                    # 단, 최소 2글자 이상이어야 함 (예: "경"만으로는 매칭 안됨)
+                    is_region_match = True
 
             # 지역이 안 맞으면 아예 추천 후보에서 제외
             if not is_region_match:

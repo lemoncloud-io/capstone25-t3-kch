@@ -235,12 +235,6 @@ export default function AdminDashboardPage() {
     return num / den
   }, [daily])
 
-  const avgCtr7d = useMemo(() => {
-    if (!reco.length) return 0
-    const sum = reco.reduce((s, r) => s + (r.ctr ?? 0), 0)
-    return sum / reco.length
-  }, [reco])
-
   // 추천 CTR 관련 총합 (데이터 적을 때 참고용)
   const totalRecoClicks7d = useMemo(
     () => reco.reduce((sum, r) => sum + (r.clicks ?? 0), 0),
@@ -250,6 +244,12 @@ export default function AdminDashboardPage() {
     () => reco.reduce((sum, r) => sum + (r.impressions ?? 0), 0),
     [reco],
   )
+
+  // 전체 CTR 계산: 총 클릭 / 총 노출 * 100
+  const avgCtr7d = useMemo(() => {
+    if (totalRecoImpressions7d === 0) return 0
+    return (totalRecoClicks7d / totalRecoImpressions7d) * 100
+  }, [totalRecoClicks7d, totalRecoImpressions7d])
 
   /* ---- 차트용 데이터 ---- */
   const clickShareChartData = useMemo(

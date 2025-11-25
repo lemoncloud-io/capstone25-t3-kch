@@ -86,8 +86,15 @@ from routes import recommendations
 app.include_router(recommendations.router)
 
 # 애널리틱스 라우터 연결
-from routes.analytics import router as analytics_router
+from routes.analytics import router as analytics_router, init_analytics_tables
 app.include_router(analytics_router, prefix="/api")
+
+# 서버 시작 시 애널리틱스 테이블 초기화
+try:
+    init_analytics_tables()
+    logger.info("애널리틱스 테이블 초기화 완료")
+except Exception as e:
+    logger.error(f"애널리틱스 테이블 초기화 실패: {e}", exc_info=True)
 
 # 블로그 CRUD 라우터 연결 (관리자용)
 from routes.blogs_crud import router as blogs_crud_router

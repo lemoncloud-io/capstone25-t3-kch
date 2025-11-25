@@ -110,8 +110,8 @@ def init_analytics_tables() -> None:
     conn.close()
 
 
-# 모듈 import 시점에 한 번 실행
-init_analytics_tables()
+# 모듈 import 시점에는 실행하지 않음
+# main.py에서 서버 시작 시점에 명시적으로 호출해야 함
 
 # =========================
 # 요청 바디 스키마
@@ -395,7 +395,8 @@ async def get_recommendation_metrics():
             (start_date,),
         )
         click_rows = cur.fetchall()
-        click_map = {row["d"]: row["cnt"] for row in click_rows}
+        # date 객체를 문자열로 변환하여 키로 사용
+        click_map = {str(row["d"]): row["cnt"] for row in click_rows}
 
         # 추천 노출 수 (한국 시간대 기준으로 날짜 계산)
         cur.execute(
@@ -408,7 +409,8 @@ async def get_recommendation_metrics():
             (start_date,),
         )
         imp_rows = cur.fetchall()
-        imp_map = {row["d"]: row["cnt"] for row in imp_rows}
+        # date 객체를 문자열로 변환하여 키로 사용
+        imp_map = {str(row["d"]): row["cnt"] for row in imp_rows}
 
         cur.close()
     finally:

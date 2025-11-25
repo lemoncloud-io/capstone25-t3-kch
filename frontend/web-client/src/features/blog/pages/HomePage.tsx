@@ -319,12 +319,19 @@ export default function HomePage() {
     recoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  // 추천 영역 노출 추적 (추천 게시글이 렌더링될 때)
+  // 추천 영역 노출 추적 (추천 게시글이 렌더링될 때, 한 번만 호출)
+  const hasTrackedImpression = useRef(false)
   useEffect(() => {
-    if (currentRecommendedPosts.length > 0 && !isRecoLoading && !isRecoError) {
-      // 홈페이지에서 추천 영역이 보일 때 노출 추적
+    if (
+      currentRecommendedPosts.length > 0 &&
+      !isRecoLoading &&
+      !isRecoError &&
+      !hasTrackedImpression.current
+    ) {
+      // 홈페이지에서 추천 영역이 보일 때 노출 추적 (한 번만)
       // sourcePostId는 undefined (홈페이지이므로)
       trackRecommendationImpression(undefined)
+      hasTrackedImpression.current = true
     }
   }, [currentRecommendedPosts.length, isRecoLoading, isRecoError])
 

@@ -8,15 +8,18 @@ import { setOgTags } from '@/shared/lib/seo'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
-import { getPost, type Post } from '@/shared/api/posts'
+import { getPost, getPosts, type Post } from '@/shared/api/posts'
 import MainLayout from '@/features/blog/components/layout/MainLayout'
 import { toast } from 'sonner'
 import {
   trackPostClick,
   trackPostStay,
   trackRecommendationClick,
+  trackRecommendationImpression,
   trackShare, // 공유 추적 함수 임포트
 } from '@/shared/api/analytics'
+import { readOnboarding } from '@/features/onboarding/readOnboarding'
+import { env } from '@/shared/lib/env'
 
 /* =========================
    유틸
@@ -44,21 +47,42 @@ const getRelativeTime = (iso: string) => {
   return `${diffMonths}달 전`
 }
 
-// 테스트용 더미 추천 데이터 (실제로는 API로 받아와야 함)
-const MOCK_RECOMMENDATIONS = [
-  {
-    id: '101',
-    slug: 'react-query-tips',
-    title: 'React Query 효과적으로 사용하는 방법',
-    summary: '서버 상태 관리의 혁명, React Query의 핵심 기능을 알아봅니다.',
-  },
-  {
-    id: '102',
-    slug: 'nextjs-intro',
-    title: 'Next.js 14, 무엇이 바뀌었나?',
-    summary: 'App Router부터 Server Actions까지 새로운 기능 총정리',
-  },
-]
+/* =========================
+   추천 API 타입
+   ========================= */
+type OnboardingProfile = {
+  userStatus: 'student' | 'jobseeker'
+  userAge: '19-24' | '25-29' | '30-34' | '35+'
+  userRegion: string
+  userInterests: string[]
+}
+
+type RecommendItem = {
+  id: number
+  plcy_no: string
+  title: string
+  summary?: string
+  category?: string
+  region?: string
+  score: number
+}
+
+type RecommendResp = {
+  algo: string
+  items: RecommendItem[]
+}
+
+async function fetchRecommendations(profile: OnboardingProfile): Promise<RecommendResp> {
+  const res = await fetch(`${env.API_BASE_URL}/recommendations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(profile),
+  })
+  if (!res.ok) {
+    throw new Error(`추천 API 실패: ${res.status}`)
+  }
+  return res.json()
+}
 
 export default function PostDetailPage() {
   const { slug } = useParams<{ slug: string }>()
@@ -164,6 +188,55 @@ export default function PostDetailPage() {
       toast.error('링크 복사에 실패했습니다.')
     }
   }
+
+  // 온보딩 프로필 및 추천 데이터
+  const profile = readOnboarding() as OnboardingProfile | null
+
+  // 전체 포스트 목록 (추천 결과와 join하기 위해)
+  const { data: allPosts = [] } = useQuery<Post[], Error>({
+    queryKey: ['posts', 'all', 'recommendations'],
+    queryFn: () => getPosts(),
+  })
+
+  // 추천 API 호출
+  const {
+    data: recoData,
+    isLoading: isRecoLoading,
+    isError: isRecoError,
+  } = useQuery<RecommendResp, Error>({
+    queryKey: ['recommendations', 'detail', profile, post?.id],
+    queryFn: () => fetchRecommendations(profile as OnboardingProfile),
+    enabled: !!profile && !!post && env.USE_SERVER,
+    staleTime: 1000 * 60 * 5,
+  })
+
+  // plcy_no -> Post 맵
+  const postMapByPlcyNo = useMemo(
+    () => new Map(allPosts.map((p) => [String(p.id), p])),
+    [allPosts],
+  )
+
+  // 추천 결과와 블로그 join (현재 post 제외)
+  const recommendedPosts: Post[] = useMemo(() => {
+    const items = recoData?.items ?? []
+    const result: Post[] = []
+    for (const it of items) {
+      const p = postMapByPlcyNo.get(String(it.plcy_no))
+      // 현재 보고 있는 post는 제외
+      if (p && p.id !== post?.id) {
+        result.push(p)
+      }
+    }
+    // 최대 4개만 표시
+    return result.slice(0, 4)
+  }, [recoData?.items, postMapByPlcyNo, post?.id])
+
+  // 추천 영역 노출 추적
+  useEffect(() => {
+    if (recommendedPosts.length > 0 && !isRecoLoading && !isRecoError && post?.id) {
+      trackRecommendationImpression(post.id)
+    }
+  }, [recommendedPosts.length, isRecoLoading, isRecoError, post?.id])
 
   // 추천 콘텐츠 클릭 핸들러
   const onRecommendationClick = (targetPostId: string | number) => {
@@ -351,21 +424,41 @@ export default function PostDetailPage() {
             <Sparkles className="text-[#FEBC02]" />
             <h3 className="text-xl font-bold text-gray-900">함께 읽으면 좋은 글</h3>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {MOCK_RECOMMENDATIONS.map((item) => (
-              <Link
-                key={item.id}
-                to={`/posts/${item.slug}`}
-                onClick={() => onRecommendationClick(item.id)}
-                className="group block p-5 rounded-xl border border-gray-200 bg-white hover:border-[#FEBC02] hover:shadow-md transition-all"
-              >
-                <h4 className="font-bold text-lg text-gray-900 group-hover:text-[#FEBC02] transition-colors mb-2 line-clamp-1">
-                  {item.title}
-                </h4>
-                <p className="text-gray-600 text-sm line-clamp-2">{item.summary}</p>
-              </Link>
-            ))}
-          </div>
+          {!profile && (
+            <p className="text-gray-500 text-sm mb-4">
+              온보딩을 완료하면 나에게 맞는 정책 추천이 표시됩니다.
+            </p>
+          )}
+          {profile && isRecoLoading && (
+            <p className="text-gray-500 text-sm mb-4">추천 불러오는 중…</p>
+          )}
+          {profile && isRecoError && (
+            <p className="text-gray-500 text-sm mb-4">
+              추천을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
+            </p>
+          )}
+          {profile && !isRecoLoading && !isRecoError && recommendedPosts.length === 0 && (
+            <p className="text-gray-500 text-sm mb-4">
+              추천할 정책이 없습니다.
+            </p>
+          )}
+          {recommendedPosts.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {recommendedPosts.map((item) => (
+                <Link
+                  key={item.id}
+                  to={`/posts/${item.slug}`}
+                  onClick={() => onRecommendationClick(item.id)}
+                  className="group block p-5 rounded-xl border border-gray-200 bg-white hover:border-[#FEBC02] hover:shadow-md transition-all"
+                >
+                  <h4 className="font-bold text-lg text-gray-900 group-hover:text-[#FEBC02] transition-colors mb-2 line-clamp-1">
+                    {item.title}
+                  </h4>
+                  <p className="text-gray-600 text-sm line-clamp-2">{item.summary}</p>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* 하단 네비게이션 */}
