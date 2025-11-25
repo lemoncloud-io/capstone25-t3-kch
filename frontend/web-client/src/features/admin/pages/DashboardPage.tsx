@@ -100,7 +100,7 @@ export default function DashboardPage() {
             iconColor: 'text-blue-600',
         },
         {
-            label: '총 조회수',
+            label: '누적 조회수',
             value: totalViews.toLocaleString(),
             icon: Users,
             bgColor: 'bg-green-100',
@@ -138,7 +138,10 @@ export default function DashboardPage() {
 
     return (
         <div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-8">대시보드</h1>
+            <div className="mb-8">
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">대시보드</h1>
+                <p className="text-sm text-gray-600">포스트 통계 및 최근 게시물을 확인하세요</p>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {stats.map(stat => {

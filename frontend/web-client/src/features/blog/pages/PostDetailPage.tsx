@@ -125,7 +125,15 @@ export default function PostDetailPage() {
     stayEnterRef.current = new Date().toISOString()
 
     // 상세 페이지 진입 = 클릭 기록
-    trackPostClick(post.id, post.slug, 'post-detail')
+    // 단, 같은 도메인에서 온 경우는 이미 클릭이 기록되었으므로 중복 방지
+    const referrer = document.referrer
+    const currentOrigin = window.location.origin
+    const isFromSameDomain = referrer && referrer.startsWith(currentOrigin)
+    
+    // 직접 URL 접근이거나 외부에서 온 경우에만 클릭 기록
+    if (!isFromSameDomain) {
+      trackPostClick(post.id, post.slug, 'post-detail')
+    }
 
     // 언마운트 시 한 번만 체류 시간 전송
     return () => {

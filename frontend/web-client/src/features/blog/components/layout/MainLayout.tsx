@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { getPosts, type Post } from '../../../../shared/api/posts'
 import { getPolicies, type PolicyCleanOut } from '../../../../shared/api/policies'
 import { Calendar, Flame, Clock, Eye } from 'lucide-react'
+import { trackPostClick } from '../../../../shared/api/analytics'
 
 interface MainLayoutProps {
   children: ReactNode
@@ -142,7 +143,11 @@ export default function MainLayout({ children, sidebar }: MainLayoutProps) {
                 <ul className="divide-y divide-gray-100">
                   {weeklyPopular.map((post) => (
                     <li key={post.id} className="px-5 py-4">
-                      <Link to={`/posts/${post.slug}`} className="group block">
+                      <Link 
+                        to={`/posts/${post.slug}`} 
+                        onClick={() => trackPostClick(post.id, post.slug, 'sidebar-popular')}
+                        className="group block"
+                      >
                         <div className="flex items-start gap-3">
                           {post.thumbnail && (
                             <img src={post.thumbnail} alt="thumb" className="w-12 h-12 rounded-md object-cover border border-gray-200" />

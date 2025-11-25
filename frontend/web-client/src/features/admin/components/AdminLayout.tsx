@@ -62,55 +62,70 @@ export default function AdminLayout() {
         </div>
       </aside>
 
+      {/* Mobile Sidebar Overlay */}
+      <div
+        className={`fixed inset-0 bg-black z-40 lg:hidden transition-opacity duration-300 ${
+          isMobileMenuOpen ? 'opacity-50' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setIsMobileMenuOpen(false)}
+      />
+
       {/* Mobile Sidebar */}
-      {isMobileMenuOpen && (
-        <aside className="fixed inset-y-0 left-0 w-64 bg-white shadow-2xl z-50 lg:hidden transform transition-transform">
-            <div className="h-full flex flex-col">
-              <div className="h-16 flex items-center justify-between px-6 border-b">
-                <h1 className="text-xl font-bold text-gray-800">관리자페이지</h1>
-                <button 
+      <aside
+        className={`fixed inset-y-0 left-0 w-64 bg-white shadow-2xl z-50 lg:hidden transform transition-transform duration-300 ease-in-out ${
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="h-full flex flex-col">
+          <div className="h-16 flex items-center justify-between px-6 border-b">
+            <h1 className="text-xl font-bold text-gray-800">관리자페이지</h1>
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          <nav className="flex-1 px-4 py-6 overflow-y-auto">
+            {menuItems.map((item, index) => {
+              const Icon = item.icon
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-4 py-3 mb-2 rounded-lg transition-all duration-200 ${
+                      isActive
+                        ? 'bg-blue-50 text-blue-600 font-medium'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`
+                  }
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-1 hover:bg-gray-100 rounded"
+                  style={{
+                    animation: isMobileMenuOpen
+                      ? `slideInLeft 0.3s ease-out ${index * 0.05}s both`
+                      : 'none',
+                  }}
                 >
-                  <X size={24} />
-                </button>
-              </div>
+                  <Icon size={20} />
+                  <span>{item.label}</span>
+                </NavLink>
+              )
+            })}
+          </nav>
 
-              <nav className="flex-1 px-4 py-6 overflow-y-auto">
-                {menuItems.map(item => {
-                  const Icon = item.icon
-                  return (
-                    <NavLink
-                      key={item.path}
-                      to={item.path}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-4 py-3 mb-2 rounded-lg transition-colors ${
-                          isActive
-                            ? 'bg-blue-50 text-blue-600 font-medium'
-                            : 'text-gray-700 hover:bg-gray-50'
-                        }`
-                      }
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <Icon size={20} />
-                      <span>{item.label}</span>
-                    </NavLink>
-                  )
-                })}
-              </nav>
-
-              <div className="px-4 py-4 border-t">
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg w-full transition-colors"
-                >
-                  <LogOut size={20} />
-                  <span>로그아웃</span>
-                </button>
-              </div>
-            </div>
-          </aside>
-      )}
+          <div className="px-4 py-4 border-t">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg w-full transition-colors"
+            >
+              <LogOut size={20} />
+              <span>로그아웃</span>
+            </button>
+          </div>
+        </div>
+      </aside>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col bg-gray-50">

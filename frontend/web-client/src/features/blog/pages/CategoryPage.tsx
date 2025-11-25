@@ -6,6 +6,7 @@ import { getPosts, type Post } from '../../../shared/api/posts'
 import MainLayout from '@/features/blog/components/layout/MainLayout'
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { setDefaultOg } from '../../../shared/lib/seo'
+import { trackPostClick } from '../../../shared/api/analytics'
 
 /* =========================
    카테고리 정의
@@ -68,6 +69,7 @@ function CategoryPostCard({ post }: { post: Post }) {
   return (
     <Link
       to={`/posts/${post.slug}`}
+      onClick={() => trackPostClick(post.id, post.slug, 'category')}
       className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FEBC02] rounded-lg h-full max-w-md mx-auto md:max-w-none"
       aria-label={post.title}
     >
@@ -119,6 +121,7 @@ function CategoryPostItem({ post }: { post: Post }) {
   return (
     <Link
       to={`/posts/${post.slug}`}
+      onClick={() => trackPostClick(post.id, post.slug, 'category')}
       className="group grid grid-cols-[1fr_auto] items-start gap-6 py-6 md:gap-8 md:py-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FEBC02] max-w-md mx-auto md:max-w-none"
       aria-label={post.title}
     >

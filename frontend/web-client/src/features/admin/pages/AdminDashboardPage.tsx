@@ -187,16 +187,21 @@ export default function AdminDashboardPage() {
   const [daily, setDaily] = useState<DailyMetric[]>([])
   const [reco, setReco] = useState<RecommendationMetric[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
       try {
+        setError(null)
         const [dailyData, recoData] = await Promise.all([
           fetchDailyMetrics(),
           fetchRecommendationMetrics(),
         ])
         setDaily(dailyData)
         setReco(recoData)
+      } catch (err) {
+        console.error('[AdminDashboard] Failed to load data:', err)
+        setError('데이터를 불러오는 중 오류가 발생했습니다.')
       } finally {
         setLoading(false)
       }
@@ -295,6 +300,18 @@ export default function AdminDashboardPage() {
     return <LoadingSkeleton />
   }
 
+  if (error) {
+    return (
+      <div className="flex h-96 flex-col items-center justify-center text-center">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+          <Activity className="h-8 w-8 text-red-600" />
+        </div>
+        <p className="mb-1 text-lg font-semibold text-gray-900">{error}</p>
+        <p className="text-sm text-gray-500">페이지를 새로고침하거나 잠시 후 다시 시도해주세요.</p>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-8 pb-8">
       {/* 헤더 섹션 */}
@@ -323,7 +340,7 @@ export default function AdminDashboardPage() {
           title="게시물 클릭 수"
           value={totalClicks7d.toLocaleString()}
           icon={MousePointerClick}
-          subtitle="최근 7일간"
+          subtitle="최근 7일간 (이벤트 기반)"
           gradient="from-blue-500 via-blue-600 to-blue-700"
           iconGradient="from-blue-500 to-blue-600"
         />

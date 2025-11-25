@@ -175,6 +175,7 @@ async def track_click(event: PostClickEvent, request: Request):
   conn = get_conn()
   try:
     cur = conn.cursor()
+    # 1. analytics 테이블에 클릭 이벤트 기록
     cur.execute(
       """
       INSERT INTO blog_analytics_clicks
@@ -192,6 +193,21 @@ async def track_click(event: PostClickEvent, request: Request):
         ip,
       ),
     )
+    
+    # 2. blog_posts 테이블의 view_count도 증가
+    # slug 또는 plcy_no로 매칭 (slug가 plcy_no와 동일할 수 있음)
+    if event.postId or event.slug:
+      # plcy_no가 있으면 그것으로, 없으면 slug로 업데이트
+      identifier = event.postId if event.postId else event.slug
+      cur.execute(
+        """
+        UPDATE blog_posts
+        SET view_count = COALESCE(view_count, 0) + 1
+        WHERE plcy_no = %s OR slug = %s
+        """,
+        (identifier, identifier),
+      )
+    
     conn.commit()
     cur.close()
   finally:
@@ -419,8 +435,9 @@ async def get_recommendation_metrics():
     result = []
     for i in range(7):
         d = start_date + timedelta(days=i)
-        clicks = click_map.get(d, 0)
-        imps = imp_map.get(d, 0)
+        d_str = str(d)
+        clicks = click_map.get(d_str, 0)
+        imps = imp_map.get(d_str, 0)
         ctr = round((clicks / imps * 100), 2) if imps > 0 else 0.0
 
         result.append(
