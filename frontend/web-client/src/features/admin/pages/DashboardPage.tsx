@@ -83,7 +83,7 @@ export default function DashboardPage() {
     // 실제 API 데이터 가져오기
     const { data: posts = [], isLoading } = useQuery({
         queryKey: ['posts'],
-        queryFn: () => getPosts({ limit: 100 }),
+        queryFn: () => getPosts(), // 전체 게시글 가져오기 (limit 없음)
     })
 
     // 실제 데이터 기반 통계 계산

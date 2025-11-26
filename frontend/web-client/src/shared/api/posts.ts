@@ -489,6 +489,11 @@ function resolveThumbnail(b: any): string {
 // ============ API 함수들 ============
 
 export const getPosts = async (params?: { category?: string; limit?: number }): Promise<Post[]> => {
+    const result = await getPostsWithCount(params);
+    return result.posts;
+};
+
+export const getPostsWithCount = async (params?: { category?: string; limit?: number }): Promise<{ posts: Post[], totalCount?: number }> => {
     console.log('🔍 getPosts 호출됨:', { 
         ENV: env.ENV, 
         USE_SERVER: env.USE_SERVER,
@@ -499,11 +504,11 @@ export const getPosts = async (params?: { category?: string; limit?: number }): 
         console.log('📦 Mock 데이터 사용')
         await new Promise(resolve => setTimeout(resolve, 500))
         // category 필터링
+        let filtered = mockPosts;
         if (params?.category) {
-            return mockPosts.filter(post => post.category === params.category)
+            filtered = mockPosts.filter(post => post.category === params.category)
         }
-
-        return mockPosts
+        return { posts: filtered, totalCount: filtered.length }
     }
 
     // 백엔드 블로그 엔드포인트와 연동
@@ -523,10 +528,10 @@ export const getPosts = async (params?: { category?: string; limit?: number }): 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`)
         }
-        const data = await response.json() as { items: any[] }
+        const data = await response.json() as { items: any[], total_count?: number }
         const items = Array.isArray(data.items) ? data.items : []
         
-        console.log('API 응답:', items.length, '개 항목')
+        console.log('API 응답:', items.length, '개 항목', '전체:', data.total_count ?? 'N/A')
         console.log('첫 번째 아이템 샘플:', items[0]) // 실제 데이터 구조 확인
         
         // 목록 매핑 - 백엔드 응답 형식에 맞게 수정
@@ -553,14 +558,17 @@ export const getPosts = async (params?: { category?: string; limit?: number }): 
             meta: b.meta ?? undefined,
         }
         })
+        
+        let filtered = mapped;
         if (params?.category) {
-            return mapped.filter(post => post.category === params.category)
+            filtered = mapped.filter(post => post.category === params.category)
         }
-        return mapped
+        
+        return { posts: filtered, totalCount: data.total_count }
     } catch (error) {
         console.error('API 호출 실패:', error)
         console.log('Mock 데이터로 폴백')
-        return mockPosts
+        return { posts: mockPosts, totalCount: mockPosts.length }
     }
 }
 

@@ -262,10 +262,10 @@ export default function HomePage() {
   const [currentPage, setCurrentPage] = useState(1)
   const ITEMS_PER_PAGE = 6
 
-  // 전체 포스트
+  // 데이터 로드
   const { data: posts = [], isLoading } = useQuery<Post[], Error>({
     queryKey: ['posts', 'all'],
-    queryFn: () => getPosts(),
+    queryFn: () => getPosts(), // 전체 게시글 가져오기 (limit 없음)
   })
 
   // 인기/최신 정렬

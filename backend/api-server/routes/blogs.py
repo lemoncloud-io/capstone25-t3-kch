@@ -160,13 +160,13 @@ CATEGORY_KEYWORDS = {
 }
 
 @router.get("/blogs")
-def list_blogs(limit: int = 100, category: Optional[str] = None, include_content: bool = True):  # 블로그 목록 조회
+def list_blogs(limit: Optional[int] = None, category: Optional[str] = None):  # 블로그 목록 조회
     conn = get_conn()
     columns = _get_blog_table_columns()
     rows: List[Dict] = []
 
     try:
-        select_fields = _build_select_fields(columns, include_content=include_content)
+        select_fields = _build_select_fields(columns, include_content=True)
         query_parts = [f"""
             SELECT {', '.join(select_fields)}
             FROM blog_posts
@@ -178,16 +178,56 @@ def list_blogs(limit: int = 100, category: Optional[str] = None, include_content
         if category and category in CATEGORY_KEYWORDS:
             category_ten = CATEGORY_KEYWORDS[category]
             
-            placeholders = ', '.join(['%s'] * len(category_ten))
+            # 4개 표준 카테고리도 포함 (DB에 이미 정규화된 값이 저장되어 있을 수 있음)
+            category_all = list(set(category_ten + [category]))  # 중복 제거
             
-            # category 컬럼이 10대 상세 카테고리(category_ten) 중 하나에 정확히 포함되는지 검사
-            query_parts.append(f"AND category IN ({placeholders})")
-            params.extend(category_ten)
+            placeholders = ', '.join(['%s'] * len(category_all))
+            
+            # category_auto 컬럼이 존재하는지 확인
+            has_category_auto = "category_auto" in columns
+            
+            if has_category_auto:
+                # category 또는 category_auto 컬럼이 10대 상세 카테고리 또는 4개 표준 카테고리 중 하나에 정확히 포함되는지 검사
+                query_parts.append(f"AND (category IN ({placeholders}) OR category_auto IN ({placeholders}))")
+                params.extend(category_all)
+                params.extend(category_all)  # category와 category_auto 모두 검사
+            else:
+                # category_auto 컬럼이 없으면 category만 검사
+                query_parts.append(f"AND category IN ({placeholders})")
+                params.extend(category_all)
+
+        # 전체 개수 조회 (LIMIT 적용 전)
+        count_query_parts = ["SELECT COUNT(*) FROM blog_posts WHERE generation_status = 'completed'"]
+        count_params = []
+        
+        # 카테고리 필터가 있으면 동일한 조건 적용
+        if category and category in CATEGORY_KEYWORDS:
+            category_ten = CATEGORY_KEYWORDS[category]
+            category_all = list(set(category_ten + [category]))
+            placeholders = ', '.join(['%s'] * len(category_all))
+            has_category_auto = "category_auto" in columns
+            
+            if has_category_auto:
+                count_query_parts.append(f"AND (category IN ({placeholders}) OR category_auto IN ({placeholders}))")
+                count_params.extend(category_all)
+                count_params.extend(category_all)
+            else:
+                count_query_parts.append(f"AND category IN ({placeholders})")
+                count_params.extend(category_all)
+        
+        count_query = " ".join(count_query_parts)
+        cur = conn.cursor()
+        cur.execute(count_query, tuple(count_params))
+        count_row = cur.fetchone()
+        # RealDictCursor를 사용하므로 딕셔너리 형태로 반환됨
+        total_count = count_row['count'] if count_row else 0
+        cur.close()
 
         # 정렬, 리밋 추가, 쿼리 합치고 실행
         query_parts.append("ORDER BY updated_at DESC")
-        query_parts.append("LIMIT %s")
-        params.append(limit)
+        if limit and limit > 0:
+            query_parts.append("LIMIT %s")
+            params.append(limit)
         query = " ".join(query_parts)
 
         cur = conn.cursor()
@@ -201,7 +241,7 @@ def list_blogs(limit: int = 100, category: Optional[str] = None, include_content
     finally:
         conn.close()
 
-    return {"items": rows, "count": len(rows)}
+    return {"items": rows, "count": len(rows), "total_count": total_count}
 
 
 @router.get("/blogs/{plcy_no}")
@@ -242,11 +282,14 @@ def ensure_thumbnail_fields(conn, row: Dict, columns: set[str]):
     raw_category = row.get("category_auto") or row.get("category") # 기존 DB 카테고리 값
     thumbnail_category = normalize_to_standard(raw_category) # 4대 카테고리로 정규화
     
-    # 관리자가 수동으로 설정한 카테고리가 있으면 그것을 우선 사용
-    if row.get("category"):
-        row["category_normalized"] = row["category"]
+    # DB의 category 값이 4개 표준 카테고리 중 하나인지 확인
+    db_category = row.get("category")
+    if db_category and db_category in ["일자리", "주거", "복지", "교육"]:
+        # 이미 정규화된 값이면 그대로 사용
+        row["category"] = db_category
+        row["category_normalized"] = db_category
     else:
-        # DB에 카테고리가 없는 경우에만 자동 정규화 사용
+        # 10개 상세 카테고리이거나 NULL이면 정규화된 값 사용
         row["category"] = thumbnail_category
         row["category_normalized"] = thumbnail_category
 
