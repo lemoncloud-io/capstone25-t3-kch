@@ -6,10 +6,12 @@ export type RecommendReq = {
   userAge: '19-24' | '25-29' | '30-34' | '35+'
   userRegion: string
   userInterests: string[]
+  exclude_plcy_no?: string  // 제외할 정책 번호 (상세페이지에서 현재 게시물 제외용)
 }
 
 export type RecommendItem = {
   id: number
+  plcy_no: string  // 정책 번호
   title: string
   summary?: string
   category?: string
