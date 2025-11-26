@@ -63,6 +63,39 @@ def get_conn():
     return psycopg2.connect(url, cursor_factory=psycopg2.extras.RealDictCursor)
 
 
+def init_view_count_column():
+    """서버 시작 시 view_count 컬럼이 없으면 추가"""
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        # 컬럼 존재 여부 확인
+        cur.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'blog_posts' AND column_name = 'view_count'
+            )
+        """)
+        exists = cur.fetchone()[0]
+        
+        if not exists:
+            cur.execute("ALTER TABLE blog_posts ADD COLUMN view_count INTEGER DEFAULT 0 NOT NULL")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_blog_posts_view_count ON blog_posts(view_count DESC)")
+            conn.commit()
+            print("[blogs] view_count 컬럼 추가 완료")
+            # 캐시 무효화 (컬럼이 추가되었으므로 캐시 갱신 필요)
+            _get_blog_table_columns.cache_clear()
+        cur.close()
+    except Exception as e:
+        print(f"[blogs] view_count 컬럼 초기화 실패: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
+
+
+# 모듈 import 시점에 한 번 실행
+init_view_count_column()
+
+
 @lru_cache(maxsize=1)
 def _get_blog_table_columns() -> set[str]:
     conn = get_conn()
@@ -110,6 +143,12 @@ def _build_select_fields(columns: set[str], include_content: bool = False) -> Li
     else:
         base.append("NULL::text AS thumbnail_url")
 
+    # 조회수 필드 추가
+    if "view_count" in columns:
+        base.append("view_count")
+    else:
+        base.append("0 AS view_count")
+
     return base
 
 # SQL 필터링을 위한 키워드 정의, normalize_to_standard와 로직 일치합니다.
@@ -127,7 +166,7 @@ def list_blogs(limit: Optional[int] = None, category: Optional[str] = None):  # 
     rows: List[Dict] = []
 
     try:
-        select_fields = _build_select_fields(columns)
+        select_fields = _build_select_fields(columns, include_content=True)
         query_parts = [f"""
             SELECT {', '.join(select_fields)}
             FROM blog_posts

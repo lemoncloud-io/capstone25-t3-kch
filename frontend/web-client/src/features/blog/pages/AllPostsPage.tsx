@@ -6,6 +6,7 @@ import { Calendar, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
 import MainLayout from '@/features/blog/components/layout/MainLayout'
 import { getPosts, getPostsWithCount, type Post } from '../../../shared/api/posts'
 import { setDefaultOg } from '../../../shared/lib/seo'
+import { trackPostClick } from '../../../shared/api/analytics'
 
 /* ===== 유틸 ===== */
 const fmtDate = (iso: string) =>
@@ -34,6 +35,7 @@ function PostCard({ post, query }: { post: Post; query?: string }) {
   return (
     <Link
       to={`/posts/${post.slug}`}
+      onClick={() => trackPostClick(post.id, post.slug, 'all-posts')}
       className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FEBC02] rounded-lg h-full max-w-md mx-auto md:max-w-none"
       aria-label={post.title}
     >
@@ -82,6 +84,7 @@ function PostItem({ post, query }: { post: Post; query?: string }) {
   return (
     <Link
       to={`/posts/${post.slug}`}
+      onClick={() => trackPostClick(post.id, post.slug, 'all-posts')}
       className="group grid grid-cols-[1fr_auto] items-start gap-6 py-6 md:gap-8 md:py-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FEBC02] max-w-md mx-auto md:max-w-none"
       aria-label={post.title}
     >
@@ -196,14 +199,68 @@ export default function AllPostsPage() {
     setDefaultOg({ title: query ? `KCH Blog - 검색: ${params.get('q')}` : 'KCH Blog - 전체보기' })
   }, [query, params])
 
+  // 문자열 기반 검색 (한국어에 적합, 본문 검색 포함, 띄어쓰기 무시)
   const sorted = useMemo(() => {
-    const base = [...data].filter((p) => {
-      if (!query) return true
-      const hay = `${p.title} ${p.summary ?? ''} ${p.category ?? ''}`.toLowerCase()
-      return hay.includes(query)
-    })
-    if (sortKey === 'popular') return base.sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0))
-    return base.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+    let base: Post[] = []
+    
+    if (!query) {
+      // 검색어가 없으면 전체 데이터
+      base = [...data]
+    } else {
+      // 검색어 정규화: 소문자 변환 + 공백 제거 버전도 준비
+      const lowerQuery = query.toLowerCase()
+      const normalizedQuery = lowerQuery.replace(/\s+/g, '') // 공백 제거
+      
+      // 검색 헬퍼 함수: 띄어쓰기 무시하고 검색
+      const matches = (text: string, searchQuery: string, normalizedQuery: string): boolean => {
+        const lowerText = text.toLowerCase()
+        // 원본 검색어로 검색
+        if (lowerText.includes(searchQuery)) return true
+        // 공백 제거한 버전으로도 검색
+        const normalizedText = lowerText.replace(/\s+/g, '')
+        if (normalizedText.includes(normalizedQuery)) return true
+        return false
+      }
+      
+      base = data.filter((post) => {
+        const titleMatch = matches(post.title, lowerQuery, normalizedQuery)
+        const summaryMatch = matches(post.summary || '', lowerQuery, normalizedQuery)
+        const content = post.content || ''
+        const contentMatch = matches(content, lowerQuery, normalizedQuery)
+        if (contentMatch && process.env.NODE_ENV === 'development') {
+          console.log('✅ 본문에서 검색어 발견:', {
+            postId: post.id,
+            title: post.title,
+            contentLength: content.length,
+            query: lowerQuery,
+          })
+        }
+        const categoryMatch = matches(post.category || '', lowerQuery, normalizedQuery)
+        
+        return titleMatch || summaryMatch || contentMatch || categoryMatch
+      })
+      
+      // 가중치 정렬: 제목 매치 > 요약 매치 > 본문 매치
+      base.sort((a, b) => {
+        const aTitle = matches(a.title, lowerQuery, normalizedQuery) ? 3 : 0
+        const aSummary = matches(a.summary || '', lowerQuery, normalizedQuery) ? 2 : 0
+        const aContent = matches(a.content || '', lowerQuery, normalizedQuery) ? 1 : 0
+        const aScore = aTitle + aSummary + aContent
+        
+        const bTitle = matches(b.title, lowerQuery, normalizedQuery) ? 3 : 0
+        const bSummary = matches(b.summary || '', lowerQuery, normalizedQuery) ? 2 : 0
+        const bContent = matches(b.content || '', lowerQuery, normalizedQuery) ? 1 : 0
+        const bScore = bTitle + bSummary + bContent
+        
+        return bScore - aScore
+      })
+    }
+    
+    // 추가 정렬 적용 (최신순/인기순)
+    if (sortKey === 'popular') {
+      return base.sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0))
+    }
+    return base.sort((a, b) => +new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   }, [data, sortKey, query])
 
   const totalPages = Math.ceil(sorted.length / ITEMS_PER_PAGE) || 1
