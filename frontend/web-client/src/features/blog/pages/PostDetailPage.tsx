@@ -72,11 +72,15 @@ type RecommendResp = {
   items: RecommendItem[]
 }
 
-async function fetchRecommendations(profile: OnboardingProfile): Promise<RecommendResp> {
+async function fetchRecommendations(profile: OnboardingProfile, excludePlcyNo?: string): Promise<RecommendResp> {
+  const payload = {
+    ...profile,
+    exclude_plcy_no: excludePlcyNo,
+  }
   const res = await fetch(`${env.API_BASE_URL}/recommendations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(profile),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) {
     throw new Error(`추천 API 실패: ${res.status}`)
@@ -93,6 +97,11 @@ export default function PostDetailPage() {
     queryFn: () => getPost(slug!),
     enabled: !!slug,
   })
+
+  // 페이지 진입 시 스크롤을 맨 위로 이동
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [slug]) // slug가 변경될 때마다 (다른 게시물로 이동할 때)
 
   // OG 태그
   useEffect(() => {
@@ -206,31 +215,33 @@ export default function PostDetailPage() {
     queryFn: () => getPosts(),
   })
 
-  // 추천 API 호출
+  // 추천 API 호출 (현재 게시물 제외)
+  // post.id는 plcy_no와 동일함 (posts.ts에서 id: String(b.plcy_no)로 매핑)
   const {
     data: recoData,
     isLoading: isRecoLoading,
     isError: isRecoError,
   } = useQuery<RecommendResp, Error>({
     queryKey: ['recommendations', 'detail', profile, post?.id],
-    queryFn: () => fetchRecommendations(profile as OnboardingProfile),
+    queryFn: () => fetchRecommendations(profile as OnboardingProfile, post?.id),
     enabled: !!profile && !!post && env.USE_SERVER,
     staleTime: 1000 * 60 * 5,
   })
 
   // plcy_no -> Post 맵
+  // post.id는 plcy_no와 동일하므로 이를 키로 사용
   const postMapByPlcyNo = useMemo(
     () => new Map(allPosts.map((p) => [String(p.id), p])),
     [allPosts],
   )
 
-  // 추천 결과와 블로그 join (현재 post 제외)
+  // 추천 결과와 블로그 join (백엔드에서 이미 현재 post 제외됨, 여기서는 안전장치로 한번 더 체크)
   const recommendedPosts: Post[] = useMemo(() => {
     const items = recoData?.items ?? []
     const result: Post[] = []
     for (const it of items) {
       const p = postMapByPlcyNo.get(String(it.plcy_no))
-      // 현재 보고 있는 post는 제외
+      // 백엔드에서 이미 제외되지만, 안전장치로 한번 더 체크
       if (p && p.id !== post?.id) {
         result.push(p)
       }

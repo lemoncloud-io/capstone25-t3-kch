@@ -6,8 +6,12 @@ from sqlalchemy import text
 from datetime import datetime
 import math
 import re
+import traceback
 
 from jobs.ontong.storage_pg import get_session as get_db
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api", tags=["recommendations"])
 
@@ -21,6 +25,8 @@ class RecommendReq(BaseModel):
     userAge: AgeRange = Field(..., example="30-34")
     userRegion: str = Field(..., example="경기도")
     userInterests: List[str] = Field(default_factory=list, example=["housing", "job"])
+    exclude_plcy_no: Optional[str] = Field(None, description="제외할 정책 번호 (상세페이지에서 현재 게시물 제외용)")
+    limit: Optional[int] = Field(10, ge=1, le=50, description="반환할 추천 항목 수 (기본 10개, 최대 50개)")
 
 
 class RecommendItem(BaseModel):
@@ -133,13 +139,15 @@ def age_match_score(user_age_bucket: AgeRange, target_group_text: Optional[str])
       - "만 19~34세"
       - "19-34세"
       - "연령 19세 이상 34세 이하"
+      - "만 19세 이상" (단일 나이)
+      - "19세" (단일 나이)
     """
     if not target_group_text:
         return 0.0
 
     text = target_group_text
 
-    # 1) "19~34", "19-34", "19 ~ 34" 등
+    # 1) 범위 형식: "19~34", "19-34", "19 ~ 34" 등
     m = re.search(r"(\d{1,2})\s*[~\-∼−]\s*(\d{1,2})", text)
     if m:
         min_age = int(m.group(1))
@@ -151,7 +159,20 @@ def age_match_score(user_age_bucket: AgeRange, target_group_text: Optional[str])
             min_age = int(m2.group(1))
             max_age = int(m2.group(2))
         else:
-            return 0.0
+            # 3) 단일 나이 형식: "만 19세 이상", "19세 이상", "19세" 등
+            m3 = re.search(r"만\s*(\d{1,2})\s*세\s*이상", text)
+            if m3:
+                min_age = int(m3.group(1))
+                max_age = 100  # 상한 없음
+            else:
+                # 4) "19세" 같은 단일 나이 표현 (범위로 해석: 19~19세)
+                m4 = re.search(r"(\d{1,2})\s*세(?!\s*(이상|이하|~|-|∼|−))", text)
+                if m4:
+                    age = int(m4.group(1))
+                    min_age = age
+                    max_age = age
+                else:
+                    return 0.0
 
     u_min, u_max = AGE_BUCKET.get(user_age_bucket, (0, 150))
 
@@ -178,16 +199,21 @@ def normalize_view_count(view_count: Optional[int], max_views: int) -> float:
     """
     조회수를 0~1 사이로 정규화
     로그 스케일 사용하여 조회수 차이를 완화
+    조회수가 매우 낮은 경우(10회 미만)는 0에 가까운 점수 부여
     """
     if not view_count or view_count <= 0:
         return 0.0
     if max_views <= 0:
         return 0.0
     
-    # 로그 스케일 정규화 (1 + log10(1 + view_count) / log10(1 + max_views))
-    # 최소값 0.1 보장 (조회수가 있으면 최소한의 점수)
+    # 로그 스케일 정규화
     normalized = (1 + math.log10(1 + view_count)) / (1 + math.log10(1 + max_views))
-    return max(0.1, min(1.0, normalized))
+    
+    # 조회수가 매우 낮은 경우(10회 미만)는 점수를 낮게 부여
+    if view_count < 10:
+        normalized = normalized * 0.3  # 최대 0.3까지 제한
+    
+    return min(1.0, normalized)
 
 
 # ---------- 메인 라우트 ----------
@@ -238,25 +264,33 @@ def recommend(req: RecommendReq, db: Session = Depends(get_db)):
             # ---------------------------
             # 1) 지역 필터: 서울/전국 등만 추천 후보로 사용
             # ---------------------------
-            norm_user = normalize_region(user_region)
+            # user_region은 이미 정규화되었으므로 중복 정규화 제거
             norm_item = normalize_region(region)
 
             is_region_match = False
             if is_nationwide(region):
                 is_region_match = True
-            elif norm_user and norm_item:
-                # 정확한 지역 매칭: 완전 일치 또는 사용자 지역이 정책 지역의 시작 부분과 일치
-                # 예: "경기도"와 "경기도 수원시" -> 매칭
-                # 예: "경기도"와 "경상북도" -> 매칭 안됨
-                if norm_item == norm_user:
+            elif user_region and norm_item:
+                # 정확한 지역 매칭: 완전 일치 또는 정책 지역이 사용자 지역으로 시작하는 경우만
+                # 예: 사용자="경기도", 정책="경기도" -> 매칭
+                # 예: 사용자="경기도", 정책="경기도 수원시" -> 매칭
+                # 예: 사용자="경기도", 정책="경상북도" -> 매칭 안됨 (startswith로는 매칭되지만 방지)
+                if norm_item == user_region:
                     is_region_match = True
-                elif norm_item.startswith(norm_user) and len(norm_user) >= 2:
-                    # 사용자 지역이 정책 지역의 시작 부분과 일치하는 경우
-                    # 단, 최소 2글자 이상이어야 함 (예: "경"만으로는 매칭 안됨)
-                    is_region_match = True
+                elif norm_item.startswith(user_region):
+                    # 정책 지역이 사용자 지역으로 시작하는 경우
+                    # 단, 잘못된 매칭 방지: "경상북도"와 "경기도"는 매칭 안됨
+                    # 사용자 지역 다음 문자가 공백이거나 특정 구분자여야 함
+                    remaining = norm_item[len(user_region):]
+                    if remaining and remaining[0] in (" ", "시", "도", "구", "군", "읍", "면"):
+                        is_region_match = True
 
             # 지역이 안 맞으면 아예 추천 후보에서 제외
             if not is_region_match:
+                continue
+
+            # 현재 보고 있는 게시물은 추천에서 제외
+            if req.exclude_plcy_no and str(r["plcy_no"]) == str(req.exclude_plcy_no):
                 continue
 
             # 이 아래로 내려온 애들은 전부 "지역은 맞다"
@@ -277,6 +311,9 @@ def recommend(req: RecommendReq, db: Session = Depends(get_db)):
             # 조회수 점수 (정규화)
             s_views = normalize_view_count(view_count, max_views)
 
+            # 가중치 합산 점수 계산
+            # 각 점수는 0~1 범위이고, 가중치를 곱하여 합산
+            # 점수는 상대적 비교를 위한 것이므로 정규화하지 않고 그대로 사용
             score = (
                 W_INTEREST * s_interest
                 + W_REGION * s_region
@@ -316,7 +353,29 @@ def recommend(req: RecommendReq, db: Session = Depends(get_db)):
 
         # 점수순 정렬
         items.sort(key=lambda x: x.score, reverse=True)
+        
+        # 상위 N개만 반환 (기본 10개, 요청된 limit 사용)
+        limit = req.limit if req.limit else 10
+        items = items[:limit]
+        
         return RecommendResp(items=items)
 
+    except HTTPException:
+        # HTTPException은 그대로 전달
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # 민감한 정보가 포함될 수 있는 에러 메시지는 로깅만 하고
+        # 클라이언트에는 일반적인 메시지만 반환
+        logger.error(
+            "추천 API 오류 발생",
+            extra={
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+                "traceback": traceback.format_exc(),
+            },
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="추천 서비스 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+        )

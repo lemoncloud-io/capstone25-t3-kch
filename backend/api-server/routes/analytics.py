@@ -2,11 +2,15 @@
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+import traceback
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel, Field
 
 from .blogs import get_conn  # 같은 DB 연결 재사용
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(
     prefix="/analytics",
@@ -195,17 +199,15 @@ async def track_click(event: PostClickEvent, request: Request):
     )
     
     # 2. blog_posts 테이블의 view_count도 증가
-    # slug 또는 plcy_no로 매칭 (slug가 plcy_no와 동일할 수 있음)
-    if event.postId or event.slug:
-      # plcy_no가 있으면 그것으로, 없으면 slug로 업데이트
-      identifier = event.postId if event.postId else event.slug
+    # 모든 블로그 글은 정책 기반이므로 plcy_no로만 매칭
+    if event.postId:
       cur.execute(
         """
         UPDATE blog_posts
         SET view_count = COALESCE(view_count, 0) + 1
-        WHERE plcy_no = %s OR slug = %s
+        WHERE plcy_no = %s 
         """,
-        (identifier, identifier),
+        (event.postId,),
       )
     
     conn.commit()
@@ -382,6 +384,17 @@ async def track_recommendation_impression(
 # 대시보드용 집계 API들
 # =========================
 
+def get_kst_date_range(days: int = 7) -> tuple[datetime.date, datetime.date]:
+    """
+    한국 시간대(KST, UTC+9) 기준으로 날짜 범위 계산
+    Returns: (start_date, end_date)
+    """
+    kst = timezone(timedelta(hours=9))
+    end_date = datetime.now(kst).date()
+    start_date = end_date - timedelta(days=days - 1)
+    return start_date, end_date
+
+
 @router.get("/recommendation-metrics")
 async def get_recommendation_metrics():
     """
@@ -391,14 +404,12 @@ async def get_recommendation_metrics():
     - impressions: 추천 영역 노출 수
     - ctr: 클릭률(%) = clicks / impressions * 100
     """
-    conn = get_conn()
     try:
+        conn = get_conn()
         cur = conn.cursor()
 
         # 한국 시간대(KST, UTC+9) 기준으로 오늘 날짜 계산
-        kst = timezone(timedelta(hours=9))
-        today = datetime.now(kst).date()
-        start_date = today - timedelta(days=6)
+        start_date, _ = get_kst_date_range(7)
 
         # 추천 클릭 수 (한국 시간대 기준으로 날짜 계산)
         cur.execute(
@@ -429,8 +440,23 @@ async def get_recommendation_metrics():
         imp_map = {str(row["d"]): row["cnt"] for row in imp_rows}
 
         cur.close()
+    except Exception as e:
+        logger.error(
+            "추천 지표 집계 오류",
+            extra={
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+                "traceback": traceback.format_exc(),
+            },
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="지표 집계 중 오류가 발생했습니다.",
+        )
     finally:
-        conn.close()
+        if 'conn' in locals():
+            conn.close()
 
     result = []
     for i in range(7):
@@ -459,20 +485,20 @@ async def get_daily_metrics(days: int = 7):
                                         postStayCount, homeStayAvgSec,
                                         homeStayCount, shareCount }, ... ] }
     """
-    # 한국 시간대(KST, UTC+9) 기준으로 날짜 계산
-    kst = timezone(timedelta(hours=9))
-    end_date = datetime.now(kst).date()
-    start_date = end_date - timedelta(days=days - 1)
+    try:
+        # 한국 시간대(KST, UTC+9) 기준으로 날짜 계산
+        start_date, end_date = get_kst_date_range(days)
 
-    with get_conn() as conn:
+        conn = get_conn()
         cur = conn.cursor()
 
         # 1) 게시물 클릭 수 (한국 시간대 기준으로 날짜 계산)
+        # end_date까지 포함하려면 end_date + 1일까지 조회
         cur.execute(
             """
             SELECT DATE(ts AT TIME ZONE 'Asia/Seoul') AS date, COUNT(*)::int AS cnt
             FROM blog_analytics_clicks
-            WHERE ts >= %s AND ts < %s + interval '1 day'
+            WHERE ts >= %s::date AND ts < (%s::date + interval '1 day')
             GROUP BY DATE(ts AT TIME ZONE 'Asia/Seoul')
             """,
             (start_date, end_date),
@@ -495,7 +521,7 @@ async def get_daily_metrics(days: int = 7):
                    AVG(duration_sec)::float AS avg_duration,
                    COUNT(*)::int AS cnt
             FROM blog_analytics_post_stay
-            WHERE ts >= %s AND ts < %s + interval '1 day'
+            WHERE ts >= %s::date AND ts < (%s::date + interval '1 day')
             GROUP BY DATE(ts AT TIME ZONE 'Asia/Seoul')
             """,
             (start_date, end_date),
@@ -518,7 +544,7 @@ async def get_daily_metrics(days: int = 7):
                    AVG(duration_sec)::float AS avg_duration,
                    COUNT(*)::int AS cnt
             FROM blog_analytics_home_stay
-            WHERE ts >= %s AND ts < %s + interval '1 day'
+            WHERE ts >= %s::date AND ts < (%s::date + interval '1 day')
             GROUP BY DATE(ts AT TIME ZONE 'Asia/Seoul')
             """,
             (start_date, end_date),
@@ -539,7 +565,7 @@ async def get_daily_metrics(days: int = 7):
             """
             SELECT DATE(ts AT TIME ZONE 'Asia/Seoul') AS date, COUNT(*)::int AS cnt
             FROM blog_analytics_shares
-            WHERE ts >= %s AND ts < %s + interval '1 day'
+            WHERE ts >= %s::date AND ts < (%s::date + interval '1 day')
             GROUP BY DATE(ts AT TIME ZONE 'Asia/Seoul')
             """,
             (start_date, end_date),
@@ -553,6 +579,26 @@ async def get_daily_metrics(days: int = 7):
             else:
                 d, c = row[0], row[1]
             share_map[str(d)] = int(c)
+        
+        cur.close()
+    except Exception as e:
+        logger.error(
+            "일일 지표 집계 오류",
+            extra={
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+                "days": days,
+                "traceback": traceback.format_exc(),
+            },
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="일일 지표 집계 중 오류가 발생했습니다.",
+        )
+    finally:
+        if 'conn' in locals():
+            conn.close()
 
     # 날짜 배열 만들기 (누락된 날짜는 0으로 채움)
     dates = [start_date + timedelta(days=i) for i in range(days)]

@@ -36,10 +36,15 @@ type RecommendResp = {
 }
 
 async function fetchRecommendations(profile: OnboardingProfile): Promise<RecommendResp> {
+  // 페이지네이션을 위해 충분한 데이터 요청 (페이지당 6개, 최대 3페이지 = 18개)
+  const payload = {
+    ...profile,
+    limit: 18, // 페이지네이션을 위해 충분한 개수 요청
+  }
   const res = await fetch(`${env.API_BASE_URL}/recommendations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(profile),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) {
     throw new Error(`추천 API 실패: ${res.status}`)
@@ -310,6 +315,25 @@ export default function HomePage() {
   // 페이지네이션용 소스 (추천 없으면 최신순으로 폴백)
   const sourceForReco = recommendedJoined.length > 0 ? recommendedJoined : sortedByDate
   const totalPages = Math.ceil(sourceForReco.length / ITEMS_PER_PAGE) || 1
+  
+  // 추천 데이터가 변경되면 페이지를 1로 리셋
+  // recoData?.items의 길이와 첫 번째 항목의 plcy_no를 조합하여 변경 감지
+  const recoDataKey = useMemo(
+    () => recoData?.items?.map((item) => item.plcy_no).join(',') || '',
+    [recoData?.items]
+  )
+  
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [recoDataKey]) // 추천 데이터 내용이 변경될 때마다 페이지 리셋
+  
+  // 현재 페이지가 총 페이지 수를 초과하면 1로 리셋
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1)
+    }
+  }, [currentPage, totalPages])
+  
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
   const currentRecommendedPosts = sourceForReco.slice(startIndex, startIndex + ITEMS_PER_PAGE)
 
