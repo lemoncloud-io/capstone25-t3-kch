@@ -3,6 +3,7 @@ import { useAuthStore } from '../../shared/store/authStore'
 import AdminLayout from './components/AdminLayout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
+import AdminDashboardPage from './pages/AdminDashboardPage'
 import PostsManagePage from './pages/PostsManagePage'
 
 export default function AdminRoutes() {
@@ -15,8 +16,13 @@ export default function AdminRoutes() {
     return (
         <Routes>
             <Route path="/" element={<AdminLayout />}>
-                <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                {/* /admin 접속 시 기본으로 성과 지표 대시보드로 이동 */}
+                <Route index element={<Navigate to="/admin/metrics" replace />} />
+                {/* 기존 대시보드 */}
                 <Route path="dashboard" element={<DashboardPage />} />
+                {/* 성과 지표 대시보드 */}
+                <Route path="metrics" element={<AdminDashboardPage />} />
+                {/* 게시물 관리 페이지 */}
                 <Route path="posts" element={<PostsManagePage />} />
             </Route>
         </Routes>
