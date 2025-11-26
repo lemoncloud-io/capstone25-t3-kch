@@ -318,7 +318,7 @@ export default function AdminDashboardPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            대시보드
+            성과지표
           </h1>
           <p className="mt-2 text-sm text-gray-600">
             최근 7일간의 사용자 행동 데이터와 성과 지표를 확인하세요
