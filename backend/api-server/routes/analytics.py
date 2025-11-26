@@ -179,7 +179,26 @@ async def track_click(event: PostClickEvent, request: Request):
   conn = get_conn()
   try:
     cur = conn.cursor()
-    # 1. analytics 테이블에 클릭 이벤트 기록
+    
+    # 중복 방지: 같은 IP + 같은 postId + 최근 5초 이내에 클릭이 있으면 조회수 증가하지 않음
+    should_increment_view = True
+    if event.postId and ip:
+      cur.execute(
+        """
+        SELECT COUNT(*) as cnt
+        FROM blog_analytics_clicks
+        WHERE plcy_no = %s 
+          AND client_ip = %s
+          AND ts > NOW() - INTERVAL '5 seconds'
+        """,
+        (event.postId, ip),
+      )
+      result = cur.fetchone()
+      if result and result.get("cnt", 0) > 0:
+        # 최근 5초 이내에 같은 게시물에 대한 클릭이 있으면 조회수 증가하지 않음
+        should_increment_view = False
+    
+    # 1. analytics 테이블에 클릭 이벤트 기록 (항상 기록)
     cur.execute(
       """
       INSERT INTO blog_analytics_clicks
@@ -198,9 +217,9 @@ async def track_click(event: PostClickEvent, request: Request):
       ),
     )
     
-    # 2. blog_posts 테이블의 view_count도 증가
+    # 2. blog_posts 테이블의 view_count 증가 (중복 방지 적용)
     # 모든 블로그 글은 정책 기반이므로 plcy_no로만 매칭
-    if event.postId:
+    if event.postId and should_increment_view:
       cur.execute(
         """
         UPDATE blog_posts
@@ -357,23 +376,65 @@ async def track_recommendation_impression(
 
   conn = get_conn()
   try:
+    # 트랜잭션 시작 (동시 요청 처리)
     cur = conn.cursor()
-    cur.execute(
-      """
-      INSERT INTO blog_analytics_reco_impressions
-        (source_post_id, ts, user_agent, client_ip)
-      VALUES
-        (%s, COALESCE(%s, NOW()), %s, %s)
-      """,
-      (
-        event.sourcePostId,
-        event.ts,
-        ua,
-        ip,
-      ),
-    )
+    
+    # 중복 방지: 같은 IP + 같은 sourcePostId + 최근 5초 이내에 노출이 있으면 기록하지 않음
+    should_record_impression = True
+    # IP가 있는 경우에만 중복 체크 (IP가 없으면 프론트엔드의 sessionStorage에 의존)
+    if ip:
+      # sourcePostId가 None인 경우(홈페이지)와 있는 경우(상세페이지) 모두 처리
+      if event.sourcePostId:
+        # 상세페이지: source_post_id가 일치하는 경우
+        cur.execute(
+          """
+          SELECT COUNT(*) as cnt
+          FROM blog_analytics_reco_impressions
+          WHERE client_ip = %s
+            AND source_post_id = %s
+            AND ts > NOW() - INTERVAL '5 seconds'
+          """,
+          (ip, event.sourcePostId),
+        )
+      else:
+        # 홈페이지: source_post_id가 NULL인 경우
+        cur.execute(
+          """
+          SELECT COUNT(*) as cnt
+          FROM blog_analytics_reco_impressions
+          WHERE client_ip = %s
+            AND source_post_id IS NULL
+            AND ts > NOW() - INTERVAL '5 seconds'
+          """,
+          (ip,),
+        )
+      result = cur.fetchone()
+      if result and result.get("cnt", 0) > 0:
+        # 최근 5초 이내에 같은 IP에서 같은 페이지의 추천 영역 노출이 있으면 기록하지 않음
+        should_record_impression = False
+    # IP가 없는 경우는 프론트엔드의 sessionStorage 중복 방지에 의존
+    
+    # 중복이 아닌 경우에만 노출 기록
+    if should_record_impression:
+      cur.execute(
+        """
+        INSERT INTO blog_analytics_reco_impressions
+          (source_post_id, ts, user_agent, client_ip)
+        VALUES
+          (%s, COALESCE(%s, NOW()), %s, %s)
+        """,
+        (
+          event.sourcePostId,
+          event.ts,
+          ua,
+          ip,
+        ),
+      )
     conn.commit()
     cur.close()
+  except Exception as e:
+    conn.rollback()
+    logger.error(f"노출 추적 오류: {e}")
   finally:
     conn.close()
 

@@ -25,7 +25,7 @@ export default function Footer() {
             </div>
 
             <p className="text-gray-600 text-sm">
-              유레카박스(CMS)를 활용한 AI 기반 블로그 자동 생성 서비스
+              AI 기반 블로그 자동 생성 서비스
             </p>
           </div>
 

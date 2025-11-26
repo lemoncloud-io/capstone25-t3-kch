@@ -137,9 +137,59 @@ function Pagination({
   totalPages: number
   onPageChange: (page: number) => void
 }) {
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
+  // 표시할 페이지 번호 배열 생성
+  const getPageNumbers = (): (number | 'ellipsis')[] => {
+    const pages: (number | 'ellipsis')[] = []
+    const delta = 2 // 현재 페이지 양쪽에 표시할 페이지 수
+
+    // 페이지가 7개 이하면 모두 표시
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1)
+    }
+
+    // 항상 첫 페이지 표시
+    pages.push(1)
+
+    // 현재 페이지 주변 범위 계산
+    let start = Math.max(2, currentPage - delta)
+    let end = Math.min(totalPages - 1, currentPage + delta)
+
+    // 현재 페이지가 앞쪽에 있으면 더 많은 페이지 표시
+    if (currentPage <= 4) {
+      end = Math.min(5, totalPages - 1)
+    }
+    // 현재 페이지가 뒤쪽에 있으면 더 많은 페이지 표시
+    else if (currentPage >= totalPages - 3) {
+      start = Math.max(totalPages - 4, 2)
+    }
+
+    // 첫 페이지와 시작 사이에 간격이 있으면 생략 표시
+    if (start > 2) {
+      pages.push('ellipsis')
+    }
+
+    // 현재 페이지 주변 페이지들 추가
+    for (let i = start; i <= end; i++) {
+      pages.push(i)
+    }
+
+    // 끝과 마지막 페이지 사이에 간격이 있으면 생략 표시
+    if (end < totalPages - 1) {
+      pages.push('ellipsis')
+    }
+
+    // 항상 마지막 페이지 표시
+    if (totalPages > 1) {
+      pages.push(totalPages)
+    }
+
+    return pages
+  }
+
+  const pageNumbers = getPageNumbers()
+
   return (
-    <div className="flex items-center justify-center gap-4 mt-8">
+    <div className="flex items-center justify-center gap-2 mt-8">
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
@@ -148,18 +198,29 @@ function Pagination({
       >
         <ChevronLeft size={24} />
       </button>
-      {pages.map((p) => (
-        <button
-          key={p}
-          onClick={() => onPageChange(p)}
-          className={`w-10 h-10 rounded-full font-medium transition-all ${
-            currentPage === p ? 'bg-[#FEBC02] text-white shadow-md' : 'bg-white text-gray-900 hover:bg-gray-100'
-          }`}
-          aria-current={currentPage === p ? 'page' : undefined}
-        >
-          {p}
-        </button>
-      ))}
+      {pageNumbers.map((page, index) => {
+        if (page === 'ellipsis') {
+          return (
+            <span key={`ellipsis-${index}`} className="px-2 text-gray-400">
+              ...
+            </span>
+          )
+        }
+        return (
+          <button
+            key={page}
+            onClick={() => onPageChange(page)}
+            className={`w-10 h-10 rounded-full font-medium transition-all ${
+              currentPage === page
+                ? 'bg-[#FEBC02] text-white shadow-md'
+                : 'bg-white text-gray-900 hover:bg-gray-100'
+            }`}
+            aria-current={currentPage === page ? 'page' : undefined}
+          >
+            {page}
+          </button>
+        )
+      })}
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
@@ -187,13 +248,28 @@ export default function AllPostsPage() {
     setCurrentPage(1)
   }, [sortKey, viewMode])
 
-  const { data: postsData, isLoading } = useQuery<{ posts: Post[], totalCount?: number }, Error>({
-    queryKey: ['posts', 'all'],
+  const { data: postsData, isLoading, error } = useQuery<{ posts: Post[], totalCount?: number } | Post[], Error>({
+    queryKey: ['posts', 'all', 'withCount'],
     queryFn: () => getPostsWithCount(), // 전체 가져오기 (dev: mock, prod: API)
   })
   
-  const data = postsData?.posts ?? []
-  const totalCount = postsData?.totalCount
+  // 데이터 구조 확인: 배열이면 변환, 객체면 그대로 사용
+  const data = Array.isArray(postsData) ? postsData : (postsData?.posts ?? [])
+  const totalCount = Array.isArray(postsData) ? postsData.length : postsData?.totalCount
+
+  // 디버깅용 로그
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📊 AllPostsPage 데이터 상태:', {
+        isLoading,
+        hasPostsData: !!postsData,
+        postsData,
+        dataLength: data.length,
+        totalCount,
+        error: error?.message,
+      })
+    }
+  }, [isLoading, postsData, data.length, totalCount, error])
 
   useEffect(() => {
     setDefaultOg({ title: query ? `KCH Blog - 검색: ${params.get('q')}` : 'KCH Blog - 전체보기' })
@@ -258,9 +334,12 @@ export default function AllPostsPage() {
     
     // 추가 정렬 적용 (최신순/인기순)
     if (sortKey === 'popular') {
-      return base.sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0))
+      base.sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0))
+    } else {
+      base.sort((a, b) => +new Date(b.createdAt).getTime() - +new Date(a.createdAt).getTime())
     }
-    return base.sort((a, b) => +new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    
+    return base
   }, [data, sortKey, query])
 
   const totalPages = Math.ceil(sorted.length / ITEMS_PER_PAGE) || 1
@@ -367,6 +446,22 @@ export default function AllPostsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        ) : error ? (
+          <div className="text-center py-20">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">데이터를 불러오는 중 오류가 발생했습니다</h2>
+            <p className="text-gray-600 mb-4">{error.message}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-[#FEBC02] text-white rounded-lg hover:bg-[#FDB802] transition-colors"
+            >
+              페이지 새로고침
+            </button>
+          </div>
+        ) : data.length === 0 ? (
+          <div className="text-center py-20">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">게시물이 없습니다</h2>
+            <p className="text-gray-600">아직 등록된 게시물이 없습니다.</p>
           </div>
         ) : sorted.length === 0 ? (
           <div className="text-center py-20">

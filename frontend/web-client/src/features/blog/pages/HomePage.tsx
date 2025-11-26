@@ -195,10 +195,59 @@ function Pagination({
   totalPages: number
   onPageChange: (page: number) => void
 }) {
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
+  // 표시할 페이지 번호 배열 생성
+  const getPageNumbers = (): (number | 'ellipsis')[] => {
+    const pages: (number | 'ellipsis')[] = []
+    const delta = 2 // 현재 페이지 양쪽에 표시할 페이지 수
+
+    // 페이지가 7개 이하면 모두 표시
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1)
+    }
+
+    // 항상 첫 페이지 표시
+    pages.push(1)
+
+    // 현재 페이지 주변 범위 계산
+    let start = Math.max(2, currentPage - delta)
+    let end = Math.min(totalPages - 1, currentPage + delta)
+
+    // 현재 페이지가 앞쪽에 있으면 더 많은 페이지 표시
+    if (currentPage <= 4) {
+      end = Math.min(5, totalPages - 1)
+    }
+    // 현재 페이지가 뒤쪽에 있으면 더 많은 페이지 표시
+    else if (currentPage >= totalPages - 3) {
+      start = Math.max(totalPages - 4, 2)
+    }
+
+    // 첫 페이지와 시작 사이에 간격이 있으면 생략 표시
+    if (start > 2) {
+      pages.push('ellipsis')
+    }
+
+    // 현재 페이지 주변 페이지들 추가
+    for (let i = start; i <= end; i++) {
+      pages.push(i)
+    }
+
+    // 끝과 마지막 페이지 사이에 간격이 있으면 생략 표시
+    if (end < totalPages - 1) {
+      pages.push('ellipsis')
+    }
+
+    // 항상 마지막 페이지 표시
+    if (totalPages > 1) {
+      pages.push(totalPages)
+    }
+
+    return pages
+  }
+
+  const pageNumbers = getPageNumbers()
 
   return (
-    <div className="flex items-center justify-center gap-4 mt-8">
+    <div className="flex items-center justify-center gap-2 mt-8">
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
@@ -207,22 +256,29 @@ function Pagination({
       >
         <ChevronLeft size={24} />
       </button>
-
-      {pages.map((page) => (
-        <button
-          key={page}
-          onClick={() => onPageChange(page)}
-          className={`w-10 h-10 rounded-full font-medium transition-all ${
-            currentPage === page
-              ? 'bg-[#FEBC02] text-white shadow-md'
-              : 'bg-white text-gray-900 hover:bg-gray-100'
-          }`}
-          aria-current={currentPage === page ? 'page' : undefined}
-        >
-          {page}
-        </button>
-      ))}
-
+      {pageNumbers.map((page, index) => {
+        if (page === 'ellipsis') {
+          return (
+            <span key={`ellipsis-${index}`} className="px-2 text-gray-400">
+              ...
+            </span>
+          )
+        }
+        return (
+          <button
+            key={page}
+            onClick={() => onPageChange(page)}
+            className={`w-10 h-10 rounded-full font-medium transition-all ${
+              currentPage === page
+                ? 'bg-[#FEBC02] text-white shadow-md'
+                : 'bg-white text-gray-900 hover:bg-gray-100'
+            }`}
+            aria-current={currentPage === page ? 'page' : undefined}
+          >
+            {page}
+          </button>
+        )
+      })}
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
@@ -343,20 +399,31 @@ export default function HomePage() {
     recoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  // 추천 영역 노출 추적 (추천 게시글이 렌더링될 때, 한 번만 호출)
-  const hasTrackedImpression = useRef(false)
+  // 추천 영역 노출 추적 (중복 방지)
   useEffect(() => {
+    // 조건 체크
     if (
-      currentRecommendedPosts.length > 0 &&
-      !isRecoLoading &&
-      !isRecoError &&
-      !hasTrackedImpression.current
+      currentRecommendedPosts.length === 0 ||
+      isRecoLoading ||
+      isRecoError
     ) {
-      // 홈페이지에서 추천 영역이 보일 때 노출 추적 (한 번만)
-      // sourcePostId는 undefined (홈페이지이므로)
-      trackRecommendationImpression(undefined)
-      hasTrackedImpression.current = true
+      return
     }
+
+    // sessionStorage를 사용하여 중복 방지 (5초 이내)
+    const storageKey = 'reco_impression_home'
+    const recentlyTracked = sessionStorage.getItem(storageKey)
+    const now = Date.now()
+    
+    // 5초 이내에 이미 노출 추적이 있으면 중복 방지
+    if (recentlyTracked && now - parseInt(recentlyTracked) < 5000) {
+      return
+    }
+
+    // 홈페이지에서 추천 영역이 보일 때 노출 추적
+    // sourcePostId는 undefined (홈페이지이므로)
+    trackRecommendationImpression(undefined)
+    sessionStorage.setItem(storageKey, now.toString())
   }, [currentRecommendedPosts.length, isRecoLoading, isRecoError])
 
   if (isLoading) {

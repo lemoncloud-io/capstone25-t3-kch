@@ -134,14 +134,24 @@ export default function PostDetailPage() {
     stayEnterRef.current = new Date().toISOString()
 
     // 상세 페이지 진입 = 클릭 기록
-    // 단, 같은 도메인에서 온 경우는 이미 클릭이 기록되었으므로 중복 방지
+    // 같은 도메인에서 온 경우는 이미 클릭이 기록되었으므로 중복 방지
+    // sessionStorage를 사용하여 더 확실한 중복 방지
     const referrer = document.referrer
     const currentOrigin = window.location.origin
     const isFromSameDomain = referrer && referrer.startsWith(currentOrigin)
     
-    // 직접 URL 접근이거나 외부에서 온 경우에만 클릭 기록
-    if (!isFromSameDomain) {
+    // sessionStorage 키: 최근 조회한 게시물 ID를 저장하여 중복 방지
+    const storageKey = `viewed_${post.id}`
+    const recentlyViewed = sessionStorage.getItem(storageKey)
+    const now = Date.now()
+    
+    // 같은 도메인에서 온 경우 또는 최근 5초 이내에 조회한 경우는 중복 방지
+    if (isFromSameDomain || (recentlyViewed && now - parseInt(recentlyViewed) < 5000)) {
+      // 중복 조회이므로 조회수 증가하지 않음
+    } else {
+      // 직접 URL 접근이거나 외부에서 온 경우, 또는 5초 이상 지난 경우에만 클릭 기록
       trackPostClick(post.id, post.slug, 'post-detail')
+      sessionStorage.setItem(storageKey, now.toString())
     }
 
     // 언마운트 시 한 번만 체류 시간 전송
@@ -250,11 +260,30 @@ export default function PostDetailPage() {
     return result.slice(0, 4)
   }, [recoData?.items, postMapByPlcyNo, post?.id])
 
-  // 추천 영역 노출 추적
+  // 추천 영역 노출 추적 (중복 방지)
   useEffect(() => {
-    if (recommendedPosts.length > 0 && !isRecoLoading && !isRecoError && post?.id) {
-      trackRecommendationImpression(post.id)
+    // 조건 체크
+    if (
+      recommendedPosts.length === 0 ||
+      isRecoLoading ||
+      isRecoError ||
+      !post?.id
+    ) {
+      return
     }
+
+    // sessionStorage를 사용하여 중복 방지 (5초 이내)
+    const storageKey = `reco_impression_${post.id}`
+    const recentlyTracked = sessionStorage.getItem(storageKey)
+    const now = Date.now()
+    
+    // 5초 이내에 이미 노출 추적이 있으면 중복 방지
+    if (recentlyTracked && now - parseInt(recentlyTracked) < 5000) {
+      return
+    }
+
+    trackRecommendationImpression(post.id)
+    sessionStorage.setItem(storageKey, now.toString())
   }, [recommendedPosts.length, isRecoLoading, isRecoError, post?.id])
 
   // 추천 콘텐츠 클릭 핸들러
