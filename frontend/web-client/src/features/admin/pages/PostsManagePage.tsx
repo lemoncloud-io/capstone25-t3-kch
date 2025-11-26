@@ -46,13 +46,20 @@ export default function PostsManagePage() {
     // 새 포스트 생성
     const createPostMutation = useMutation({
         mutationFn: createBlogPost,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['posts'] })
+        onSuccess: async (data) => {
+            console.log('✅ 포스트 생성 성공, 목록 갱신 중...', data)
+            // 캐시 무효화 및 강제 refetch
+            await queryClient.invalidateQueries({ queryKey: ['posts'] })
+            await queryClient.refetchQueries({ queryKey: ['posts'] })
+            // refetch 함수도 직접 호출
+            await refetch()
+            console.log('✅ 목록 갱신 완료')
             toast.success('새 포스트가 생성되었습니다!')
             setShowNewPostModal(false)
         },
         onError: (error: any) => {
-            toast.error(`포스트 생성 실패: ${error.message}`)
+            console.error('❌ 포스트 생성 에러:', error)
+            toast.error(`포스트 생성 실패: ${error.message || '알 수 없는 오류'}`)
         }
     })
 

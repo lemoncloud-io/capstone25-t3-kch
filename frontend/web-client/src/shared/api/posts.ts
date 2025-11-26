@@ -559,12 +559,11 @@ export const getPostsWithCount = async (params?: { category?: string; limit?: nu
         }
         })
         
-        let filtered = mapped;
-        if (params?.category) {
-            filtered = mapped.filter(post => post.category === params.category)
-        }
-        
-        return { posts: filtered, totalCount: data.total_count }
+        // 백엔드에서 이미 카테고리 필터링을 했으므로 프론트엔드에서 추가 필터링은 불필요
+        // total_count는 백엔드에서 받은 값을 그대로 사용 (카테고리 필터 적용 후의 개수)
+        // 백엔드 API는 generation_status = 'completed'인 것만 반환하므로, 
+        // 관리자 페이지와 블로그 페이지 모두 같은 조건으로 필터링됨
+        return { posts: mapped, totalCount: data.total_count ?? mapped.length }
     } catch (error) {
         console.error('API 호출 실패:', error)
         console.log('Mock 데이터로 폴백')
@@ -599,17 +598,25 @@ export const generatePolicyContent = async (
 // 새 블로그 포스트 생성
 export const createBlogPost = async (plcyNo: string): Promise<any> => {
     try {
-        console.log('🆕 새 블로그 포스트 생성:', plcyNo)
+        console.log('🆕 새 블로그 포스트 생성 시작:', plcyNo)
         
-        // 1. LLM으로 블로그 콘텐츠 생성
+        // 1. LLM으로 블로그 콘텐츠 생성 (백엔드에서 자동으로 DB에 저장됨)
         const content = await generatePolicyContent(plcyNo, 'full')
         
-        // 2. 블로그 DB에 저장 (백엔드에서 자동 처리됨)
-        console.log('✅ 블로그 생성 완료:', content)
+        console.log('✅ 블로그 생성 완료:', {
+            plcyNo,
+            title: content.title,
+            summary: content.summary?.substring(0, 50) + '...',
+            hasContent: !!content.blog_content
+        })
         
         return content
-    } catch (error) {
-        console.error('블로그 생성 실패:', error)
+    } catch (error: any) {
+        console.error('❌ 블로그 생성 실패:', {
+            plcyNo,
+            error: error.message,
+            stack: error.stack
+        })
         throw error
     }
 }

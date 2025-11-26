@@ -62,6 +62,58 @@ def get_policy_from_db(plcy_no: str):
         
         return dict(row)
 
+def _confirm_category_for_policy(policy: dict) -> str:
+    """
+    policy dict에서 최종 카테고리 라벨을 확정한다.
+    1) category_auto (자동/키워드 분류)가 가장 정확하므로 우선 사용
+    2) 없으면 원본 category 사용
+    3) 그래도 없으면 '복지' (기본값)
+    """
+    auto_ = (policy.get('category_auto') or '').strip()
+    if auto_:
+        return auto_
+
+    label = (policy.get('category') or '').strip()
+    if label:
+        return label
+        
+    return '복지'  # 기본값
+
+def save_blog_to_db(plcy_no: str, title: str, summary: str, content: str, 
+                    category: str = None, region: str = None, keywords: list = None):
+    """블로그를 DB에 저장"""
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(text("""
+                INSERT INTO blog_posts (plcy_no, blog_title, blog_summary, blog_content, 
+                                       category, region, keywords)
+                VALUES (:plcy_no, :title, :summary, :content, :category, :region, :keywords)
+                ON CONFLICT (plcy_no) 
+                DO UPDATE SET 
+                    blog_title = EXCLUDED.blog_title,
+                    blog_summary = EXCLUDED.blog_summary,
+                    blog_content = EXCLUDED.blog_content,
+                    category = EXCLUDED.category,
+                    region = EXCLUDED.region,
+                    keywords = EXCLUDED.keywords,
+                    updated_at = NOW(),
+                    generation_status = 'completed',
+                    error_message = NULL
+            """), {
+                "plcy_no": plcy_no,
+                "title": title,
+                "summary": summary,
+                "content": content,
+                "category": category,
+                "region": region,
+                "keywords": keywords
+            })
+            print(f"✅ 블로그 저장 완료: plcy_no={plcy_no}, title={title[:50]}...")
+            return result
+    except Exception as e:
+        print(f"❌ 블로그 저장 실패: plcy_no={plcy_no}, error={str(e)}")
+        raise
+
 # ========== API 엔드포인트 ==========
 
 @router.post("/policies/{plcy_no}/content")
@@ -133,12 +185,32 @@ async def generate_policy_content(
             summary = generator.generate_summary(policy_data)
             blog_content = generator.generate_blog_content(policy_data)
             blog_content = add_blog_footer(blog_content, policy_data)
-            keywords = (policy_data.get("keywords") or [])[:3]
+            keywords = []
+            if policy_data.get('content_data') and isinstance(policy_data['content_data'], dict):
+                keywords = policy_data['content_data'].get('keywords', [])
+            
+            # 카테고리 확정
+            confirmed_category = _confirm_category_for_policy(policy_data)
+            region = policy_data.get('region')
+            
+            # DB에 저장
+            save_blog_to_db(
+                plcy_no=plcy_no,
+                title=title,
+                summary=summary,
+                content=blog_content,
+                category=confirmed_category,
+                region=region,
+                keywords=keywords
+            )
+            
+            # 메타데이터 생성
+            meta_keywords = keywords[:3] if keywords else []
             #thumbnail_img = policy_data.get("thumbnail_img") or None
             meta = GeneratedMeta(
                 title=title,
                 description=summary,
-                keywords=keywords,
+                keywords=meta_keywords,
                 robots="noindex,nofollow"
                 #thumbnail_img=thumbnail_img
             )
