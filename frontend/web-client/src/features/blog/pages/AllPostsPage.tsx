@@ -346,6 +346,9 @@ export default function AllPostsPage() {
   const start = (currentPage - 1) * ITEMS_PER_PAGE
   const current = sorted.slice(start, start + ITEMS_PER_PAGE)
 
+  // 화면에 표시할 총 개수: 검색 시에는 필터된 개수, 그 외에는 전체 개수
+  const displayedCount = query ? sorted.length : totalCount ?? data.length
+
   const handlePageChange = (p: number) => {
     setCurrentPage(p)
     listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -371,7 +374,7 @@ export default function AllPostsPage() {
             </div>
             {!isLoading && (
               <div className="text-center">
-                <div className="text-5xl font-extrabold text-[#FEBC02]">{totalCount ?? sorted.length}</div>
+                <div className="text-5xl font-extrabold text-[#FEBC02]">{displayedCount}</div>
                 <div className="text-sm text-gray-600 mt-1">개의 포스트</div>
               </div>
             )}
@@ -382,7 +385,7 @@ export default function AllPostsPage() {
         {!isLoading && sorted.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3 text-sm text-gray-600">
-              총 <span className="font-bold text-gray-900">{totalCount ?? sorted.length}</span>개
+              총 <span className="font-bold text-gray-900">{displayedCount}</span>개
               <span className="mx-3 h-4 w-px bg-gray-300" />
               <button
                 onClick={() => setSortKey('latest')}
